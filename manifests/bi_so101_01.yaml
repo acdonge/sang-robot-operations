@@ -1,0 +1,160 @@
+schema_version: "0.1"
+
+robot:
+  robot_id: bi_so101_01
+  model: bi_so101
+  embodiment: bi_so101_v1
+  real_or_sim: real
+  host_id: workcell_soarm_01
+  namespace: /robots/bi_so101_01
+  frames:
+    base: base_link
+    tool: null
+    odom: null
+    map: null
+  spool_path: /home/sa08050/robot_store/spool/bi_so101_01
+  lineage:
+    dataset: null
+    policy: null
+    calibration: null
+
+adapter:
+  package: soarm_bridge
+  executable: soarm_bridge
+  kind: feature_adapter
+  config_ref: bi_so101_01.yaml
+  version: null
+
+capabilities:
+  manipulation: true
+  navigation: false
+  arm_count: 2
+  gripper: true
+  camera: true
+  force_torque: false
+  agent_actions:
+    - capability: manipulation
+      type: fleet_interfaces/action/ManipulateObject
+      endpoint: /robots/bi_so101_01/actions/manipulate_object
+
+interfaces:
+  state:
+    - key: observation.state
+      topics:
+        - /bi_so101/follower_left/joint_states_norm
+        - /bi_so101/follower_right/joint_states_norm
+      message_type: sensor_msgs/msg/JointState
+      feature_names:
+        - left_shoulder_pan
+        - left_shoulder_lift
+        - left_elbow_flex
+        - left_wrist_flex
+        - left_wrist_roll
+        - left_gripper
+        - right_shoulder_pan
+        - right_shoulder_lift
+        - right_elbow_flex
+        - right_wrist_flex
+        - right_wrist_roll
+        - right_gripper
+      dtype: float32
+      shape: [12]
+      unit: lerobot_normalized
+      freshness_ms: 200
+  action:
+    - key: action
+      topics:
+        - /bi_so101/leader_left/joint_trajectory_norm
+        - /bi_so101/leader_right/joint_trajectory_norm
+      message_type: trajectory_msgs/msg/JointTrajectory
+      feature_names:
+        - left_shoulder_pan
+        - left_shoulder_lift
+        - left_elbow_flex
+        - left_wrist_flex
+        - left_wrist_roll
+        - left_gripper
+        - right_shoulder_pan
+        - right_shoulder_lift
+        - right_elbow_flex
+        - right_wrist_flex
+        - right_wrist_roll
+        - right_gripper
+      dtype: float32
+      shape: [12]
+      semantics: absolute_joint_target
+      unit: lerobot_normalized
+      freshness_ms: 200
+  cameras:
+    - key: top
+      topic: /bi_so101/camera/top/color/image_rect_raw/compressed
+      message_type: sensor_msgs/msg/CompressedImage
+      encoding: jpeg
+      width: 640
+      height: 480
+      fps: 30
+      freshness_ms: 200
+    - key: left_side
+      topic: /bi_so101/camera/left_side/color/image_rect_raw/compressed
+      message_type: sensor_msgs/msg/CompressedImage
+      encoding: jpeg
+      width: 640
+      height: 480
+      fps: 30
+      freshness_ms: 200
+    - key: right_side
+      topic: /bi_so101/camera/right_side/color/image_rect_raw/compressed
+      message_type: sensor_msgs/msg/CompressedImage
+      encoding: jpeg
+      width: 640
+      height: 480
+      fps: 30
+      freshness_ms: 200
+    - key: left_wrist
+      topic: /bi_so101/camera/left_wrist/color/image_rect_raw/compressed
+      message_type: sensor_msgs/msg/CompressedImage
+      encoding: jpeg
+      width: 640
+      height: 480
+      fps: 30
+      freshness_ms: 200
+    - key: right_wrist
+      topic: /bi_so101/camera/right_wrist/color/image_rect_raw/compressed
+      message_type: sensor_msgs/msg/CompressedImage
+      encoding: jpeg
+      width: 640
+      height: 480
+      fps: 30
+      freshness_ms: 200
+
+recording:
+  fps: 30
+  task: multi_object_box
+  contract: bi_so101_v1
+  rosbag: required_for_validation
+  required_sources:
+    - observation.state
+    - action
+    - top
+    - left_side
+    - right_side
+    - left_wrist
+    - right_wrist
+  staging_root: /home/sa08050/robot_store/staging
+  dataset_root: /home/sa08050/robot_store/datasets/raw
+
+control:
+  modes: [DISABLED, TELEOP, POLICY]
+  default_mode: DISABLED
+  preset_mode: TELEOP
+  heartbeat_ms: 100
+  command_ttl_ms: 200
+  safe_state_on_disconnect: controlled_hold
+  rearm_required_after_disconnect: true
+
+ui:
+  display_name: Bi-SO101 01
+  order: 10
+  panels: [recording, manipulation, health]
+  camera_order: [top, left_side, right_side, left_wrist, right_wrist]
+
