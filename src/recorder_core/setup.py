@@ -15,7 +15,7 @@ setup(
     install_requires=["PyYAML"],
     zip_safe=True,
     maintainer="sa08050",
-    maintainer_email="sa08050@localhost",
+    maintainer_email="kb083509@gmail.com",
     description="Manifest-driven ROS 2 recorder core skeleton.",
     license="Apache-2.0",
     entry_points={

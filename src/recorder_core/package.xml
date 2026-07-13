@@ -4,7 +4,7 @@
   <name>recorder_core</name>
   <version>0.1.0</version>
   <description>Manifest-driven ROS 2 recorder core skeleton.</description>
-  <maintainer email="sa08050@localhost">sa08050</maintainer>
+  <maintainer email="kb083509@gmail.com">sa08050</maintainer>
   <license>Apache-2.0</license>
 
   <buildtool_depend>ament_python</buildtool_depend>
