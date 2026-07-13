@@ -12,16 +12,16 @@ setup(
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
         ("share/" + package_name, ["package.xml"]),
     ],
-    install_requires=["PyYAML"],
+    install_requires=["PyYAML", "numpy", "opencv-python-headless"],
     zip_safe=True,
     maintainer="sa08050",
     maintainer_email="kb083509@gmail.com",
-    description="Manifest-driven ROS 2 recorder core skeleton.",
+    description="Manifest-driven ROS 2 recorder core.",
     license="Apache-2.0",
     entry_points={
         "console_scripts": [
             "recorder_core = recorder_core.recorder_node:main",
+            "fake_robot = recorder_core.fake_robot:main",
         ],
     },
 )
-
