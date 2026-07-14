@@ -7,6 +7,7 @@ from contextlib import suppress
 from dataclasses import dataclass
 import math
 from pathlib import Path
+import shutil
 import threading
 import time
 from typing import Any
@@ -14,7 +15,7 @@ from typing import Any
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 STARTABLE_STATES = frozenset({"IDLE", "READY"})
@@ -22,6 +23,11 @@ STARTABLE_STATES = frozenset({"IDLE", "READY"})
 
 class StartRequest(BaseModel):
     task: str
+    task_instructions: list[str] = Field(default_factory=list)
+    episode_time_s: float = 0.0
+    reset_time_s: float = 0.0
+    num_episodes: int = 0
+    rosbag: bool = False
 
 
 class GatewayAPIError(Exception):
@@ -35,14 +41,84 @@ class GatewayAPIError(Exception):
 class RobotHandle:
     node: Any
     episode_started_monotonic: float | None = None
+    system_metrics: "SystemMetrics | None" = None
+
+
+class SystemMetrics:
+    """Sample CPU, available RAM, and store filesystem without requiring psutil."""
+
+    def __init__(self, store_path: str | Path) -> None:
+        self.store_path = Path(store_path)
+        self._previous_cpu: tuple[int, int] | None = None
+        try:
+            import psutil
+        except ImportError:
+            self._psutil = None
+        else:
+            self._psutil = psutil
+
+    @staticmethod
+    def _proc_cpu_times() -> tuple[int, int]:
+        fields = Path("/proc/stat").read_text(encoding="utf-8").splitlines()[0].split()
+        values = [int(value) for value in fields[1:]]
+        idle = values[3] + (values[4] if len(values) > 4 else 0)
+        return sum(values), idle
+
+    def _cpu_pct(self) -> float:
+        if self._psutil is not None:
+            return float(self._psutil.cpu_percent(interval=None))
+        current = self._proc_cpu_times()
+        previous = self._previous_cpu
+        self._previous_cpu = current
+        if previous is None:
+            return 0.0
+        total_delta = current[0] - previous[0]
+        idle_delta = current[1] - previous[1]
+        if total_delta <= 0:
+            return 0.0
+        return 100.0 * (1.0 - idle_delta / total_delta)
+
+    def _ram_free_gb(self) -> float:
+        if self._psutil is not None:
+            return float(self._psutil.virtual_memory().available) / (1024**3)
+        for line in Path("/proc/meminfo").read_text(encoding="utf-8").splitlines():
+            if line.startswith("MemAvailable:"):
+                return int(line.split()[1]) / (1024**2)
+        raise RuntimeError("/proc/meminfo does not contain MemAvailable")
+
+    def _disk_free_gb(self) -> float:
+        path = self.store_path
+        while not path.exists() and path != path.parent:
+            path = path.parent
+        return shutil.disk_usage(path).free / (1024**3)
+
+    def sample(self) -> dict[str, float | None]:
+        values: dict[str, float | None] = {}
+        for key, sampler in (
+            ("cpu_pct", self._cpu_pct),
+            ("ram_free_gb", self._ram_free_gb),
+            ("disk_free_gb", self._disk_free_gb),
+        ):
+            try:
+                values[key] = round(float(sampler()), 3)
+            except (OSError, RuntimeError, ValueError):
+                values[key] = None
+        return values
 
 
 def state_conflict(action: str, state: str) -> str | None:
     """Return the contract error for a disallowed state transition."""
     if action == "start" and state not in STARTABLE_STATES:
         return f"record_start requires IDLE or READY, got {state}"
-    if action == "stop" and state != "RECORDING":
-        return f"record_stop requires RECORDING, got {state}"
+    required_state = {
+        "stop": "RECORDING",
+        "save_next": "RECORDING",
+        "retry": "RECORDING",
+        "finish": "RECORDING",
+        "continue": "RESETTING",
+    }.get(action)
+    if required_state is not None and state != required_state:
+        return f"record_{action} requires {required_state}, got {state}"
     return None
 
 
@@ -75,13 +151,26 @@ def status_payload(handle: RobotHandle) -> dict[str, Any]:
     node_status = handle.node.get_status()
     fsm = node_status["fsm"]
     started = handle.episode_started_monotonic
-    elapsed_s = 0.0 if started is None else max(0.0, time.monotonic() - started)
+    elapsed_s = fsm.get("episode_elapsed_s")
+    if elapsed_s is None:
+        elapsed_s = 0.0 if started is None else max(0.0, time.monotonic() - started)
+    metrics = handle.system_metrics
     return {
         "type": "status",
         "robot_id": handle.node.manifest.robot.robot_id,
         "fsm_state": fsm["state"],
         "sources": contract_sources(node_status),
         "episode": {"frames": fsm["frame_count"], "elapsed_s": elapsed_s},
+        "episode_index": fsm.get("episode_index", 0),
+        "episodes_total": fsm.get("episodes_total", 0),
+        "current_instruction": fsm.get("current_instruction"),
+        "phase": fsm.get("phase", fsm["state"]),
+        "reset_remaining_s": fsm.get("reset_remaining_s"),
+        "system": (
+            {"cpu_pct": None, "ram_free_gb": None, "disk_free_gb": None}
+            if metrics is None
+            else metrics.sample()
+        ),
         "message": fsm["failure_reason"] or "",
     }
 
@@ -119,7 +208,10 @@ def create_app(nodes: Iterable[Any], *, ui_dir: str | Path = "/ws/ui") -> FastAP
         robot_id = node.manifest.robot.robot_id
         if robot_id in handles:
             raise ValueError(f"duplicate robot_id: {robot_id}")
-        handles[robot_id] = RobotHandle(node)
+        handles[robot_id] = RobotHandle(
+            node,
+            system_metrics=SystemMetrics(node.manifest.recording.dataset_root),
+        )
 
     app = FastAPI()
 
@@ -142,10 +234,7 @@ def create_app(nodes: Iterable[Any], *, ui_dir: str | Path = "/ws/ui") -> FastAP
 
     @app.get("/api/robots/{robot_id}/health")
     async def robot_health(robot_id: str) -> dict[str, Any]:
-        node = get_handle(robot_id).node
-        state = node.get_status()["fsm"]["state"]
-        health = node.get_health()
-        return {"fsm_state": state, "sources": contract_sources(health)}
+        return status_payload(get_handle(robot_id))
 
     @app.post("/api/robots/{robot_id}/record/start")
     async def record_start(robot_id: str, body: StartRequest):
@@ -155,7 +244,14 @@ def create_app(nodes: Iterable[Any], *, ui_dir: str | Path = "/ws/ui") -> FastAP
         if conflict is not None:
             raise GatewayAPIError(409, conflict)
         try:
-            started = handle.node.start_recording(body.task)
+            started = handle.node.start_recording(
+                body.task,
+                task_instructions=body.task_instructions,
+                episode_time_s=body.episode_time_s,
+                reset_time_s=body.reset_time_s,
+                num_episodes=body.num_episodes,
+                rosbag=body.rosbag,
+            )
         except ValueError as exc:
             raise GatewayAPIError(400, str(exc)) from exc
         except RuntimeError as exc:
@@ -166,15 +262,13 @@ def create_app(nodes: Iterable[Any], *, ui_dir: str | Path = "/ws/ui") -> FastAP
         handle.episode_started_monotonic = time.monotonic()
         return {"session_id": fsm["session_id"]}
 
-    @app.post("/api/robots/{robot_id}/record/stop")
-    async def record_stop(robot_id: str):
-        handle = get_handle(robot_id)
+    async def finish_recording(handle: RobotHandle) -> dict[str, Any]:
         before = handle.node.get_status()["fsm"]
-        conflict = state_conflict("stop", before["state"])
+        conflict = state_conflict("finish", before["state"])
         if conflict is not None:
             raise GatewayAPIError(409, conflict)
         try:
-            started = handle.node.stop_recording()
+            started = handle.node.finish_recording()
         except RuntimeError as exc:
             raise GatewayAPIError(409, str(exc)) from exc
         if not started:
@@ -184,6 +278,58 @@ def create_app(nodes: Iterable[Any], *, ui_dir: str | Path = "/ws/ui") -> FastAP
             "session_id": completed["session_id"],
             "dataset_path": completed["raw_path"],
         }
+
+    @app.post("/api/robots/{robot_id}/record/save_next")
+    async def record_save_next(robot_id: str) -> dict[str, bool]:
+        handle = get_handle(robot_id)
+        state = handle.node.get_status()["fsm"]["state"]
+        conflict = state_conflict("save_next", state)
+        if conflict is not None:
+            raise GatewayAPIError(409, conflict)
+        try:
+            accepted = handle.node.save_next_recording()
+        except RuntimeError as exc:
+            raise GatewayAPIError(409, str(exc)) from exc
+        return {"accepted": bool(accepted)}
+
+    @app.post("/api/robots/{robot_id}/record/retry")
+    async def record_retry(robot_id: str) -> dict[str, bool]:
+        handle = get_handle(robot_id)
+        state = handle.node.get_status()["fsm"]["state"]
+        conflict = state_conflict("retry", state)
+        if conflict is not None:
+            raise GatewayAPIError(409, conflict)
+        try:
+            accepted = handle.node.retry_recording()
+        except RuntimeError as exc:
+            raise GatewayAPIError(409, str(exc)) from exc
+        return {"accepted": bool(accepted)}
+
+    @app.post("/api/robots/{robot_id}/record/continue")
+    async def record_continue(robot_id: str) -> dict[str, bool]:
+        handle = get_handle(robot_id)
+        state = handle.node.get_status()["fsm"]["state"]
+        conflict = state_conflict("continue", state)
+        if conflict is not None:
+            raise GatewayAPIError(409, conflict)
+        try:
+            accepted = handle.node.continue_recording()
+        except RuntimeError as exc:
+            raise GatewayAPIError(409, str(exc)) from exc
+        return {"accepted": bool(accepted)}
+
+    @app.post("/api/robots/{robot_id}/record/finish")
+    async def record_finish(robot_id: str):
+        return await finish_recording(get_handle(robot_id))
+
+    @app.post("/api/robots/{robot_id}/record/stop")
+    async def record_stop(robot_id: str):
+        handle = get_handle(robot_id)
+        before = handle.node.get_status()["fsm"]
+        conflict = state_conflict("stop", before["state"])
+        if conflict is not None:
+            raise GatewayAPIError(409, conflict)
+        return await finish_recording(handle)
 
     @app.post("/api/robots/{robot_id}/record/abort")
     async def record_abort(robot_id: str) -> dict[str, bool]:

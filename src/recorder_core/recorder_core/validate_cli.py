@@ -39,8 +39,8 @@ def _validate_metadata(dataset: Any, manifest: Manifest, errors: list[str]) -> N
         errors.append(f"fps mismatch: got {dataset.fps}, expected {manifest.recording.fps}")
     if dataset.num_frames <= 0:
         errors.append("dataset has no frames")
-    if dataset.num_episodes != 1:
-        errors.append(f"episode count mismatch: got {dataset.num_episodes}, expected 1")
+    if dataset.num_episodes <= 0:
+        errors.append("dataset has no episodes")
 
     expected_camera_keys = {
         f"observation.images.{camera.key}" for camera in manifest.interfaces.cameras
@@ -158,6 +158,7 @@ def validate_dataset(dataset_root: str | Path, manifest_path: str | Path) -> dic
     errors: list[str] = []
     decoded_counts: dict[str, int] = {}
     frame_count = 0
+    episode_count = 0
     fps = None
     cache_variables = ("HF_HOME", "HF_DATASETS_CACHE", "HUGGINGFACE_HUB_CACHE")
     previous_cache = {name: os.environ.get(name) for name in cache_variables}
@@ -170,6 +171,7 @@ def validate_dataset(dataset_root: str | Path, manifest_path: str | Path) -> dic
             manifest = load_manifest(manifest_path)
             dataset = open_dataset(root)
             frame_count = int(dataset.num_frames)
+            episode_count = int(dataset.num_episodes)
             fps = int(dataset.fps)
             _validate_metadata(dataset, manifest, errors)
             decoded_counts = _validate_frames(dataset, manifest, errors)
@@ -188,6 +190,7 @@ def validate_dataset(dataset_root: str | Path, manifest_path: str | Path) -> dic
         "dataset_root": str(root),
         "manifest": str(Path(manifest_path)),
         "frame_count": frame_count,
+        "episode_count": episode_count,
         "fps": fps,
         "decoded_video_frames": decoded_counts,
         "errors": errors,

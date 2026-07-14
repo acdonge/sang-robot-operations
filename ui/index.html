@@ -47,10 +47,19 @@
   button { border: 0; border-radius: 6px; padding: 8px 16px; font-weight: 600;
            cursor: pointer; color: #fff; }
   button:disabled { opacity: .35; cursor: default; }
-  .b-start { background: var(--accent); }
-  .b-stop  { background: var(--ok); }
-  .b-abort { background: var(--err); }
+  .b-start  { background: var(--accent); }
+  .b-stop   { background: var(--ok); }
+  .b-retry  { background: var(--warn); }
+  .b-cont   { background: var(--accent); }
+  .b-finish { background: #7a5cd6; }
+  .b-abort  { background: var(--err); }
   #msg { margin-left: 8px; color: var(--dim); font-size: 12px; }
+  .dim-label { color: var(--dim); font-size: 12px; }
+  .controls input[type=number] { background: var(--bg); color: var(--text);
+      border: 1px solid var(--line); border-radius: 6px; padding: 7px 6px; }
+  .sys { margin-left: auto; font-size: 12px; color: var(--dim); }
+  .sys.warn-sys { color: var(--err); font-weight: 700; }
+  .badge.RESETTING { color: var(--warn); border-color: var(--warn); }
 
   table.health { margin-top: 12px; border-collapse: collapse; font-size: 12px; width: 100%; }
   table.health th, table.health td { text-align: left; padding: 3px 10px 3px 0;
@@ -64,6 +73,7 @@
 <header>
   <h1>V2 Recorder</h1>
   <span id="conn">connecting…</span>
+  <span id="sysbar" class="sys"></span>
 </header>
 <div id="robots"></div>
 
@@ -72,11 +82,20 @@
 // ── API 계약 (M4-⑤ 게이트웨이가 구현) ─────────────────────────────
 //  GET  /api/robots                                → [{robot_id, model, cameras:[key], fps}]
 //  GET  /api/robots/{id}/health                    → {fsm_state, sources:{key:{age_ms,seq,fresh}}}
-//  POST /api/robots/{id}/record/start {task}       → {session_id} | 409 {error}
-//  POST /api/robots/{id}/record/stop               → {session_id, dataset_path} | 409
-//  POST /api/robots/{id}/record/abort              → {aborted:true}
+//  POST /api/robots/{id}/record/start
+//       {task, task_instructions:[..], episode_time_s, reset_time_s, num_episodes, rosbag}
+//                                                   → {session_id} | 409 {error}
+//  POST /api/robots/{id}/record/save_next          → 현 에피소드 저장 후 RESETTING
+//  POST /api/robots/{id}/record/retry              → 현 에피소드 폐기 후 RESETTING
+//  POST /api/robots/{id}/record/continue           → RESETTING 스킵, 다음 에피소드 시작
+//  POST /api/robots/{id}/record/finish             → 저장+finalize+검증+승격 {dataset_path}
+//  POST /api/robots/{id}/record/stop               → (구버전 별칭: finish와 동일)
+//  POST /api/robots/{id}/record/abort              → 세션 전체 폐기 {aborted:true}
 //  GET  /api/robots/{id}/cameras/{key}/stream      → MJPEG (multipart/x-mixed-replace)
-//  WS   /ws  ← {type:'status', robot_id, fsm_state, sources, episode:{frames,elapsed_s}, message}
+//  WS   /ws  ← {type:'status', robot_id, fsm_state, sources,
+//               episode:{frames,elapsed_s}, episode_index, episodes_total,
+//               current_instruction, reset_remaining_s,
+//               system:{cpu_pct, ram_free_gb, disk_free_gb}, message}
 // ────────────────────────────────────────────────────────────────
 
 const el = (tag, cls, html) => {
@@ -116,19 +135,50 @@ function renderRobot(rb) {
   }
   card.append(cams);
 
-  const controls = el('div', 'controls');
+  const settings = el('div', 'controls');
   const task = el('input');
   task.type = 'text'; task.placeholder = 'task 이름 (예: towel_fold)';
-  const bStart = el('button', 'b-start', '● Start');
-  const bStop  = el('button', 'b-stop', '■ Stop & Save');
-  const bAbort = el('button', 'b-abort', '✕ Abort');
-  const msg = el('span'); msg.id = 'msg';
-  bStop.disabled = bAbort.disabled = true;
+  const instr = el('input');
+  instr.type = 'text'; instr.placeholder = 'task instruction(들) — 세미콜론(;)으로 구분, 에피소드마다 순환';
+  instr.style.width = '340px';
+  const epTime = el('input'); epTime.type = 'number'; epTime.value = '20';
+  epTime.title = 'episode_time_s'; epTime.style.width = '64px';
+  const rsTime = el('input'); rsTime.type = 'number'; rsTime.value = '5';
+  rsTime.title = 'reset_time_s'; rsTime.style.width = '64px';
+  const nEp = el('input'); nEp.type = 'number'; nEp.value = '10';
+  nEp.title = 'num_episodes'; nEp.style.width = '64px';
+  const rosbag = el('input'); rosbag.type = 'checkbox'; rosbag.id = `rb-${rb.robot_id}`;
+  const rosbagLb = el('label', '', 'rosbag'); rosbagLb.htmlFor = rosbag.id;
+  settings.append(task, instr,
+    el('span', 'dim-label', 'ep(s)'), epTime,
+    el('span', 'dim-label', 'reset(s)'), rsTime,
+    el('span', 'dim-label', 'N'), nEp, rosbag, rosbagLb);
+  card.append(settings);
 
-  bStart.onclick = () => cmd(rb.robot_id, 'start', { task: task.value || 'untitled' });
-  bStop.onclick  = () => cmd(rb.robot_id, 'stop');
-  bAbort.onclick = () => cmd(rb.robot_id, 'abort');
-  controls.append(task, bStart, bStop, bAbort, msg);
+  const controls = el('div', 'controls');
+  const bStart  = el('button', 'b-start', '● Start');
+  const bNext   = el('button', 'b-stop', '✓ Save & Next');
+  const bRetry  = el('button', 'b-retry', '↺ Retry');
+  const bCont   = el('button', 'b-cont', '▶ Continue');
+  const bFinish = el('button', 'b-finish', '■ Finish');
+  const bAbort  = el('button', 'b-abort', '✕ Abort');
+  const msg = el('span'); msg.id = 'msg';
+  [bNext, bRetry, bCont, bFinish, bAbort].forEach(b => b.disabled = true);
+
+  bStart.onclick = () => cmd(rb.robot_id, 'start', {
+    task: task.value || 'untitled',
+    task_instructions: instr.value ? instr.value.split(';').map(s => s.trim()).filter(Boolean) : [],
+    episode_time_s: Number(epTime.value) || 20,
+    reset_time_s: Number(rsTime.value) || 5,
+    num_episodes: Number(nEp.value) || 0,
+    rosbag: rosbag.checked
+  });
+  bNext.onclick   = () => cmd(rb.robot_id, 'save_next');
+  bRetry.onclick  = () => cmd(rb.robot_id, 'retry');
+  bCont.onclick   = () => cmd(rb.robot_id, 'continue');
+  bFinish.onclick = () => cmd(rb.robot_id, 'finish');
+  bAbort.onclick  = () => cmd(rb.robot_id, 'abort');
+  controls.append(bStart, bNext, bRetry, bCont, bFinish, bAbort, msg);
   card.append(controls);
 
   const ep = el('div', 'ep', '');
@@ -142,7 +192,7 @@ function renderRobot(rb) {
 
   document.getElementById('robots').append(card);
   state[rb.robot_id] = { badge, camEls, healthBody, msg, ep,
-                         buttons: { bStart, bStop, bAbort } };
+                         buttons: { bStart, bNext, bRetry, bCont, bFinish, bAbort } };
 }
 
 async function cmd(id, action, body) {
@@ -165,13 +215,35 @@ function applyStatus(m) {
   if (!s) return;
   s.badge.textContent = m.fsm_state;
   s.badge.className = `badge ${m.fsm_state}`;
-  const rec = ['PREFLIGHT', 'WARMUP', 'RECORDING', 'COMMITTING'].includes(m.fsm_state);
-  s.buttons.bStart.disabled = rec;
-  s.buttons.bStop.disabled = m.fsm_state !== 'RECORDING';
-  s.buttons.bAbort.disabled = !rec;
-  if (m.episode) s.ep.textContent =
-    `frames: ${m.episode.frames}  |  elapsed: ${m.episode.elapsed_s.toFixed(1)}s`;
+  const active = ['PREFLIGHT', 'WARMUP', 'RECORDING', 'COMMITTING', 'RESETTING']
+    .includes(m.fsm_state);
+  s.buttons.bStart.disabled = active;
+  s.buttons.bNext.disabled = s.buttons.bRetry.disabled = m.fsm_state !== 'RECORDING';
+  s.buttons.bCont.disabled = m.fsm_state !== 'RESETTING';
+  s.buttons.bFinish.disabled = !['RECORDING', 'RESETTING'].includes(m.fsm_state);
+  s.buttons.bAbort.disabled = !active;
+
+  const parts = [];
+  if (m.episode_index !== undefined && m.episode_index !== null) {
+    const total = m.episodes_total ? `/${m.episodes_total}` : '';
+    parts.push(`episode ${m.episode_index + 1}${total}`);
+  }
+  if (m.episode) parts.push(
+    `frames: ${m.episode.frames} | elapsed: ${m.episode.elapsed_s.toFixed(1)}s`);
+  if (m.fsm_state === 'RESETTING' && m.reset_remaining_s !== undefined)
+    parts.push(`다음 에피소드까지 ${Math.ceil(m.reset_remaining_s)}s (Continue로 즉시 시작)`);
+  if (m.current_instruction) parts.push(`“${m.current_instruction}”`);
+  s.ep.textContent = parts.join('   ·   ');
   if (m.message) s.msg.textContent = m.message;
+
+  if (m.system) {
+    const sys = document.getElementById('sysbar');
+    sys.textContent = `CPU ${m.system.cpu_pct?.toFixed(0)}%  ·  ` +
+      `RAM free ${m.system.ram_free_gb?.toFixed(1)}GB  ·  ` +
+      `Disk free ${m.system.disk_free_gb?.toFixed(0)}GB`;
+    sys.className = (m.system.ram_free_gb < 2 || m.system.disk_free_gb < 5)
+      ? 'sys warn-sys' : 'sys';
+  }
 
   if (m.sources) {
     s.healthBody.innerHTML = '';

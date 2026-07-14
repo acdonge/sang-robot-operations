@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# 다른 컨테이너/호스트의 DDS가 도커 브리지 멀티캐스트로 새어들지 않게 도메인 격리
+export ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-$(( (RANDOM % 100) + 1 ))}"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WS_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SOURCE_MANIFEST="${SOURCE_MANIFEST:-${WS_ROOT}/manifests/bi_so101_01.yaml}"
@@ -122,6 +125,10 @@ source, output, store = map(Path, sys.argv[1:])
 data = yaml.safe_load(source.read_text(encoding="utf-8"))
 data["recording"]["staging_root"] = str(store / "staging")
 data["recording"]["dataset_root"] = str(store / "datasets" / "raw")
+# 장애 주입 타이밍을 운영 manifest 튜닝과 분리: 테스트 전용 freshness 고정
+for group in ("state", "action", "cameras"):
+    for iface in data["interfaces"].get(group, []):
+        iface["freshness_ms"] = 200
 output.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
 PY
 

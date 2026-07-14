@@ -34,6 +34,10 @@ class StubWriter:
         self.calls.append(("save_episode",))
         self.call_threads.append(("save_episode", threading.get_ident()))
 
+    def discard_episode(self):
+        self.calls.append(("discard_episode",))
+        self.call_threads.append(("discard_episode", threading.get_ident()))
+
     def finalize(self):
         self.calls.append(("finalize",))
         self.call_threads.append(("finalize", threading.get_ident()))
@@ -167,7 +171,14 @@ def test_transition_table_matches_v2_normal_abort_and_reset_edges():
             {RecorderState.RECORDING, RecorderState.ABORTING}
         ),
         RecorderState.RECORDING: frozenset(
-            {RecorderState.COMMITTING, RecorderState.ABORTING}
+            {
+                RecorderState.RESETTING,
+                RecorderState.COMMITTING,
+                RecorderState.ABORTING,
+            }
+        ),
+        RecorderState.RESETTING: frozenset(
+            {RecorderState.WARMUP, RecorderState.COMMITTING, RecorderState.ABORTING}
         ),
         RecorderState.COMMITTING: frozenset(
             {RecorderState.READY, RecorderState.ABORTING}
@@ -216,6 +227,21 @@ def test_preflight_disk_failure_never_creates_writer(harness):
     assert fsm.failure_source == "disk"
     assert not writers
     assert not list((tmp_path / "staging").glob("*.partial"))
+
+
+def test_empty_instruction_list_falls_back_to_task_for_gateway_compatibility(harness):
+    fsm, _, _, _, _ = harness
+
+    assert fsm.start(
+        "pick_box",
+        task_instructions=[],
+        session_id="default-instruction",
+        now_monotonic=1.0,
+    )
+
+    assert fsm.task_instructions == ("pick_box",)
+    assert fsm.current_instruction == "pick_box"
+    tick_until_state(fsm, RecorderState.WARMUP, now_monotonic=1.0)
 
 
 def test_warmup_requires_continuous_gate_success(harness):
@@ -404,3 +430,134 @@ def test_slow_commit_stays_committing_until_worker_finishes(harness):
 
     allow_save.set()
     tick_until_state(fsm, RecorderState.READY, now_monotonic=100.0)
+
+
+def test_multi_episode_retry_rotates_instruction_only_after_save(harness):
+    fsm, _, writers, _, tmp_path = harness
+    assert fsm.start(
+        "pick_box",
+        task_instructions=["pick the red box", "pick the blue box"],
+        reset_time_s=5.0,
+        session_id="multi-session",
+        now_monotonic=10.0,
+        now_utc=datetime(2026, 7, 13, 12, 34, 56, tzinfo=timezone.utc),
+    )
+    tick_until_state(fsm, RecorderState.WARMUP, now_monotonic=10.0)
+    fsm.tick(now_monotonic=11.0)
+    assert fsm.state is RecorderState.RECORDING
+
+    fsm.tick(now_monotonic=11.1)
+    fsm.tick(now_monotonic=11.2)
+    assert fsm.retry(now_monotonic=11.3)
+    assert fsm.current_instruction == "pick the red box"
+    assert fsm.continue_after_reset()
+    tick_until_state(fsm, RecorderState.WARMUP, now_monotonic=11.3)
+    fsm.tick(now_monotonic=12.3)
+
+    fsm.tick(now_monotonic=12.4)
+    assert fsm.save_and_next(now_monotonic=12.5)
+    assert fsm.continue_after_reset()
+    tick_until_state(fsm, RecorderState.WARMUP, now_monotonic=12.5)
+    assert fsm.episode_index == 1
+    assert fsm.current_instruction == "pick the blue box"
+    fsm.tick(now_monotonic=13.5)
+
+    fsm.tick(now_monotonic=13.6)
+    assert fsm.finish(now_monotonic=13.7)
+    tick_until_state(fsm, RecorderState.READY, now_monotonic=13.7)
+
+    calls = writers[0].calls
+    assert [call[0] for call in calls] == [
+        "add_frame",
+        "add_frame",
+        "discard_episode",
+        "add_frame",
+        "save_episode",
+        "add_frame",
+        "save_episode",
+        "finalize",
+    ]
+    assert [call[2] for call in calls if call[0] == "add_frame"] == [
+        "pick the red box",
+        "pick the red box",
+        "pick the red box",
+        "pick the blue box",
+    ]
+    session = json.loads(
+        (tmp_path / "sessions" / "multi-session" / "session.json").read_text()
+    )
+    assert session["result"] == "PASS"
+    assert session["task_instructions"] == [
+        "pick the red box",
+        "pick the blue box",
+    ]
+    assert [(episode["index"], episode["result"]) for episode in session["episodes"]] == [
+        (0, "RETRIED"),
+        (0, "SAVED"),
+        (1, "SAVED"),
+    ]
+    assert [episode["frames"] for episode in session["episodes"]] == [2, 1, 1]
+
+
+def test_num_episodes_auto_finishes_after_save_and_next(harness):
+    fsm, _, writers, transitions, _ = harness
+    assert fsm.start(
+        "pick_box",
+        task_instructions=["first", "second"],
+        num_episodes=2,
+        reset_time_s=0.0,
+        session_id="auto-finish",
+        now_monotonic=20.0,
+    )
+    tick_until_state(fsm, RecorderState.WARMUP, now_monotonic=20.0)
+    fsm.tick(now_monotonic=21.0)
+    fsm.tick(now_monotonic=21.1)
+    assert fsm.save_and_next(now_monotonic=21.2)
+    tick_until_state(fsm, RecorderState.WARMUP, now_monotonic=21.2)
+
+    fsm.tick(now_monotonic=22.2)
+    fsm.tick(now_monotonic=22.3)
+    assert fsm.save_and_next(now_monotonic=22.4)
+    tick_until_state(fsm, RecorderState.READY, now_monotonic=22.4)
+
+    assert fsm.episode_index == 2
+    assert fsm.episodes_saved == 2
+    assert [call[0] for call in writers[0].calls] == [
+        "add_frame",
+        "save_episode",
+        "add_frame",
+        "save_episode",
+        "finalize",
+    ]
+    assert [event.current for event in transitions][-3:] == [
+        RecorderState.RESETTING,
+        RecorderState.COMMITTING,
+        RecorderState.READY,
+    ]
+
+
+def test_episode_time_limit_automatically_saves_and_resets(harness):
+    fsm, _, writers, _, _ = harness
+    assert fsm.start(
+        "pick_box",
+        episode_time_s=0.5,
+        reset_time_s=2.0,
+        session_id="timed-episode",
+        now_monotonic=30.0,
+    )
+    tick_until_state(fsm, RecorderState.WARMUP, now_monotonic=30.0)
+    fsm.tick(now_monotonic=31.0)
+    fsm.tick(now_monotonic=31.5)
+
+    assert fsm.state is RecorderState.RESETTING
+    deadline = time.monotonic() + 2.0
+    while fsm._worker_future is not None and time.monotonic() < deadline:
+        fsm.tick(now_monotonic=31.5)
+        time.sleep(0.001)
+    assert fsm._worker_future is None
+    fsm.tick(now_monotonic=33.5)
+    assert fsm.state is RecorderState.WARMUP
+    assert [call[0] for call in writers[0].calls] == [
+        "add_frame",
+        "save_episode",
+    ]

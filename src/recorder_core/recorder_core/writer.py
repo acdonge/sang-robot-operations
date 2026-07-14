@@ -7,6 +7,7 @@ the public LeRobotDataset create/add_frame/save_episode/finalize lifecycle.
 from collections.abc import Mapping
 import os
 from pathlib import Path
+import shutil
 from typing import Any
 
 import cv2
@@ -70,7 +71,13 @@ def open_dataset(dataset_root: str | Path):
 
 
 class LeRobotV3Writer:
-    """One-episode LeRobot v3 dataset writer rooted in session staging."""
+    """Multi-episode LeRobot v3 dataset writer rooted in session staging.
+
+    Frames are added directly to LeRobot's disk-backed episode buffer.  The
+    pinned public ``clear_episode_buffer`` API makes retry bounded-memory even
+    with five cameras; keeping a second decoded-frame buffer in Python would
+    otherwise consume roughly width * height * 3 * cameras * fps bytes/second.
+    """
 
     def __init__(self, manifest: Manifest, session_id: str, dataset_id: str) -> None:
         self.manifest = manifest
@@ -94,8 +101,13 @@ class LeRobotV3Writer:
             )
         except Exception as exc:
             raise WriterError(f"failed to create LeRobot dataset: {exc}") from exc
+        if not callable(getattr(self._dataset, "clear_episode_buffer", None)):
+            raise WriterError(
+                "pinned LeRobot dataset lacks public clear_episode_buffer()"
+            )
         self.frame_count = 0
-        self._episode_saved = False
+        self.total_frame_count = 0
+        self.episode_count = 0
         self._finalized = False
 
     @staticmethod
@@ -115,8 +127,8 @@ class LeRobotV3Writer:
 
     def add_frame(self, frame: Mapping[str, Any], *, task: str) -> None:
         """Decode manifest cameras and append one task-labelled frame."""
-        if self._episode_saved or self._finalized:
-            raise WriterError("cannot add a frame after episode save/finalize")
+        if self._finalized:
+            raise WriterError("cannot add a frame after finalize")
         dataset_frame: dict[str, Any] = {"task": task}
 
         for interface in (*self.manifest.interfaces.state, *self.manifest.interfaces.action):
@@ -147,23 +159,49 @@ class LeRobotV3Writer:
         except Exception as exc:
             raise WriterError(f"LeRobot add_frame failed: {exc}") from exc
         self.frame_count += 1
+        self.total_frame_count += 1
 
     def save_episode(self) -> None:
-        if self._episode_saved:
-            raise WriterError("episode was already saved")
+        if self._finalized:
+            raise WriterError("cannot save an episode after finalize")
         if self.frame_count <= 0:
             raise WriterError("cannot save an empty episode")
         try:
             self._dataset.save_episode()
         except Exception as exc:
             raise WriterError(f"LeRobot save_episode failed: {exc}") from exc
-        self._episode_saved = True
+        self.episode_count += 1
+        self.frame_count = 0
+
+    def discard_episode(self) -> None:
+        """Discard only the current unsaved episode through LeRobot's public API."""
+        if self._finalized:
+            raise WriterError("cannot discard an episode after finalize")
+        discarded_frames = self.frame_count
+        try:
+            self._dataset.clear_episode_buffer()
+        except Exception as exc:
+            raise WriterError(f"LeRobot clear_episode_buffer failed: {exc}") from exc
+        # The pinned implementation only removes temporary images when its
+        # optional async image writer is active.  This writer uses synchronous
+        # image writes, so remove the current unsaved episode directories too;
+        # otherwise a shorter retry would encode stale tail PNGs.
+        images_root = self.staging_path / "images"
+        if images_root.is_dir():
+            episode_name = f"episode_{self.episode_count:06d}"
+            for episode_dir in images_root.rglob(episode_name):
+                if episode_dir.is_dir():
+                    shutil.rmtree(episode_dir)
+        self.frame_count = 0
+        self.total_frame_count -= discarded_frames
 
     def finalize(self) -> None:
-        if not self._episode_saved:
-            raise WriterError("save_episode must succeed before finalize")
         if self._finalized:
             return
+        if self.episode_count <= 0:
+            raise WriterError("at least one episode must be saved before finalize")
+        if self.frame_count:
+            raise WriterError("current episode must be saved or discarded before finalize")
         try:
             self._dataset.finalize()
         except Exception as exc:

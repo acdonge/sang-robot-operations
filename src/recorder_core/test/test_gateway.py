@@ -31,6 +31,7 @@ class StubNode:
         self.failure_reason = None
         self.frames = 0
         self.abort_calls = 0
+        self.start_options = None
 
     def get_status(self):
         return {"fsm": self._fsm(), **self.get_health()}
@@ -55,9 +56,14 @@ class StubNode:
             "frame_count": self.frames,
             "raw_path": self.raw_path,
             "failure_reason": self.failure_reason,
+            "episode_index": 0,
+            "episodes_total": 0,
+            "current_instruction": "instruction",
+            "phase": self.state,
+            "reset_remaining_s": 0.0 if self.state == "RESETTING" else None,
         }
 
-    def start_recording(self, task):
+    def start_recording(self, task, **options):
         if self.state == "READY":
             self.state = "IDLE"
         if self.state != "IDLE":
@@ -65,14 +71,33 @@ class StubNode:
         if not task:
             raise ValueError("task is empty")
         self.session_id = "session-1"
+        self.start_options = options
         self.state = "PREFLIGHT"
         return True
 
-    def stop_recording(self):
+    def finish_recording(self):
         if self.state != "RECORDING":
-            raise RuntimeError(f"record_stop requires RECORDING, got {self.state}")
+            raise RuntimeError(f"finish requires RECORDING, got {self.state}")
         self.state = "READY"
         self.raw_path = "/tmp/dataset"
+        return True
+
+    def save_next_recording(self):
+        if self.state != "RECORDING":
+            raise RuntimeError(f"save_and_next requires RECORDING, got {self.state}")
+        self.state = "RESETTING"
+        return True
+
+    def retry_recording(self):
+        if self.state != "RECORDING":
+            raise RuntimeError(f"retry requires RECORDING, got {self.state}")
+        self.state = "RESETTING"
+        return True
+
+    def continue_recording(self):
+        if self.state != "RESETTING":
+            raise RuntimeError(f"continue requires RESETTING, got {self.state}")
+        self.state = "WARMUP"
         return True
 
     def abort_recording(self):
@@ -103,6 +128,10 @@ def test_state_conflict_matches_contract():
     assert "got RECORDING" in state_conflict("start", "RECORDING")
     assert state_conflict("stop", "RECORDING") is None
     assert "got IDLE" in state_conflict("stop", "IDLE")
+    assert state_conflict("save_next", "RECORDING") is None
+    assert state_conflict("retry", "RECORDING") is None
+    assert state_conflict("continue", "RESETTING") is None
+    assert "got WARMUP" in state_conflict("finish", "WARMUP")
 
 
 def test_contract_sources_normalizes_never_received_age():
@@ -187,6 +216,11 @@ def test_status_and_mjpeg_parts_keep_contract_and_original_jpeg_bytes():
     node = StubNode()
     payload = status_payload(RobotHandle(node))
     assert payload["fsm_state"] == "IDLE"
+    assert payload["phase"] == "IDLE"
+    assert payload["episode_index"] == 0
+    assert payload["episodes_total"] == 0
+    assert payload["current_instruction"] == "instruction"
+    assert set(payload["system"]) == {"cpu_pct", "ram_free_gb", "disk_free_gb"}
     assert payload["message"] == ""
 
     jpeg = b"\xff\xd8original-compressed-bytes\xff\xd9"
@@ -224,6 +258,47 @@ def test_commit_wait_reports_fault_and_sixty_second_timeout():
     with pytest.raises(GatewayAPIError) as timeout:
         asyncio.run(wait_for_commit(node, timeout_s=0.0))
     assert timeout.value.status_code == 504
+
+
+def test_extended_start_and_episode_control_routes(tmp_path):
+    node = StubNode()
+    app = make_app(tmp_path, node)
+    body = StartRequest(
+        task="sort_blocks",
+        task_instructions=["red first", "blue first"],
+        episode_time_s=20.0,
+        reset_time_s=5.0,
+        num_episodes=2,
+        rosbag=True,
+    )
+
+    assert call_route(app, "record_start", "bi_so101_01", body) == {
+        "session_id": "session-1"
+    }
+    assert node.start_options == {
+        "task_instructions": ["red first", "blue first"],
+        "episode_time_s": 20.0,
+        "reset_time_s": 5.0,
+        "num_episodes": 2,
+        "rosbag": True,
+    }
+
+    node.state = "RECORDING"
+    assert call_route(app, "record_retry", "bi_so101_01") == {"accepted": True}
+    assert call_route(app, "record_continue", "bi_so101_01") == {"accepted": True}
+    node.state = "RECORDING"
+    assert call_route(app, "record_save_next", "bi_so101_01") == {
+        "accepted": True
+    }
+    with pytest.raises(GatewayAPIError) as conflict:
+        call_route(app, "record_save_next", "bi_so101_01")
+    assert conflict.value.status_code == 409
+
+    node.state = "RECORDING"
+    assert call_route(app, "record_finish", "bi_so101_01") == {
+        "session_id": "session-1",
+        "dataset_path": "/tmp/dataset",
+    }
 
 
 def test_cli_accepts_multiple_manifests_and_duplicate_robot_ids_are_rejected():

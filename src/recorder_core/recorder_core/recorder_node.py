@@ -143,7 +143,17 @@ class RecorderNode(Node):
         )
         if transition.current is RecorderState.READY:
             self.get_logger().info(f"DATASET_READY path={self.fsm.raw_path}")
-        if transition.current in (RecorderState.READY, RecorderState.FAULT):
+        if transition.current is RecorderState.WARMUP:
+            self._episode_start_sequences = self._capture_required_sequences()
+            with self._stats_lock:
+                self._episode_gate_pass_count = 0
+                self._episode_gate_fail_count = 0
+                self._episode_gate_active = True
+        if transition.current in (
+            RecorderState.RESETTING,
+            RecorderState.READY,
+            RecorderState.FAULT,
+        ):
             with self._stats_lock:
                 self._episode_gate_active = False
 
@@ -249,6 +259,7 @@ class RecorderNode(Node):
                 RecorderState.PREFLIGHT,
                 RecorderState.WARMUP,
                 RecorderState.RECORDING,
+                RecorderState.RESETTING,
                 RecorderState.COMMITTING,
                 RecorderState.ABORTING,
             ):
@@ -291,7 +302,16 @@ class RecorderNode(Node):
                 f"GATE_FAILURE source={source} reason={reason}; {consequence}"
             )
 
-    def start_recording(self, task: str) -> bool:
+    def start_recording(
+        self,
+        task: str,
+        *,
+        task_instructions: list[str] | None = None,
+        episode_time_s: float = 0.0,
+        reset_time_s: float = 0.0,
+        num_episodes: int = 0,
+        rosbag: bool = False,
+    ) -> bool:
         """Set the task and start directly, serialized with the sampler timer."""
         with self._control_lock:
             if self.fsm.state is RecorderState.READY:
@@ -305,9 +325,23 @@ class RecorderNode(Node):
             )[0]
             if not parameter_result.successful:
                 raise ValueError(parameter_result.reason or "task parameter was rejected")
-            return self._start_recording_locked()
+            return self._start_recording_locked(
+                task_instructions=task_instructions,
+                episode_time_s=episode_time_s,
+                reset_time_s=reset_time_s,
+                num_episodes=num_episodes,
+                rosbag=rosbag,
+            )
 
-    def _start_recording_locked(self) -> bool:
+    def _start_recording_locked(
+        self,
+        *,
+        task_instructions: list[str] | None = None,
+        episode_time_s: float = 0.0,
+        reset_time_s: float = 0.0,
+        num_episodes: int = 0,
+        rosbag: bool = False,
+    ) -> bool:
         task = str(self.get_parameter("task").value)
         with self._stats_lock:
             self._episode_gate_pass_count = 0
@@ -319,16 +353,39 @@ class RecorderNode(Node):
             self._active_failure_source = None
         self._episode_start_sequences = self._capture_required_sequences()
         try:
-            return self.fsm.start(task)
+            return self.fsm.start(
+                task,
+                task_instructions=task_instructions,
+                episode_time_s=episode_time_s,
+                reset_time_s=reset_time_s,
+                num_episodes=num_episodes,
+                rosbag=rosbag,
+            )
         except (RuntimeError, ValueError):
             with self._stats_lock:
                 self._episode_gate_active = False
             raise
 
     def stop_recording(self) -> bool:
-        """Begin the asynchronous commit directly from the gateway thread."""
+        """Backward-compatible finish alias."""
+        return self.finish_recording()
+
+    def save_next_recording(self) -> bool:
         with self._control_lock:
-            return self.fsm.stop()
+            return self.fsm.save_and_next()
+
+    def retry_recording(self) -> bool:
+        with self._control_lock:
+            return self.fsm.retry()
+
+    def continue_recording(self) -> bool:
+        with self._control_lock:
+            return self.fsm.continue_after_reset()
+
+    def finish_recording(self) -> bool:
+        """Begin the asynchronous final commit from the gateway thread."""
+        with self._control_lock:
+            return self.fsm.finish()
 
     def abort_recording(self) -> bool:
         """Abort an active session, or explicitly reset a FAULT latch."""
@@ -485,6 +542,7 @@ class RecorderNode(Node):
             RecorderState.PREFLIGHT,
             RecorderState.WARMUP,
             RecorderState.RECORDING,
+            RecorderState.RESETTING,
             RecorderState.COMMITTING,
         ):
             self.fsm.abort("recorder node shutdown")

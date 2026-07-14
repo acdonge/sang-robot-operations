@@ -33,7 +33,12 @@ def test_gate_accepts_fresh_complete_frame():
 
 def test_gate_reports_stale_source():
     manifest, ages, vectors, cameras = valid_frame()
-    ages["action"] = 201.0
+    action = next(
+        interface
+        for interface in manifest.interfaces.action
+        if interface.key == "action"
+    )
+    ages["action"] = action.freshness_ms + 1.0
 
     source, reason = check_frame(
         manifest, source_ages_ms=ages, vectors=vectors, cameras=cameras
