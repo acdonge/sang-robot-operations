@@ -1,52 +1,87 @@
-"""ROS 2 recorder core with M4-② source health and frame gating."""
+"""ROS 2 recorder node driving the manifest sampler and recorder FSM."""
 
-from enum import Enum, auto
 import math
+from pathlib import Path
+import subprocess
+import sys
 import threading
 import time
 
 import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
+from std_srvs.srv import Trigger
 
 from recorder_core.assembly import (
     AssemblyError,
     assemble_joint_state,
     assemble_joint_trajectory,
 )
+from recorder_core.fsm import (
+    FrameSampleError,
+    RecorderFSM,
+    RecorderState,
+    Transition,
+)
 from recorder_core.gate import check_frame
 from recorder_core.manifest import ManifestValidationError, load_manifest
 from recorder_core.subscriptions import create_subscriptions
-
-
-class RecorderState(Enum):
-    IDLE = auto()
-    PREFLIGHT = auto()
-    WARMUP = auto()
-    RECORDING = auto()
-    COMMITTING = auto()
-    READY = auto()
-    ABORTING = auto()
+from recorder_core.writer import LeRobotV3Writer, lerobot_revision
 
 
 class RecorderNode(Node):
     def __init__(self) -> None:
         super().__init__("recorder_core")
         self.declare_parameter("manifest_path", "")
-        manifest_path = self.get_parameter("manifest_path").value
+        manifest_path = str(self.get_parameter("manifest_path").value)
         if not manifest_path:
             raise ManifestValidationError("ROS parameter 'manifest_path' must not be empty")
 
-        self.manifest = load_manifest(manifest_path)
+        self.manifest_path = Path(manifest_path)
+        self.manifest = load_manifest(self.manifest_path)
+        self.declare_parameter("task", self.manifest.recording.task)
+        self.declare_parameter("warmup_s", 1.0)
+        self.declare_parameter("min_staging_free_gb", 1.0)
+
+        warmup_s = float(self.get_parameter("warmup_s").value)
+        min_free_gb = float(self.get_parameter("min_staging_free_gb").value)
         self._manifest_subscriptions = create_subscriptions(self, self.manifest)
         self._stats_lock = threading.Lock()
         self._gate_pass_count = 0
         self._gate_fail_count = 0
+        self._episode_gate_pass_count = 0
+        self._episode_gate_fail_count = 0
+        self._episode_gate_active = False
         self._last_failure_source: str | None = None
         self._last_failure_reason: str | None = None
         self._has_passed_gate = False
         self._active_failure_source: str | None = None
+        self._episode_start_sequences: dict[str, tuple[int, ...]] | None = None
 
+        self.fsm = RecorderFSM(
+            self.manifest,
+            manifest_path=self.manifest_path,
+            writer_factory=self._create_writer,
+            sample_supplier=self._build_sample,
+            gate_checker=self._check_sample,
+            warmup_ready=self._required_sources_advanced,
+            validation_runner=self._validate_staging,
+            warmup_s=warmup_s,
+            min_free_gb=min_free_gb,
+            transition_callback=self._on_transition,
+            frame_timing_callback=self._on_frame_timing,
+            lerobot_sha=lerobot_revision(),
+        )
+
+        self._start_service = self.create_service(
+            Trigger, "~/record_start", self._record_start
+        )
+        self._stop_service = self.create_service(
+            Trigger, "~/record_stop", self._record_stop
+        )
+        self._abort_service = self.create_service(
+            Trigger, "~/record_abort", self._record_abort
+        )
         self._sample_timer = self.create_timer(
             1.0 / self.manifest.recording.fps, self._sample_tick
         )
@@ -62,9 +97,79 @@ class RecorderNode(Node):
             )
         )
 
+    def _create_writer(self, session_id: str, dataset_id: str) -> LeRobotV3Writer:
+        return LeRobotV3Writer(self.manifest, session_id, dataset_id)
+
+    def _validate_staging(self, staging_path: Path) -> None:
+        command = [
+            sys.executable,
+            "-m",
+            "recorder_core.validate_cli",
+            "--dataset-root",
+            str(staging_path),
+            "--manifest",
+            str(self.manifest_path),
+        ]
+        completed = subprocess.run(
+            command,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if completed.returncode != 0:
+            detail = completed.stderr.strip() or completed.stdout.strip()
+            raise RuntimeError(
+                f"independent dataset validation failed (exit={completed.returncode}): "
+                f"{detail}"
+            )
+
+    def _on_transition(self, transition: Transition) -> None:
+        self.get_logger().info(
+            "FSM_TRANSITION from=%s to=%s reason=%s"
+            % (
+                transition.previous.value,
+                transition.current.value,
+                transition.reason or "none",
+            )
+        )
+        if transition.current is RecorderState.READY:
+            self.get_logger().info(f"DATASET_READY path={self.fsm.raw_path}")
+        if transition.current in (RecorderState.READY, RecorderState.FAULT):
+            with self._stats_lock:
+                self._episode_gate_active = False
+
+    def _on_frame_timing(self, elapsed_ms: float) -> None:
+        message = f"FRAME_TICK add_frame_ms={elapsed_ms:.1f}"
+        if elapsed_ms > 50.0:
+            self.get_logger().warning(message + " over_50ms=true")
+        else:
+            self.get_logger().debug(message + " over_50ms=false")
+
     def _source_snapshots(self, source_key):
         source = self._manifest_subscriptions.sources[source_key]
         return tuple(topic.buffer.snapshot() for topic in source.topics)
+
+    def _capture_required_sequences(self) -> dict[str, tuple[int, ...]]:
+        return {
+            source_key: tuple(
+                0 if snapshot is None else snapshot.seq
+                for snapshot in self._source_snapshots(source_key)
+            )
+            for source_key in self.manifest.recording.required_sources
+        }
+
+    def _required_sources_advanced(self) -> bool:
+        """Return true after every required topic has updated since record_start."""
+        if self._episode_start_sequences is None:
+            return False
+        for source_key, start_sequences in self._episode_start_sequences.items():
+            snapshots = self._source_snapshots(source_key)
+            if any(
+                snapshot is None or snapshot.seq <= start_seq
+                for snapshot, start_seq in zip(snapshots, start_sequences)
+            ):
+                return False
+        return True
 
     @staticmethod
     def _snapshot_age_ms(snapshot, now: float) -> float:
@@ -72,11 +177,11 @@ class RecorderNode(Node):
             return math.inf
         return max(0.0, (now - snapshot.received_monotonic) * 1000.0)
 
-    def _sample_tick(self) -> None:
+    def _build_sample(self):
         now = time.monotonic()
         source_ages_ms = {}
         snapshots_by_source = {}
-        for source_key, source in self._manifest_subscriptions.sources.items():
+        for source_key in self._manifest_subscriptions.sources:
             snapshots = self._source_snapshots(source_key)
             snapshots_by_source[source_key] = snapshots
             source_ages_ms[source_key] = max(
@@ -100,8 +205,7 @@ class RecorderNode(Node):
                         interface.feature_names,
                     )
         except AssemblyError as exc:
-            self._record_gate_failure(interface.key, str(exc))
-            return
+            raise FrameSampleError(interface.key, str(exc)) from exc
 
         cameras = {}
         for camera in self.manifest.interfaces.cameras:
@@ -109,36 +213,127 @@ class RecorderNode(Node):
             if snapshot is not None:
                 cameras[camera.key] = snapshot.msg
 
+        return {
+            **vectors,
+            **cameras,
+            "_source_ages_ms": source_ages_ms,
+            "_vectors": vectors,
+            "_cameras": cameras,
+        }
+
+    def _check_sample(self, sample):
         source, reason = check_frame(
             self.manifest,
-            source_ages_ms=source_ages_ms,
-            vectors=vectors,
-            cameras=cameras,
+            source_ages_ms=sample["_source_ages_ms"],
+            vectors=sample["_vectors"],
+            cameras=sample["_cameras"],
         )
-        if source is not None:
-            self._record_gate_failure(source, reason)
+        if source is None:
+            self._record_gate_pass()
+        else:
+            self._record_gate_failure(source, reason or "frame gate failed")
+        return source, reason
+
+    def _sample_tick(self) -> None:
+        if self.fsm.state in (
+            RecorderState.PREFLIGHT,
+            RecorderState.WARMUP,
+            RecorderState.RECORDING,
+            RecorderState.COMMITTING,
+            RecorderState.ABORTING,
+        ):
+            self.fsm.tick()
             return
-        self._record_gate_pass()
+        try:
+            sample = self._build_sample()
+            self._check_sample(sample)
+        except FrameSampleError as exc:
+            self._record_gate_failure(exc.source, exc.reason)
 
     def _record_gate_pass(self) -> None:
         with self._stats_lock:
             self._gate_pass_count += 1
+            if self._episode_gate_active:
+                self._episode_gate_pass_count += 1
             self._has_passed_gate = True
             self._active_failure_source = None
 
     def _record_gate_failure(self, source: str, reason: str) -> None:
         should_log = False
+        episode_active = False
         with self._stats_lock:
             self._gate_fail_count += 1
+            if self._episode_gate_active:
+                self._episode_gate_fail_count += 1
             self._last_failure_source = source
             self._last_failure_reason = reason
             if self._has_passed_gate and self._active_failure_source != source:
                 should_log = True
+            episode_active = self._episode_gate_active
             self._active_failure_source = source
         if should_log:
-            self.get_logger().error(
-                f"GATE_FAILURE source={source} reason={reason}; active episode must abort"
+            consequence = (
+                "active episode must abort"
+                if episode_active
+                else "source health gate failed"
             )
+            self.get_logger().error(
+                f"GATE_FAILURE source={source} reason={reason}; {consequence}"
+            )
+
+    def _record_start(self, request, response):
+        del request
+        task = str(self.get_parameter("task").value)
+        with self._stats_lock:
+            self._episode_gate_pass_count = 0
+            self._episode_gate_fail_count = 0
+            self._episode_gate_active = True
+            self._last_failure_source = None
+            self._last_failure_reason = None
+            self._has_passed_gate = False
+            self._active_failure_source = None
+        self._episode_start_sequences = self._capture_required_sequences()
+        try:
+            response.success = self.fsm.start(task)
+            response.message = (
+                f"session_id={self.fsm.session_id} state={self.fsm.state.value}"
+                if response.success
+                else f"preflight failed: {self.fsm.failure_reason}"
+            )
+        except (RuntimeError, ValueError) as exc:
+            with self._stats_lock:
+                self._episode_gate_active = False
+            response.success = False
+            response.message = str(exc)
+        return response
+
+    def _record_stop(self, request, response):
+        del request
+        try:
+            response.success = self.fsm.stop()
+            response.message = (
+                f"state={self.fsm.state.value} raw_path={self.fsm.raw_path}"
+                if response.success
+                else f"commit failed: {self.fsm.failure_reason}"
+            )
+        except RuntimeError as exc:
+            response.success = False
+            response.message = str(exc)
+        return response
+
+    def _record_abort(self, request, response):
+        del request
+        response.success = self.fsm.abort("record_abort service requested")
+        response.message = (
+            f"state={self.fsm.state.value}"
+            if response.success
+            else f"nothing to abort in state={self.fsm.state.value}"
+        )
+        return response
+
+    def reset(self) -> None:
+        """Explicit reset hook for the gateway; every start still runs PREFLIGHT."""
+        self.fsm.reset()
 
     def get_health(self) -> dict:
         """Return source freshness and sampler counters for gateway consumers."""
@@ -159,9 +354,7 @@ class RecorderNode(Node):
             sources[source_key] = {
                 "age_ms": max(ages),
                 "seq": min(sequences),
-                "fresh": all(
-                    health["fresh"] for health in topic_health.values()
-                ),
+                "fresh": all(health["fresh"] for health in topic_health.values()),
                 "topics": topic_health,
             }
 
@@ -169,6 +362,8 @@ class RecorderNode(Node):
             gate = {
                 "passed": self._gate_pass_count,
                 "failed": self._gate_fail_count,
+                "episode_passed": self._episode_gate_pass_count,
+                "episode_failed": self._episode_gate_fail_count,
                 "last_failure_source": self._last_failure_source,
                 "last_failure_reason": self._last_failure_reason,
             }
@@ -177,7 +372,14 @@ class RecorderNode(Node):
             "sources": sources,
             "all_sources_fresh": all(sources[key]["fresh"] for key in required),
             "gate": gate,
+            "episode_gate_pass": gate["episode_passed"],
+            "episode_gate_fail": gate["episode_failed"],
+            "add_frame": self.fsm.get_frame_write_health(),
         }
+
+    def get_status(self) -> dict:
+        """Return FSM and source status for the future gateway."""
+        return {"fsm": self.fsm.get_status(), **self.get_health()}
 
     def _log_health(self) -> None:
         health = self.get_health()
@@ -195,18 +397,40 @@ class RecorderNode(Node):
                 )
             )
         gate = health["gate"]
+        add_frame = health["add_frame"]
+        last_tick_ms = add_frame["last_tick_ms"]
         self.get_logger().info(
-            "HEALTH all_sources_fresh=%s sources=[%s] gate_pass=%d gate_fail=%d "
-            "last_failure_source=%s last_failure_reason=%s"
+            "HEALTH all_sources_fresh=%s fsm_state=%s session_id=%s sources=[%s] "
+            "gate_pass=%d gate_fail=%d last_failure_source=%s last_failure_reason=%s "
+            "episode_gate_pass=%d episode_gate_fail=%d "
+            "add_frame_last_ms=%s add_frame_max_ms=%.1f add_frame_over_50ms=%d"
             % (
                 str(health["all_sources_fresh"]).lower(),
+                self.fsm.state.value,
+                self.fsm.session_id or "none",
                 ", ".join(source_parts),
                 gate["passed"],
                 gate["failed"],
                 gate["last_failure_source"] or "none",
                 gate["last_failure_reason"] or "none",
+                health["episode_gate_pass"],
+                health["episode_gate_fail"],
+                "none" if last_tick_ms is None else f"{last_tick_ms:.1f}",
+                add_frame["max_tick_ms"],
+                add_frame["ticks_over_50ms"],
             )
         )
+
+    def destroy_node(self):
+        if self.fsm.state in (
+            RecorderState.PREFLIGHT,
+            RecorderState.WARMUP,
+            RecorderState.RECORDING,
+            RecorderState.COMMITTING,
+        ):
+            self.fsm.abort("recorder node shutdown")
+        self.fsm.close()
+        return super().destroy_node()
 
 
 def main(args=None) -> None:

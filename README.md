@@ -15,13 +15,17 @@ LeRobot v0.6/v3 기반의 manifest-driven ROS 2 녹화 코어 워크스페이스
 ├── manifests/bi_so101_01.yaml      # bi_so101_v1 로봇 manifest
 └── src/recorder_core/              # ROS 2 Jazzy ament_python 패키지
     ├── recorder_core/
+    │   ├── fsm.py
     │   ├── manifest.py
+    │   ├── validate_cli.py
+    │   ├── writer.py
     │   └── recorder_node.py
     └── test/test_manifest.py
 ```
 
-현재 범위는 **M4-① 골격**이며 manifest 로드·검증과 ROS 노드 진입점만 포함합니다. FSM은 상태 enum만
-정의되어 있고 FSM 동작과 writer는 아직 구현하지 않았습니다.
+현재는 M4-③/④까지 구현되어 manifest-driven 30 Hz 샘플링, LeRobot v3 writer,
+순수 FSM, 별도 프로세스 검증, staging→raw 원자적 승격과 source-drop abort를 포함합니다.
+제어는 `~/record_start`, `~/record_stop`, `~/record_abort` Trigger 서비스를 사용합니다.
 
 ## 빌드
 
@@ -50,3 +54,4 @@ python3 -m py_compile $(find . -type f -name '*.py')
 Docker 예시는 `docker/run.sh`에 있습니다. 재현 가능한 이미지는 `LEROBOT_REF`에 검증한 정확한 commit
 SHA를 지정해 빌드하고, workspace와 `config/store.yaml`의 `store_root`를 컨테이너에 마운트합니다.
 
+M4-③/④ 전체 smoke는 LeRobot이 설치된 컨테이너 안에서 `scripts/smoke_m4_3.sh`로 실행합니다.

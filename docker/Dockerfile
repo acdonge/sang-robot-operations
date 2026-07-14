@@ -4,8 +4,9 @@ FROM ros:jazzy-ros-base
 ARG LEROBOT_REF=30da8e687a6dfc617fcd94afc367ac7071c376ce
 LABEL org.opencontainers.image.lerobot.revision="${LEROBOT_REF}"
 
+# ffmpeg: lerobot v0.6의 torchcodec 비디오 디코딩에 시스템 FFmpeg 공유 라이브러리 필수
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3-pip \
+    && apt-get install -y --no-install-recommends python3-pip ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # --ignore-installed: apt가 설치한 packaging 등(RECORD 없음)을 pip가 제거하지 못해

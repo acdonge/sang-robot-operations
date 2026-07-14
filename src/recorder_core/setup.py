@@ -22,6 +22,7 @@ setup(
         "console_scripts": [
             "recorder_core = recorder_core.recorder_node:main",
             "fake_robot = recorder_core.fake_robot:main",
+            "validate_dataset = recorder_core.validate_cli:main",
         ],
     },
 )
