@@ -1,29 +1,48 @@
-# PLAN — M4: 사용 가능한 recorder (2026-07-13)
+# PLAN — M4: 사용 가능한 recorder (2026-07-13 ~ 07-14, 완료)
 
 Goal: 브라우저 UI에서 start/stop/abort로 bi_so101 v3 에피소드를 수집·검증·승격하는 단일 시스템.
 Done when: fake_robot(합성 5캠+12차원) 대상 M4 수락 게이트 통과 —
   "5캠·12차원·30Hz 에피소드 수집·finalize 후 별도 프로세스에서 v3 재오픈 전수 검증" + UI로 동일 루프 조작 가능.
 Out of scope: HF 업로드, 학습/추론, 데이터 편집, 실로봇 연결(M3 이후), WebRTC.
 
-## Milestones
-- [x] M4-①: 골격+Docker+빌드 검증 — commit 9a7b7c4 ✅
-- [x] M4-②: 구독·버퍼·샘플러·게이트 + fake_robot — smoke PASS(fresh+drop), pytest 18 ✅
-       (교훈: ros2 run 래퍼는 단일 kill로 자식이 살아남음 → setsid+그룹 kill 필수)
-- [x] M4-③: v3 writer + FSM(PREFLIGHT→…→READY, ABORTING 원자 트랜잭션) + staging→reopen→승격
-       — writer create/commit 워커 비동기화 + slow-create 재-fresh 회귀 포함 pytest 30,
-         5캠 실제 v3 writer/finalize/reopen PASS, abort 잔여물 단위 검증
-- [x] M4-④: validate_dataset CLI(별도 프로세스 재오픈 검증) — 5캠 각 3/3 프레임 decode PASS
-- [ ] M4-⑤: FastAPI 게이트웨이(REST/WS/MJPEG) + 단일 페이지 UI(로봇 카드·N캠 그리드·start/stop/abort·health)
-       — verify: 브라우저 수동 확인 + curl 시나리오
+## Milestones — 전체 완료 ✅
+- [x] M4-①: 골격+Docker+빌드 검증 — 9a7b7c4
+- [x] M4-②: 구독·버퍼·샘플러·게이트 + fake_robot — smoke PASS, 1789a6d
+- [x] M4-③/④: v3 writer + FSM + staging→검증→승격 + validate CLI — smoke PASS, a29034b
+- [x] M4-⑤: FastAPI 게이트웨이(REST/WS/MJPEG) + UI — smoke PASS + 호스트 라이브 REST 녹화
+       사이클로 v3 데이터셋 승격·READY 확인, 573ac74
+
+## 수락 게이트 증적 (2026-07-14)
+- 컨테이너 smoke_m4_3/smoke_m4_5 PASS.
+- 호스트 라이브: `POST /record/start`(task=browser_demo) → 5s → `POST /record/stop` →
+  `datasets/raw/bi_so101_v1/browser_demo/real/bi_so101_v1__browser_demo__real__20260714_173641`
+  승격(meta/data/videos/validation.json), FSM READY.
+
+## 실행 방법
+```bash
+cd "/home/sa08050/app developer/v2_ws"
+docker run -d --name v2_recorder -p 8080:8080 \
+  -v "$PWD":/ws -v /home/sa08050/robot_store:/home/sa08050/robot_store \
+  recorder_core:m4 bash -c '
+    set +u; source /opt/ros/jazzy/setup.bash; source /ws/install/setup.bash; set -u; cd /ws
+    setsid ros2 run recorder_core fake_robot --ros-args -p manifest_path:=/ws/manifests/bi_so101_01.yaml > /tmp/fake.log 2>&1 &
+    sleep 2
+    exec ros2 run recorder_core recorder_gateway /ws/manifests/bi_so101_01.yaml --ui-dir /ws/ui'
+# 브라우저: http://localhost:8080  (실로봇 전환 시 fake_robot 대신 브리지 노드 + manifest 토픽만 일치시키면 됨)
+```
 
 ## Decisions log
-- 2026-07-13: MVP는 단일 프로세스(rclpy 스레드 + FastAPI 메인). 분리는 soak 결과에 따라.
-- 2026-07-13: UI는 React 빌드체인 없이 vanilla HTML/JS 단일 페이지(FastAPI 정적 서빙) — Claude 직접 작성.
-- 2026-07-13: 샘플러의 벡터 조립은 이름 기반 매핑(순서 무관, 전 이름 필수).
-- 2026-07-13: create/save/finalize/validate/rename 및 abort 정리는 단일 writer 워커에서 실행;
-  executor는 PREFLIGHT/COMMITTING/ABORTING 완료만 30Hz로 폴링.
+- 2026-07-13: MVP 단일 프로세스(rclpy 스레드 + FastAPI 메인). 분리는 soak 결과에 따라.
+- 2026-07-13: UI는 vanilla HTML/JS 단일 페이지(Claude 작성), 백엔드는 UI 상단 주석의 API 계약 구현.
+- 2026-07-13: 벡터 조립은 이름 기반 매핑. writer 블로킹 작업 전부 워커 스레드.
 
-## Current state
-M4-①~④ 구현 완료. create 완료 뒤 WARMUP을 새로 시작하고 add_frame 50ms 초과를 health로 계측.
-`smoke_m4_3.sh`는 정상 승격+source-drop FAULT를 커버하며, 이 작업에서는 Docker 실행 금지
-제약에 따라 py_compile+pytest만 수행.
+## 디버그 교훈 (전부 컨테이너 검증에서만 발견)
+1. LeRobotDataset.create가 executor 블로킹(~1.7s) → 구독 기아 → 게이트 오발동. 워커 스레드로 격리.
+2. 에피소드 시작 버퍼 리셋 직후 게이팅 레이스 → WARMUP이 "리셋 후 신규 수신" 요구.
+3. rclpy CompressedImage.data는 array.array — isinstance(bytes) 검사는 실기에서 실패.
+4. lerobot v0.6 torchcodec 디코딩은 시스템 FFmpeg 필수(없으면 검증만 실패, 인코딩은 됨).
+5. ros2 run 래퍼 단일 kill → 자식 노드 좀비 publish. setsid+프로세스그룹 kill.
+6. codex 프로세스가 완료 후 미종료(lingering) 가능 — 대기 루프는 로그 정체 시간도 감시할 것.
+
+## 남은 것 (M4 범위 밖)
+- 30~60분 soak(인코더 backlog/메모리), 실로봇 브리지 연결(M3 하드웨어 후), HF/학습/추론 게이트.
