@@ -77,6 +77,19 @@
 </header>
 <div id="robots"></div>
 
+<div class="robot-card" id="datasets-card" style="margin:16px">
+  <div class="robot-head">
+    <span class="rid">Datasets</span>
+    <button id="ds-refresh" class="b-cont" style="padding:4px 12px;font-size:12px">↻ 새로고침</button>
+    <span id="ds-msg" style="color:var(--dim);font-size:12px"></span>
+  </div>
+  <table class="health" id="ds-table">
+    <thead><tr><th>dataset</th><th>task</th><th>ep</th><th>frames</th><th>size(MB)</th>
+    <th>valid</th><th>HF</th><th></th></tr></thead>
+    <tbody id="ds-body"></tbody>
+  </table>
+</div>
+
 <script>
 "use strict";
 // ── API 계약 (M4-⑤ 게이트웨이가 구현) ─────────────────────────────
@@ -268,13 +281,69 @@ function connectWs() {
   ws.onmessage = (ev) => {
     const m = JSON.parse(ev.data);
     if (m.type === 'status') applyStatus(m);
+    if (m.type === 'upload') applyUploadEvent(m);
   };
+}
+
+// ── 데이터셋 브라우저 / HF 업로드 ──────────────────────────────
+const dsJobs = {};   // job_id → row status cell
+
+async function loadDatasets() {
+  const body = document.getElementById('ds-body');
+  const dsMsg = document.getElementById('ds-msg');
+  try {
+    const list = await api('/api/datasets');
+    body.innerHTML = '';
+    for (const d of list) {
+      const tr = el('tr');
+      const hf = el('td', '', d.hf_repo_id || '—');
+      const act = el('td');
+      const up = el('button', 'b-start', '↑ HF');
+      up.style.cssText = 'padding:2px 10px;font-size:11px';
+      up.onclick = async () => {
+        const repo = prompt('HF repo id (예: user/dataset):');
+        if (!repo) return;
+        const token = prompt('HF 토큰 (메모리에만 사용, 저장 안 됨):');
+        if (!token) return;
+        try {
+          const r = await api(`/api/datasets/${d.dataset_id}/upload`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ repo_id: repo, token, private: true })
+          });
+          hf.textContent = 'uploading…';
+          dsJobs[r.job_id] = hf;
+        } catch (e) { hf.textContent = `오류: ${e.message}`; }
+      };
+      act.append(up);
+      tr.append(el('td', '', d.dataset_id),
+                el('td', '', d.task),
+                el('td', '', d.episodes),
+                el('td', '', d.frames),
+                el('td', '', (d.size_mb ?? 0).toFixed ? d.size_mb.toFixed(0) : d.size_mb),
+                el('td', d.validation_status === 'PASS' ? 'fresh' : 'stale-t', d.validation_status),
+                hf, act);
+      body.append(tr);
+    }
+    dsMsg.textContent = `${list.length}개`;
+  } catch (e) { dsMsg.textContent = `로드 실패: ${e.message}`; }
+}
+document.getElementById('ds-refresh').onclick = loadDatasets;
+
+function applyUploadEvent(m) {
+  const cell = dsJobs[m.job_id];
+  if (cell) cell.textContent = m.state === 'done' ? (m.repo_id || 'done')
+            : m.state === 'error' ? `오류: ${m.detail || ''}` : `${m.state}…`;
+  if (['done', 'error', 'cancelled'].includes(m.state)) {
+    delete dsJobs[m.job_id];
+    if (m.state === 'done') loadDatasets();
+  }
 }
 
 (async () => {
   const robots = await api('/api/robots');
   robots.forEach(renderRobot);
   connectWs();
+  loadDatasets();
 })();
 </script>
 </body>

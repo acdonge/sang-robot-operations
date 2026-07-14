@@ -15,7 +15,10 @@ from typing import Any
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
+
+from recorder_core.hf_upload import HfUploadManager, UploadPreflightError
+from recorder_core.store_index import scan_store, session_path_for_dataset
 
 
 STARTABLE_STATES = frozenset({"IDLE", "READY"})
@@ -28,6 +31,12 @@ class StartRequest(BaseModel):
     reset_time_s: float = 0.0
     num_episodes: int = 0
     rosbag: bool = False
+
+
+class UploadRequest(BaseModel):
+    repo_id: str = Field(min_length=1)
+    token: SecretStr
+    private: bool = False
 
 
 class GatewayAPIError(Exception):
@@ -202,7 +211,13 @@ async def wait_for_commit(node: Any, timeout_s: float = 60.0) -> dict[str, Any]:
         await asyncio.sleep(0.05)
 
 
-def create_app(nodes: Iterable[Any], *, ui_dir: str | Path = "/ws/ui") -> FastAPI:
+def create_app(
+    nodes: Iterable[Any],
+    *,
+    ui_dir: str | Path = "/ws/ui",
+    store_root: str | Path | None = None,
+    upload_manager: HfUploadManager | None = None,
+) -> FastAPI:
     handles: dict[str, RobotHandle] = {}
     for node in nodes:
         robot_id = node.manifest.robot.robot_id
@@ -212,6 +227,18 @@ def create_app(nodes: Iterable[Any], *, ui_dir: str | Path = "/ws/ui") -> FastAP
             node,
             system_metrics=SystemMetrics(node.manifest.recording.dataset_root),
         )
+
+    if store_root is None:
+        store_roots = sorted(
+            {
+                Path(handle.node.manifest.recording.dataset_root).parent.parent
+                for handle in handles.values()
+            },
+            key=str,
+        )
+    else:
+        store_roots = [Path(store_root)]
+    uploader = upload_manager or HfUploadManager()
 
     app = FastAPI()
 
@@ -228,9 +255,55 @@ def create_app(nodes: Iterable[Any], *, ui_dir: str | Path = "/ws/ui") -> FastAP
         except KeyError as exc:
             raise GatewayAPIError(404, f"unknown robot_id: {robot_id}") from exc
 
+    def indexed_datasets() -> list[dict[str, Any]]:
+        return [
+            dataset for root in store_roots for dataset in scan_store(root)
+        ]
+
+    def get_dataset(dataset_id: str) -> tuple[dict[str, Any], Path]:
+        for root in store_roots:
+            for dataset in scan_store(root):
+                if dataset["dataset_id"] == dataset_id:
+                    return dataset, root
+        raise GatewayAPIError(404, f"unknown dataset_id: {dataset_id}")
+
     @app.get("/api/robots")
     async def list_robots() -> list[dict[str, Any]]:
         return [robot_descriptor(handle.node) for handle in handles.values()]
+
+    @app.get("/api/datasets")
+    async def list_datasets() -> list[dict[str, Any]]:
+        return indexed_datasets()
+
+    @app.post("/api/datasets/{dataset_id}/upload")
+    async def upload_dataset(
+        dataset_id: str, body: UploadRequest
+    ) -> dict[str, str]:
+        dataset, root = get_dataset(dataset_id)
+        token = body.token.get_secret_value()
+        if not token:
+            raise GatewayAPIError(400, "token must not be empty")
+        try:
+            job_id = uploader.start_upload(
+                dataset_id=dataset_id,
+                dataset_path=dataset["path"],
+                repo_id=body.repo_id,
+                token=token,
+                private=body.private,
+                session_path=session_path_for_dataset(root, dataset_id),
+            )
+        except UploadPreflightError as exc:
+            raise GatewayAPIError(409, str(exc)) from exc
+        finally:
+            token = ""
+        return {"job_id": job_id}
+
+    @app.get("/api/upload/{job_id}")
+    async def upload_status(job_id: str) -> dict[str, str]:
+        try:
+            return uploader.get_status(job_id)
+        except KeyError as exc:
+            raise GatewayAPIError(404, f"unknown upload job: {job_id}") from exc
 
     @app.get("/api/robots/{robot_id}/health")
     async def robot_health(robot_id: str) -> dict[str, Any]:
@@ -341,10 +414,14 @@ def create_app(nodes: Iterable[Any], *, ui_dir: str | Path = "/ws/ui") -> FastAP
     async def websocket_status(websocket: WebSocket) -> None:
         await websocket.accept()
         disconnect = asyncio.create_task(websocket.receive())
+        upload_cursor = 0
         try:
             while True:
                 for handle in handles.values():
                     await websocket.send_json(status_payload(handle))
+                upload_cursor, upload_events = uploader.events_after(upload_cursor)
+                for event in upload_events:
+                    await websocket.send_json(event)
                 done, _ = await asyncio.wait({disconnect}, timeout=0.2)
                 if done:
                     break

@@ -8,6 +8,7 @@ from recorder_core.gateway import (
     GatewayAPIError,
     RobotHandle,
     StartRequest,
+    UploadRequest,
     contract_sources,
     create_app,
     mjpeg_part,
@@ -16,6 +17,7 @@ from recorder_core.gateway import (
     status_payload,
     wait_for_commit,
 )
+from recorder_core.hf_upload import HfUploadManager, UploadPreflightError
 from recorder_core.manifest import load_manifest
 
 
@@ -110,16 +112,56 @@ class StubNode:
         return b"\xff\xd8jpeg\xff\xd9"
 
 
-def make_app(tmp_path, node=None):
+def make_app(tmp_path, node=None, upload_manager=None):
     ui_dir = tmp_path / "ui"
-    ui_dir.mkdir()
+    ui_dir.mkdir(exist_ok=True)
     (ui_dir / "index.html").write_text("gateway ui", encoding="utf-8")
-    return create_app([node or StubNode()], ui_dir=ui_dir)
+    return create_app(
+        [node or StubNode()],
+        ui_dir=ui_dir,
+        store_root=tmp_path / "store",
+        upload_manager=upload_manager,
+    )
 
 
 def call_route(app, name, *args):
     endpoint = next(route.endpoint for route in app.routes if route.name == name)
     return asyncio.run(endpoint(*args))
+
+
+def make_indexed_dataset(tmp_path, *, status="PASS"):
+    dataset_id = "contract__pick_box__real__20260714_120000"
+    dataset = (
+        tmp_path
+        / "store"
+        / "datasets"
+        / "raw"
+        / "contract"
+        / "pick_box"
+        / "real"
+        / dataset_id
+    )
+    (dataset / "meta").mkdir(parents=True)
+    (dataset / "meta" / "info.json").write_text(
+        json.dumps({"total_episodes": 2, "total_frames": 20, "fps": 10}),
+        encoding="utf-8",
+    )
+    (dataset / "validation.json").write_text(
+        json.dumps({"status": status}), encoding="utf-8"
+    )
+    session = tmp_path / "store" / "sessions" / "session-1" / "session.json"
+    session.parent.mkdir(parents=True)
+    session.write_text(
+        json.dumps(
+            {
+                "session_id": "session-1",
+                "dataset_id": dataset_id,
+                "updated_at": "2026-07-14T12:00:00+00:00",
+            }
+        ),
+        encoding="utf-8",
+    )
+    return dataset_id, dataset, session
 
 
 def test_state_conflict_matches_contract():
@@ -243,6 +285,139 @@ def test_unknown_robot_and_camera_return_error_object(tmp_path):
     handler = app.exception_handlers[GatewayAPIError]
     response = asyncio.run(handler(None, unknown_camera.value))
     assert json.loads(response.body) == {"error": "unknown camera key: missing"}
+
+
+def test_dataset_list_and_upload_routes_use_index_and_injected_api(tmp_path):
+    dataset_id, dataset, session_path = make_indexed_dataset(tmp_path)
+
+    class FakeApi:
+        def __init__(self):
+            self.calls = []
+
+        def create_repo(self, **kwargs):
+            self.calls.append(("create", kwargs))
+
+        def upload_folder(self, **kwargs):
+            self.calls.append(("upload", kwargs))
+
+    api = FakeApi()
+    uploader = HfUploadManager(
+        api_factory=lambda: api,
+        now=lambda: "2026-07-14T13:00:00+00:00",
+    )
+    app = make_app(tmp_path, upload_manager=uploader)
+
+    datasets = call_route(app, "list_datasets")
+    assert len(datasets) == 1
+    assert set(datasets[0]) == {
+        "dataset_id",
+        "contract",
+        "task",
+        "domain",
+        "path",
+        "episodes",
+        "frames",
+        "fps",
+        "size_mb",
+        "created",
+        "validation_status",
+        "session_id",
+    }
+    assert datasets[0]["dataset_id"] == dataset_id
+    assert datasets[0]["path"] == str(dataset)
+
+    started = call_route(
+        app,
+        "upload_dataset",
+        dataset_id,
+        UploadRequest(repo_id="owner/repo", token="secret", private=True),
+    )
+    assert uploader.wait(started["job_id"], 1.0)
+    assert call_route(app, "upload_status", started["job_id"])["state"] == "done"
+    assert [name for name, _ in api.calls] == ["create", "upload"]
+    session = json.loads(session_path.read_text(encoding="utf-8"))
+    assert session["hf_repo_id"] == "owner/repo"
+
+    with pytest.raises(GatewayAPIError) as missing:
+        call_route(app, "upload_status", "missing")
+    assert missing.value.status_code == 404
+
+
+def test_dataset_upload_preflight_and_active_conflicts_are_409(tmp_path):
+    dataset_id, _, _ = make_indexed_dataset(tmp_path, status="FAIL")
+    app = make_app(tmp_path, upload_manager=HfUploadManager(api_factory=lambda: None))
+    request = UploadRequest(repo_id="owner/repo", token="secret", private=False)
+
+    with pytest.raises(GatewayAPIError) as invalid:
+        call_route(app, "upload_dataset", dataset_id, request)
+    assert invalid.value.status_code == 409
+    assert "not PASS" in invalid.value.error
+
+    class BusyUploader:
+        def start_upload(self, **kwargs):
+            del kwargs
+            raise UploadPreflightError("upload already in progress for dataset")
+
+        def get_status(self, job_id):
+            del job_id
+            raise KeyError
+
+        def events_after(self, sequence):
+            return sequence, []
+
+    validation_path = (
+        tmp_path
+        / "store"
+        / "datasets"
+        / "raw"
+        / "contract"
+        / "pick_box"
+        / "real"
+        / dataset_id
+        / "validation.json"
+    )
+    validation_path.write_text(
+        json.dumps({"status": "PASS"}), encoding="utf-8"
+    )
+    busy_app = make_app(tmp_path, upload_manager=BusyUploader())
+    with pytest.raises(GatewayAPIError) as active:
+        call_route(busy_app, "upload_dataset", dataset_id, request)
+    assert active.value.status_code == 409
+    assert "already in progress" in active.value.error
+
+
+def test_websocket_broadcasts_upload_events(tmp_path):
+    upload_event = {
+        "type": "upload",
+        "job_id": "job-1",
+        "dataset_id": "dataset-1",
+        "state": "uploading",
+        "detail": "uploading dataset folder",
+    }
+
+    class EventUploader:
+        def events_after(self, sequence):
+            return (1, [upload_event]) if sequence == 0 else (1, [])
+
+    class FakeWebSocket:
+        def __init__(self):
+            self.sent = []
+
+        async def accept(self):
+            pass
+
+        async def receive(self):
+            return {"type": "websocket.disconnect"}
+
+        async def send_json(self, payload):
+            self.sent.append(payload)
+
+    app = make_app(tmp_path, upload_manager=EventUploader())
+    websocket = FakeWebSocket()
+
+    call_route(app, "websocket_status", websocket)
+
+    assert upload_event in websocket.sent
 
 
 def test_commit_wait_reports_fault_and_sixty_second_timeout():
