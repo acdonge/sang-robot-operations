@@ -16,7 +16,8 @@ RUN apt-get update \
 RUN python3 -m pip install --no-cache-dir --break-system-packages --ignore-installed \
     "lerobot[dataset] @ https://github.com/huggingface/lerobot/archive/${LEROBOT_REF}.tar.gz"
 
-RUN python3 -m pip install --no-cache-dir --break-system-packages fastapi uvicorn
+# uvicorn[standard]: WebSocket 프로토콜 지원(websockets) 포함 — 순정 uvicorn은 WS 업그레이드를 404 처리
+RUN python3 -m pip install --no-cache-dir --break-system-packages fastapi "uvicorn[standard]"
 
 # 워크스페이스는 이미지를 만들 때 복사하지 않고 실행 시 /ws에 마운트한다.
 WORKDIR /ws

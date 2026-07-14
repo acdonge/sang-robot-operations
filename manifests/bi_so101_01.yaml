@@ -60,7 +60,7 @@ interfaces:
       dtype: float32
       shape: [12]
       unit: lerobot_normalized
-      freshness_ms: 200
+      freshness_ms: 1000
   action:
     - key: action
       topics:
@@ -84,7 +84,7 @@ interfaces:
       shape: [12]
       semantics: absolute_joint_target
       unit: lerobot_normalized
-      freshness_ms: 200
+      freshness_ms: 1000
   cameras:
     - key: top
       topic: /bi_so101/camera/top/color/image_rect_raw/compressed
@@ -93,7 +93,7 @@ interfaces:
       width: 640
       height: 480
       fps: 30
-      freshness_ms: 200
+      freshness_ms: 1000
     - key: left_side
       topic: /bi_so101/camera/left_side/color/image_rect_raw/compressed
       message_type: sensor_msgs/msg/CompressedImage
@@ -101,7 +101,7 @@ interfaces:
       width: 640
       height: 480
       fps: 30
-      freshness_ms: 200
+      freshness_ms: 1000
     - key: right_side
       topic: /bi_so101/camera/right_side/color/image_rect_raw/compressed
       message_type: sensor_msgs/msg/CompressedImage
@@ -109,7 +109,7 @@ interfaces:
       width: 640
       height: 480
       fps: 30
-      freshness_ms: 200
+      freshness_ms: 1000
     - key: left_wrist
       topic: /bi_so101/camera/left_wrist/color/image_rect_raw/compressed
       message_type: sensor_msgs/msg/CompressedImage
@@ -117,7 +117,7 @@ interfaces:
       width: 640
       height: 480
       fps: 30
-      freshness_ms: 200
+      freshness_ms: 1000
     - key: right_wrist
       topic: /bi_so101/camera/right_wrist/color/image_rect_raw/compressed
       message_type: sensor_msgs/msg/CompressedImage
@@ -125,7 +125,7 @@ interfaces:
       width: 640
       height: 480
       fps: 30
-      freshness_ms: 200
+      freshness_ms: 1000
 
 recording:
   fps: 30

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "v2-recorder",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["logs", "-f", "v2_recorder"],
+      "port": 8080
+    }
+  ]
+}
