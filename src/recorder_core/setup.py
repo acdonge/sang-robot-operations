@@ -12,7 +12,13 @@ setup(
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
         ("share/" + package_name, ["package.xml"]),
     ],
-    install_requires=["PyYAML", "numpy", "opencv-python-headless"],
+    install_requires=[
+        "PyYAML",
+        "fastapi",
+        "numpy",
+        "opencv-python-headless",
+        "uvicorn",
+    ],
     zip_safe=True,
     maintainer="sa08050",
     maintainer_email="kb083509@gmail.com",
@@ -22,6 +28,7 @@ setup(
         "console_scripts": [
             "recorder_core = recorder_core.recorder_node:main",
             "fake_robot = recorder_core.fake_robot:main",
+            "recorder_gateway = recorder_core.gateway:main",
             "validate_dataset = recorder_core.validate_cli:main",
         ],
     },

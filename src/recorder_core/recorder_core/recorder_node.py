@@ -10,6 +10,7 @@ import time
 import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
+from rclpy.parameter import Parameter
 from std_srvs.srv import Trigger
 
 from recorder_core.assembly import (
@@ -30,9 +31,16 @@ from recorder_core.writer import LeRobotV3Writer, lerobot_revision
 
 
 class RecorderNode(Node):
-    def __init__(self) -> None:
-        super().__init__("recorder_core")
-        self.declare_parameter("manifest_path", "")
+    def __init__(
+        self,
+        manifest_path: str | Path | None = None,
+        *,
+        node_name: str = "recorder_core",
+    ) -> None:
+        super().__init__(node_name)
+        self.declare_parameter(
+            "manifest_path", "" if manifest_path is None else str(manifest_path)
+        )
         manifest_path = str(self.get_parameter("manifest_path").value)
         if not manifest_path:
             raise ManifestValidationError("ROS parameter 'manifest_path' must not be empty")
@@ -46,6 +54,7 @@ class RecorderNode(Node):
         warmup_s = float(self.get_parameter("warmup_s").value)
         min_free_gb = float(self.get_parameter("min_staging_free_gb").value)
         self._manifest_subscriptions = create_subscriptions(self, self.manifest)
+        self._control_lock = threading.RLock()
         self._stats_lock = threading.Lock()
         self._gate_pass_count = 0
         self._gate_fail_count = 0
@@ -235,20 +244,21 @@ class RecorderNode(Node):
         return source, reason
 
     def _sample_tick(self) -> None:
-        if self.fsm.state in (
-            RecorderState.PREFLIGHT,
-            RecorderState.WARMUP,
-            RecorderState.RECORDING,
-            RecorderState.COMMITTING,
-            RecorderState.ABORTING,
-        ):
-            self.fsm.tick()
-            return
-        try:
-            sample = self._build_sample()
-            self._check_sample(sample)
-        except FrameSampleError as exc:
-            self._record_gate_failure(exc.source, exc.reason)
+        with self._control_lock:
+            if self.fsm.state in (
+                RecorderState.PREFLIGHT,
+                RecorderState.WARMUP,
+                RecorderState.RECORDING,
+                RecorderState.COMMITTING,
+                RecorderState.ABORTING,
+            ):
+                self.fsm.tick()
+                return
+            try:
+                sample = self._build_sample()
+                self._check_sample(sample)
+            except FrameSampleError as exc:
+                self._record_gate_failure(exc.source, exc.reason)
 
     def _record_gate_pass(self) -> None:
         with self._stats_lock:
@@ -281,8 +291,23 @@ class RecorderNode(Node):
                 f"GATE_FAILURE source={source} reason={reason}; {consequence}"
             )
 
-    def _record_start(self, request, response):
-        del request
+    def start_recording(self, task: str) -> bool:
+        """Set the task and start directly, serialized with the sampler timer."""
+        with self._control_lock:
+            if self.fsm.state is RecorderState.READY:
+                self.fsm.reset()
+            if self.fsm.state is not RecorderState.IDLE:
+                raise RuntimeError(
+                    f"record_start requires IDLE or READY, got {self.fsm.state.value}"
+                )
+            parameter_result = self.set_parameters(
+                [Parameter("task", Parameter.Type.STRING, task)]
+            )[0]
+            if not parameter_result.successful:
+                raise ValueError(parameter_result.reason or "task parameter was rejected")
+            return self._start_recording_locked()
+
+    def _start_recording_locked(self) -> bool:
         task = str(self.get_parameter("task").value)
         with self._stats_lock:
             self._episode_gate_pass_count = 0
@@ -294,15 +319,48 @@ class RecorderNode(Node):
             self._active_failure_source = None
         self._episode_start_sequences = self._capture_required_sequences()
         try:
-            response.success = self.fsm.start(task)
+            return self.fsm.start(task)
+        except (RuntimeError, ValueError):
+            with self._stats_lock:
+                self._episode_gate_active = False
+            raise
+
+    def stop_recording(self) -> bool:
+        """Begin the asynchronous commit directly from the gateway thread."""
+        with self._control_lock:
+            return self.fsm.stop()
+
+    def abort_recording(self) -> bool:
+        """Abort an active session, or explicitly reset a FAULT latch."""
+        with self._control_lock:
+            if self.fsm.state is RecorderState.FAULT:
+                self.fsm.reset()
+                return True
+            return self.fsm.abort("gateway abort requested")
+
+    def get_camera_jpeg(self, camera_key: str) -> bytes | None:
+        """Return the latest compressed camera bytes without re-encoding."""
+        camera_keys = {camera.key for camera in self.manifest.interfaces.cameras}
+        if camera_key not in camera_keys:
+            raise KeyError(camera_key)
+        topic = self._manifest_subscriptions.sources[camera_key].topics[0]
+        snapshot = topic.buffer.snapshot()
+        if snapshot is None:
+            return None
+        return bytes(snapshot.msg.data)
+
+    def _record_start(self, request, response):
+        del request
+        try:
+            response.success = self.start_recording(
+                str(self.get_parameter("task").value)
+            )
             response.message = (
                 f"session_id={self.fsm.session_id} state={self.fsm.state.value}"
                 if response.success
                 else f"preflight failed: {self.fsm.failure_reason}"
             )
         except (RuntimeError, ValueError) as exc:
-            with self._stats_lock:
-                self._episode_gate_active = False
             response.success = False
             response.message = str(exc)
         return response
@@ -310,7 +368,7 @@ class RecorderNode(Node):
     def _record_stop(self, request, response):
         del request
         try:
-            response.success = self.fsm.stop()
+            response.success = self.stop_recording()
             response.message = (
                 f"state={self.fsm.state.value} raw_path={self.fsm.raw_path}"
                 if response.success
@@ -323,7 +381,7 @@ class RecorderNode(Node):
 
     def _record_abort(self, request, response):
         del request
-        response.success = self.fsm.abort("record_abort service requested")
+        response.success = self.abort_recording()
         response.message = (
             f"state={self.fsm.state.value}"
             if response.success
@@ -333,7 +391,8 @@ class RecorderNode(Node):
 
     def reset(self) -> None:
         """Explicit reset hook for the gateway; every start still runs PREFLIGHT."""
-        self.fsm.reset()
+        with self._control_lock:
+            self.fsm.reset()
 
     def get_health(self) -> dict:
         """Return source freshness and sampler counters for gateway consumers."""
