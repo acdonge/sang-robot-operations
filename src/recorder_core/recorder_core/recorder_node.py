@@ -7,11 +7,14 @@ import sys
 import threading
 import time
 
+import numpy as np
 import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.parameter import Parameter
+from rclpy.qos import qos_profile_sensor_data
 from std_srvs.srv import Trigger
+from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
 from recorder_core.assembly import (
     AssemblyError,
@@ -54,6 +57,29 @@ class RecorderNode(Node):
         warmup_s = float(self.get_parameter("warmup_s").value)
         min_free_gb = float(self.get_parameter("min_staging_free_gb").value)
         self._manifest_subscriptions = create_subscriptions(self, self.manifest)
+        self._policy_action_publishers = []
+        action_offset = 0
+        for interface in self.manifest.interfaces.action:
+            quotient, remainder = divmod(
+                len(interface.feature_names), len(interface.topics)
+            )
+            interface_offset = 0
+            for index, topic in enumerate(interface.topics):
+                size = quotient + (1 if index < remainder else 0)
+                names = interface.feature_names[
+                    interface_offset : interface_offset + size
+                ]
+                self._policy_action_publishers.append(
+                    (
+                        self.create_publisher(
+                            JointTrajectory, topic, qos_profile_sensor_data
+                        ),
+                        names,
+                        slice(action_offset, action_offset + size),
+                    )
+                )
+                interface_offset += size
+                action_offset += size
         self._control_lock = threading.RLock()
         self._stats_lock = threading.Lock()
         self._gate_pass_count = 0
@@ -196,7 +222,7 @@ class RecorderNode(Node):
             return math.inf
         return max(0.0, (now - snapshot.received_monotonic) * 1000.0)
 
-    def _build_sample(self):
+    def _build_sample(self, *, include_action: bool = True):
         now = time.monotonic()
         source_ages_ms = {}
         snapshots_by_source = {}
@@ -216,13 +242,14 @@ class RecorderNode(Node):
                         (snapshot.msg for snapshot in snapshots),
                         interface.feature_names,
                     )
-            for interface in self.manifest.interfaces.action:
-                snapshots = snapshots_by_source[interface.key]
-                if all(snapshot is not None for snapshot in snapshots):
-                    vectors[interface.key] = assemble_joint_trajectory(
-                        (snapshot.msg for snapshot in snapshots),
-                        interface.feature_names,
-                    )
+            if include_action:
+                for interface in self.manifest.interfaces.action:
+                    snapshots = snapshots_by_source[interface.key]
+                    if all(snapshot is not None for snapshot in snapshots):
+                        vectors[interface.key] = assemble_joint_trajectory(
+                            (snapshot.msg for snapshot in snapshots),
+                            interface.feature_names,
+                        )
         except AssemblyError as exc:
             raise FrameSampleError(interface.key, str(exc)) from exc
 
@@ -239,6 +266,30 @@ class RecorderNode(Node):
             "_vectors": vectors,
             "_cameras": cameras,
         }
+
+    def get_inference_sample(self):
+        """Return the latest state/camera sample without requiring action input."""
+        return self._build_sample(include_action=False)
+
+    def publish_policy_action(self, action: np.ndarray) -> None:
+        """Publish a manifest-ordered normalized action to leader topics."""
+        vector = np.asarray(action, dtype=np.float32).reshape(-1)
+        expected = sum(
+            interface.dimension for interface in self.manifest.interfaces.action
+        )
+        if vector.shape != (expected,) or not np.all(np.isfinite(vector)):
+            raise ValueError(
+                f"policy action must be finite with shape {(expected,)}, got {vector.shape}"
+            )
+        stamp = self.get_clock().now().to_msg()
+        for publisher, names, action_slice in self._policy_action_publishers:
+            message = JointTrajectory()
+            message.header.stamp = stamp
+            message.joint_names = list(names)
+            point = JointTrajectoryPoint()
+            point.positions = [float(value) for value in vector[action_slice]]
+            message.points = [point]
+            publisher.publish(message)
 
     def _check_sample(self, sample):
         source, reason = check_frame(

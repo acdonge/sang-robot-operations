@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import json
 from pathlib import Path
 
@@ -6,6 +7,7 @@ import pytest
 
 from recorder_core.gateway import (
     GatewayAPIError,
+    InferenceRequest,
     RobotHandle,
     StartRequest,
     TrainRequest,
@@ -19,6 +21,7 @@ from recorder_core.gateway import (
     wait_for_commit,
 )
 from recorder_core.hf_upload import HfUploadManager, UploadPreflightError
+from recorder_core.inference_manager import SAFETY_WARNING, InferenceConflictError
 from recorder_core.manifest import load_manifest
 from recorder_core.train_manager import TrainConflictError
 
@@ -114,7 +117,13 @@ class StubNode:
         return b"\xff\xd8jpeg\xff\xd9"
 
 
-def make_app(tmp_path, node=None, upload_manager=None, train_manager=None):
+def make_app(
+    tmp_path,
+    node=None,
+    upload_manager=None,
+    train_manager=None,
+    inference_manager=None,
+):
     ui_dir = tmp_path / "ui"
     ui_dir.mkdir(exist_ok=True)
     (ui_dir / "index.html").write_text("gateway ui", encoding="utf-8")
@@ -124,12 +133,14 @@ def make_app(tmp_path, node=None, upload_manager=None, train_manager=None):
         store_root=tmp_path / "store",
         upload_manager=upload_manager,
         train_manager=train_manager,
+        inference_manager=inference_manager,
     )
 
 
 def call_route(app, name, *args):
     endpoint = next(route.endpoint for route in app.routes if route.name == name)
-    return asyncio.run(endpoint(*args))
+    result = endpoint(*args)
+    return asyncio.run(result) if inspect.isawaitable(result) else result
 
 
 def make_indexed_dataset(tmp_path, *, status="PASS"):
@@ -479,6 +490,74 @@ def test_training_active_conflict_is_409(tmp_path):
     assert "already active" in conflict.value.error
 
 
+def test_inference_policy_start_stop_warning_and_recording_conflict(tmp_path):
+    node = StubNode()
+
+    class FakeInferencer:
+        def __init__(self):
+            self.calls = []
+            self.conflict = False
+
+        def list_policies(self):
+            return [{"run_id": "run-1", "policy_type": "act"}]
+
+        def start(self, run_id, started_node):
+            if self.conflict:
+                raise InferenceConflictError("another inference is already active")
+            self.calls.append(("start", run_id, started_node))
+            return {"state": "RUNNING"}
+
+        def stop(self):
+            self.calls.append(("stop",))
+            return {
+                "run_id": "run-1",
+                "robot_id": "bi_so101_01",
+                "state": "STOPPED",
+            }
+
+        def status(self):
+            return {
+                "type": "inference",
+                "state": "STOPPED",
+                "hz": 0.0,
+                "last_action_age_ms": None,
+            }
+
+    inferencer = FakeInferencer()
+    app = make_app(tmp_path, node=node, inference_manager=inferencer)
+
+    assert call_route(app, "list_policies") == [
+        {"run_id": "run-1", "policy_type": "act"}
+    ]
+    body = InferenceRequest(run_id="run-1", robot_id="bi_so101_01")
+    started = call_route(app, "inference_start", body)
+    assert started == {
+        "run_id": "run-1",
+        "robot_id": "bi_so101_01",
+        "state": "RUNNING",
+        "warning": SAFETY_WARNING,
+    }
+    assert inferencer.calls == [("start", "run-1", node)]
+    assert call_route(app, "inference_stop") == {
+        "run_id": "run-1",
+        "robot_id": "bi_so101_01",
+        "state": "STOPPED",
+    }
+
+    node.state = "RECORDING"
+    with pytest.raises(GatewayAPIError) as recording:
+        call_route(app, "inference_start", body)
+    assert recording.value.status_code == 409
+    assert "got RECORDING" in recording.value.error
+
+    node.state = "IDLE"
+    inferencer.conflict = True
+    with pytest.raises(GatewayAPIError) as conflict:
+        call_route(app, "inference_start", body)
+    assert conflict.value.status_code == 409
+    assert "already active" in conflict.value.error
+
+
 def test_websocket_broadcasts_upload_events(tmp_path):
     upload_event = {
         "type": "upload",
@@ -504,6 +583,17 @@ def test_websocket_broadcasts_upload_events(tmp_path):
         def events_after(self, sequence):
             return (1, [train_event]) if sequence == 0 else (1, [])
 
+    inference_event = {
+        "type": "inference",
+        "state": "RUNNING",
+        "hz": 29.8,
+        "last_action_age_ms": 4.0,
+    }
+
+    class EventInferencer:
+        def status(self):
+            return inference_event
+
     class FakeWebSocket:
         def __init__(self):
             self.sent = []
@@ -521,6 +611,7 @@ def test_websocket_broadcasts_upload_events(tmp_path):
         tmp_path,
         upload_manager=EventUploader(),
         train_manager=EventTrainer(),
+        inference_manager=EventInferencer(),
     )
     websocket = FakeWebSocket()
 
@@ -528,6 +619,7 @@ def test_websocket_broadcasts_upload_events(tmp_path):
 
     assert upload_event in websocket.sent
     assert train_event in websocket.sent
+    assert inference_event in websocket.sent
 
 
 def test_commit_wait_reports_fault_and_sixty_second_timeout():

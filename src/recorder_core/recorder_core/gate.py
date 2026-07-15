@@ -17,9 +17,15 @@ def check_frame(
     source_ages_ms: Mapping[str, float],
     vectors: Mapping[str, np.ndarray],
     cameras: Mapping[str, Any],
+    required_sources: tuple[str, ...] | None = None,
 ) -> GateFailure:
     """Return ``(None, None)`` on success or ``(source, reason)`` on failure."""
-    required = set(manifest.recording.required_sources)
+    required_order = (
+        manifest.recording.required_sources
+        if required_sources is None
+        else required_sources
+    )
+    required = set(required_order)
     interfaces = {
         interface.key: interface
         for interface in (
@@ -33,7 +39,7 @@ def check_frame(
         if camera.key in required and cameras.get(camera.key) is None:
             return camera.key, "required camera missing"
 
-    for source_key in manifest.recording.required_sources:
+    for source_key in required_order:
         age = source_ages_ms.get(source_key)
         if age is None or not isinstance(age, (int, float)) or not math.isfinite(age):
             return source_key, "no received sample"

@@ -18,6 +18,12 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, SecretStr
 
 from recorder_core.hf_upload import HfUploadManager, UploadPreflightError
+from recorder_core.inference_manager import (
+    SAFETY_WARNING,
+    InferenceConflictError,
+    InferenceManager,
+    InferencePreflightError,
+)
 from recorder_core.store_index import scan_store, session_path_for_dataset
 from recorder_core.train_manager import (
     TrainConflictError,
@@ -48,6 +54,11 @@ class TrainRequest(BaseModel):
     dataset_id: str = Field(min_length=1)
     policy_type: Literal["act"]
     steps: int = Field(ge=1)
+
+
+class InferenceRequest(BaseModel):
+    run_id: str = Field(min_length=1)
+    robot_id: str = Field(min_length=1)
 
 
 class GatewayAPIError(Exception):
@@ -229,6 +240,7 @@ def create_app(
     store_root: str | Path | None = None,
     upload_manager: HfUploadManager | None = None,
     train_manager: TrainManager | None = None,
+    inference_manager: InferenceManager | None = None,
 ) -> FastAPI:
     handles: dict[str, RobotHandle] = {}
     for node in nodes:
@@ -252,8 +264,13 @@ def create_app(
         store_roots = [Path(store_root)]
     uploader = upload_manager or HfUploadManager()
     trainer = train_manager or TrainManager(store_roots[0])
+    inferencer = inference_manager or InferenceManager(
+        store_roots[0],
+        run_supplier=getattr(trainer, "list_runs", lambda: []),
+    )
 
     app = FastAPI()
+    app.state.inference_manager = inferencer
 
     @app.exception_handler(GatewayAPIError)
     async def gateway_error_handler(
@@ -292,6 +309,10 @@ def create_app(
     async def list_runs() -> list[dict[str, Any]]:
         return trainer.list_runs()
 
+    @app.get("/api/policies")
+    async def list_policies() -> list[dict[str, Any]]:
+        return inferencer.list_policies()
+
     @app.post("/api/train")
     async def train_start(body: TrainRequest) -> dict[str, str]:
         dataset, _ = get_dataset(body.dataset_id)
@@ -315,6 +336,36 @@ def create_app(
         if not accepted:
             raise GatewayAPIError(409, f"training run is not active: {run_id}")
         return {"run_id": run_id}
+
+    @app.post("/api/inference/start")
+    def inference_start(body: InferenceRequest) -> dict[str, Any]:
+        handle = get_handle(body.robot_id)
+        recorder_state = handle.node.get_status()["fsm"]["state"]
+        if recorder_state not in STARTABLE_STATES:
+            raise GatewayAPIError(
+                409,
+                "inference requires recorder IDLE or READY, "
+                f"got {recorder_state}",
+            )
+        try:
+            status = inferencer.start(body.run_id, handle.node)
+        except (InferenceConflictError, InferencePreflightError) as exc:
+            raise GatewayAPIError(409, str(exc)) from exc
+        return {
+            "run_id": body.run_id,
+            "robot_id": body.robot_id,
+            "state": status["state"],
+            "warning": SAFETY_WARNING,
+        }
+
+    @app.post("/api/inference/stop")
+    def inference_stop() -> dict[str, Any]:
+        status = inferencer.stop()
+        return {
+            "run_id": status["run_id"],
+            "robot_id": status["robot_id"],
+            "state": status["state"],
+        }
 
     @app.post("/api/datasets/{dataset_id}/upload")
     async def upload_dataset(
@@ -467,6 +518,7 @@ def create_app(
                 train_cursor, train_events = trainer.events_after(train_cursor)
                 for event in train_events:
                     await websocket.send_json(event)
+                await websocket.send_json(inferencer.status())
                 done, _ = await asyncio.wait({disconnect}, timeout=0.2)
                 if done:
                     break
@@ -526,6 +578,7 @@ def main(args: list[str] | None = None) -> None:
     executor = MultiThreadedExecutor()
     nodes = []
     executor_thread = None
+    app = None
     try:
         for index, manifest_path in enumerate(options.manifest_path):
             node = RecorderNode(
@@ -544,6 +597,8 @@ def main(args: list[str] | None = None) -> None:
         executor_thread.start()
         uvicorn.run(app, host="0.0.0.0", port=8080)
     finally:
+        if app is not None:
+            app.state.inference_manager.stop()
         executor.shutdown()
         if executor_thread is not None:
             executor_thread.join(timeout=5.0)

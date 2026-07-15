@@ -79,3 +79,30 @@ Resume은 M4-⑧ 범위에서 지원하지 않습니다. 기존 checkpoint의 co
 ```bash
 scripts/smoke_m4_8.sh
 ```
+
+## M4-⑨ 추론 관리자
+
+`GET /api/policies`는 현재 gateway가 `DONE`으로 확인했고 최종 LeRobot checkpoint가 실제로
+존재하는 run만 반환합니다. `POST /api/inference/start`는
+`{"run_id":"...","robot_id":"bi_so101_01"}`을 받아 checkpoint의 정책 및 저장된
+pre/post processor를 LeRobot v0.6 공개 API로 로드합니다. 로드 단계에서 정책의 전체 input/output
+feature 키와 shape가 manifest의 state, channel-first camera, action 계약과 정확히 일치하지 않으면
+409로 시작을 거부합니다. 녹화 FSM이 IDLE/READY가 아니거나 다른 추론이 실행 중이어도 409입니다.
+
+실행 중에는 manifest FPS로 최신 JPEG 카메라를 RGB tensor로 변환하고 state와 함께
+`policy.select_action`에 전달한 뒤, 복원된 action을 manifest의 leader `_norm`
+`JointTrajectory` 토픽에 publish합니다. 관측 freshness gate는 추론 전후에 적용되며 stale이면
+새 명령을 publish하지 않고 즉시 `ERROR`로 정지합니다. `POST /api/inference/stop`은 반복 호출해도
+안전한 idempotent stop이고, `/ws`는 `type=inference`, `state`, `hz`,
+`last_action_age_ms`를 계속 전송합니다.
+
+> **안전 경고:** 이 executor는 `fake_robot`/simulation 전용입니다. 실제 로봇 bridge에 연결하면
+> 안 됩니다. 실로봇 연결 전에는 M7 안전 gate와 bridge deadman이 반드시 먼저 구현·검증되어야
+> 합니다. inference 시작 API 응답에도 같은 경고가 `warning` 필드로 포함됩니다.
+
+임시 store에서 dataset 생성 → ACT 20-step 학습 → 정책 명령 확인 → 정지까지 수행하는 smoke는
+LeRobot/ROS가 설치된 기존 container 안에서 실행합니다.
+
+```bash
+scripts/smoke_m4_9.sh
+```

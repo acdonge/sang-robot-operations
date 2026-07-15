@@ -106,6 +106,21 @@
   <div id="train-progress" class="ep"></div>
 </div>
 
+<div class="robot-card" id="infer-card" style="margin:16px">
+  <div class="robot-head">
+    <span class="rid">Inference</span>
+    <span id="infer-status" class="badge">idle</span>
+    <span id="infer-msg" style="color:var(--dim);font-size:12px"></span>
+  </div>
+  <div class="controls">
+    <select id="infer-policy" style="background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:7px;max-width:420px"></select>
+    <button id="infer-start" class="b-start">▶ Run Policy</button>
+    <button id="infer-stop" class="b-abort" disabled>■ Stop</button>
+    <span class="dim-label">⚠ fake_robot/sim 전용 — 실로봇은 M7 안전게이트 후</span>
+  </div>
+  <div id="infer-progress" class="ep"></div>
+</div>
+
 <script>
 "use strict";
 // ── API 계약 (M4-⑤ 게이트웨이가 구현) ─────────────────────────────
@@ -298,7 +313,8 @@ function connectWs() {
     const m = JSON.parse(ev.data);
     if (m.type === 'status') applyStatus(m);
     if (m.type === 'upload') applyUploadEvent(m);
-    if (m.type === 'train') applyTrainEvent(m);
+    if (m.type === 'train') { applyTrainEvent(m); if (m.state === 'DONE') loadPolicies(); }
+    if (m.type === 'inference') applyInferEvent(m);
   };
 }
 
@@ -398,11 +414,56 @@ function applyTrainEvent(m) {
       `step ${m.step}` + (m.loss != null ? `  ·  loss ${Number(m.loss).toFixed(4)}` : '');
 }
 
+// ── 추론 패널 ──────────────────────────────────────────────
+let firstRobotId = null;
+async function loadPolicies() {
+  const sel = document.getElementById('infer-policy');
+  try {
+    const list = await api('/api/policies');
+    sel.innerHTML = '';
+    for (const p of list) {
+      const o = document.createElement('option');
+      o.value = p.run_id; o.textContent = p.run_id;
+      sel.append(o);
+    }
+    document.getElementById('infer-msg').textContent = `${list.length}개 정책`;
+  } catch (e) { document.getElementById('infer-msg').textContent = `로드 실패: ${e.message}`; }
+}
+document.getElementById('infer-start').onclick = async () => {
+  const msg = document.getElementById('infer-msg');
+  try {
+    const r = await api('/api/inference/start', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ run_id: document.getElementById('infer-policy').value,
+                             robot_id: firstRobotId })
+    });
+    msg.textContent = r.warning || 'started';
+  } catch (e) { msg.textContent = `오류: ${e.message}`; }
+};
+document.getElementById('infer-stop').onclick = () =>
+  api('/api/inference/stop', { method: 'POST' }).catch(() => {});
+
+function applyInferEvent(m) {
+  const badge = document.getElementById('infer-status');
+  badge.textContent = m.state;
+  badge.className = 'badge ' + (m.state === 'RUNNING' ? 'RECORDING'
+    : m.state === 'STOPPED' ? 'READY' : m.state === 'ERROR' ? 'FAULT' : '');
+  document.getElementById('infer-start').disabled = ['LOADING', 'RUNNING'].includes(m.state);
+  document.getElementById('infer-stop').disabled = m.state !== 'RUNNING';
+  const bits = [];
+  if (m.hz != null) bits.push(`${Number(m.hz).toFixed(1)} Hz`);
+  if (m.last_action_age_ms != null) bits.push(`last action ${Math.round(m.last_action_age_ms)}ms`);
+  if (m.detail) bits.push(m.detail);
+  document.getElementById('infer-progress').textContent = bits.join('  ·  ');
+}
+
 (async () => {
   const robots = await api('/api/robots');
+  firstRobotId = robots[0]?.robot_id || null;
   robots.forEach(renderRobot);
   connectWs();
   loadDatasets();
+  loadPolicies();
 })();
 </script>
 </body>

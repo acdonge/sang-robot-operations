@@ -1,26 +1,25 @@
-# PLAN — M4-⑧ native LeRobot training manager
+# PLAN — M4-⑨ closed-loop inference manager
 
-Goal: Run and monitor pinned LeRobot v0.6 ACT training in an isolated subprocess with immutable lineage, safe stop semantics, and gateway REST/WebSocket contracts.
+Goal: Load the final pinned LeRobot v0.6 checkpoint and execute it against fake_robot observations at manifest FPS with strict schema and freshness safety gates.
 
-Done when: A validated indexed dataset can start one CPU ACT run under `store/runs/<run_id>`, publish PREPARING/RUNNING/progress/terminal events, stop via SIGTERM then SIGKILL fallback, report DONE only when a real checkpoint exists, and all focused/static/full tests pass.
+Done when: DONE runs with a real final checkpoint are listed as policies; inference start synchronously loads and preflights exact state/camera/action keys and shapes; one closed loop converts JPEG observations, calls the policy, and publishes leader JointTrajectory commands until idempotent stop or stale/error shutdown; gateway REST/WebSocket contracts and fake_robot-only warnings are present; focused/full tests and static checks pass.
 
-Out of scope: Resume, UI changes, GPU training, Docker execution, commits, and real long-running training in this host environment.
+Out of scope: UI changes, real-robot enablement, M7 bridge/deadman implementation, Docker execution, commits, and changes to the trained policy architecture.
 
 ## Milestones
 
-- [x] M1: TrainManager and lineage implemented — verify by: subprocess-mocked command, progress, success/error, concurrency, and stop tests.
-- [x] M2: Gateway REST and WebSocket integration implemented — verify by: focused route/event tests including 404/409 behavior.
-- [x] M3: Container smoke workflow and documentation implemented — verify by: shell syntax and contract review.
-- [x] M4: Full static/unit verification and diff review — verify by: `py_compile`, `pytest`, smoke syntax, and `git diff --check`.
+- [x] M1: Inference manager and ROS observation/action boundary implemented — verify by: mismatch, transition, closed-loop publish, stale-stop, idempotency, and checkpoint-selection unit tests.
+- [x] M2: Gateway policy/start/stop/WebSocket contracts implemented — verify by: focused route tests for DONE filtering, recording/concurrency 409, warning, idempotency, and inference status.
+- [x] M3: M4-⑨ smoke workflow and safety documentation implemented — verify by: shell syntax, executable bit, and contract review.
+- [x] M4: Fresh full verification and skeptical diff review — verify by: `py_compile`, full `pytest`, smoke syntax, and `git diff --check`.
 
 ## Decisions log
 
-- 2026-07-14/intake: Use the v0.6 official `lerobot-train` console entry point from the pinned SHA; do not import the training pipeline into the gateway process.
-- 2026-07-14/intake: Keep immutable `lineage.json` and `train.log` at the run root while passing the initially absent `run/output` child to LeRobot, because v0.6 rejects a pre-existing `output_dir` for non-resume runs.
-- 2026-07-14/intake: Force a small, offline-safe ACT configuration on CPU (batch 1, reduced transformer, no pretrained backbone download, no Hub/W&B) so the required 20-step smoke is bounded.
-- 2026-07-14/intake: A zero exit code without checkpoint files is ERROR, and an operator-stopped run ends ERROR after STOPPING; interruption is never reported as successful completion.
-- 2026-07-14/scope: Resume is deliberately absent so no checkpoint config can be modified in place.
+- 2026-07-15/intake: Treat only IDLE/READY recorder nodes as inference-startable; this covers the required recording conflict and prevents policy commands during warmup/commit phases.
+- 2026-07-15/API: Load the final `checkpoints/last/pretrained_model` through pinned v0.6 public `PreTrainedConfig.from_pretrained` plus the registered policy class `from_pretrained`, and restore the saved public pre/post processor pipelines.
+- 2026-07-15/schema: Compare policy-space visual shapes as `(3, height, width)` because pinned `dataset_to_policy_features` converts recorded HWC video features to channel-first tensors.
+- 2026-07-15/safety: A freshness failure terminates the command loop in `ERROR`; explicit stop transitions any terminal state to `STOPPED`. The executor remains fake_robot/sim-only and does not claim M7 real-robot safety.
 
 ## Current state
 
-All milestones complete. Fresh verification passes: all source Python files compile, 67 tests pass, every M4 smoke script parses, `smoke_m4_8.sh` is executable, and the diff whitespace check is clean. Docker/container smoke execution was intentionally not performed because the task prohibits Docker and the host interpreter has no LeRobot installation.
+All milestones complete. Fresh verification passes: 74 tests, all workspace Python compilation, all M4 smoke shell syntax, M4-⑨ executable bit, and the diff whitespace check. The ROS/LeRobot end-to-end smoke is encoded but was not executed because Docker is prohibited and the host has neither ROS nor LeRobot.
