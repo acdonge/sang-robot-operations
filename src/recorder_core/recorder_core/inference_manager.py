@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+import json
 from pathlib import Path
 import threading
 import time
@@ -254,6 +255,7 @@ class InferenceManager:
 
     def list_policies(self) -> list[dict[str, Any]]:
         policies = []
+        seen: set[str] = set()
         for run in self._run_supplier():
             run_id = run.get("run_id")
             if run.get("state") != "DONE" or not isinstance(run_id, str):
@@ -263,6 +265,7 @@ class InferenceManager:
             checkpoint = final_checkpoint(self.runs_root / run_id)
             if checkpoint is None:
                 continue
+            seen.add(run_id)
             policies.append(
                 {
                     "run_id": run_id,
@@ -272,6 +275,32 @@ class InferenceManager:
                     "created_at": run.get("created_at"),
                 }
             )
+        # 이전 게이트웨이 세션에서 완료된 run은 메모리 registry에 없다 —
+        # 디스크의 lineage.json + 최종 checkpoint를 근거로 병합한다.
+        if self.runs_root.is_dir():
+            for run_dir in sorted(self.runs_root.iterdir()):
+                run_id = run_dir.name
+                if not run_dir.is_dir() or run_id in seen:
+                    continue
+                checkpoint = final_checkpoint(run_dir)
+                if checkpoint is None:
+                    continue
+                lineage: dict[str, Any] = {}
+                lineage_path = run_dir / "lineage.json"
+                if lineage_path.is_file():
+                    try:
+                        lineage = json.loads(lineage_path.read_text(encoding="utf-8"))
+                    except (OSError, ValueError):
+                        lineage = {}
+                policies.append(
+                    {
+                        "run_id": run_id,
+                        "dataset_id": lineage.get("dataset_id"),
+                        "policy_type": lineage.get("policy_type"),
+                        "checkpoint_path": str(checkpoint),
+                        "created_at": lineage.get("created_at"),
+                    }
+                )
         return policies
 
     def _policy_for_run(self, run_id: str) -> dict[str, Any]:
