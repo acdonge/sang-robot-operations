@@ -10,7 +10,7 @@ from pathlib import Path
 import shutil
 import threading
 import time
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -19,6 +19,11 @@ from pydantic import BaseModel, Field, SecretStr
 
 from recorder_core.hf_upload import HfUploadManager, UploadPreflightError
 from recorder_core.store_index import scan_store, session_path_for_dataset
+from recorder_core.train_manager import (
+    TrainConflictError,
+    TrainManager,
+    TrainPreflightError,
+)
 
 
 STARTABLE_STATES = frozenset({"IDLE", "READY"})
@@ -37,6 +42,12 @@ class UploadRequest(BaseModel):
     repo_id: str = Field(min_length=1)
     token: SecretStr
     private: bool = False
+
+
+class TrainRequest(BaseModel):
+    dataset_id: str = Field(min_length=1)
+    policy_type: Literal["act"]
+    steps: int = Field(ge=1)
 
 
 class GatewayAPIError(Exception):
@@ -217,6 +228,7 @@ def create_app(
     ui_dir: str | Path = "/ws/ui",
     store_root: str | Path | None = None,
     upload_manager: HfUploadManager | None = None,
+    train_manager: TrainManager | None = None,
 ) -> FastAPI:
     handles: dict[str, RobotHandle] = {}
     for node in nodes:
@@ -239,6 +251,7 @@ def create_app(
     else:
         store_roots = [Path(store_root)]
     uploader = upload_manager or HfUploadManager()
+    trainer = train_manager or TrainManager(store_roots[0])
 
     app = FastAPI()
 
@@ -274,6 +287,34 @@ def create_app(
     @app.get("/api/datasets")
     async def list_datasets() -> list[dict[str, Any]]:
         return indexed_datasets()
+
+    @app.get("/api/runs")
+    async def list_runs() -> list[dict[str, Any]]:
+        return trainer.list_runs()
+
+    @app.post("/api/train")
+    async def train_start(body: TrainRequest) -> dict[str, str]:
+        dataset, _ = get_dataset(body.dataset_id)
+        try:
+            run_id = trainer.start_train(
+                dataset_id=body.dataset_id,
+                dataset_path=dataset["path"],
+                policy_type=body.policy_type,
+                steps=body.steps,
+            )
+        except (TrainConflictError, TrainPreflightError) as exc:
+            raise GatewayAPIError(409, str(exc)) from exc
+        return {"run_id": run_id}
+
+    @app.post("/api/runs/{run_id}/stop")
+    async def train_stop(run_id: str) -> dict[str, str]:
+        try:
+            accepted = trainer.stop(run_id)
+        except KeyError as exc:
+            raise GatewayAPIError(404, f"unknown training run: {run_id}") from exc
+        if not accepted:
+            raise GatewayAPIError(409, f"training run is not active: {run_id}")
+        return {"run_id": run_id}
 
     @app.post("/api/datasets/{dataset_id}/upload")
     async def upload_dataset(
@@ -415,12 +456,16 @@ def create_app(
         await websocket.accept()
         disconnect = asyncio.create_task(websocket.receive())
         upload_cursor = 0
+        train_cursor = 0
         try:
             while True:
                 for handle in handles.values():
                     await websocket.send_json(status_payload(handle))
                 upload_cursor, upload_events = uploader.events_after(upload_cursor)
                 for event in upload_events:
+                    await websocket.send_json(event)
+                train_cursor, train_events = trainer.events_after(train_cursor)
+                for event in train_events:
                     await websocket.send_json(event)
                 done, _ = await asyncio.wait({disconnect}, timeout=0.2)
                 if done:

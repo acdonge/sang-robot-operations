@@ -8,6 +8,7 @@ from recorder_core.gateway import (
     GatewayAPIError,
     RobotHandle,
     StartRequest,
+    TrainRequest,
     UploadRequest,
     contract_sources,
     create_app,
@@ -19,6 +20,7 @@ from recorder_core.gateway import (
 )
 from recorder_core.hf_upload import HfUploadManager, UploadPreflightError
 from recorder_core.manifest import load_manifest
+from recorder_core.train_manager import TrainConflictError
 
 
 MANIFEST_PATH = Path(__file__).parents[3] / "manifests" / "bi_so101_01.yaml"
@@ -112,7 +114,7 @@ class StubNode:
         return b"\xff\xd8jpeg\xff\xd9"
 
 
-def make_app(tmp_path, node=None, upload_manager=None):
+def make_app(tmp_path, node=None, upload_manager=None, train_manager=None):
     ui_dir = tmp_path / "ui"
     ui_dir.mkdir(exist_ok=True)
     (ui_dir / "index.html").write_text("gateway ui", encoding="utf-8")
@@ -121,6 +123,7 @@ def make_app(tmp_path, node=None, upload_manager=None):
         ui_dir=ui_dir,
         store_root=tmp_path / "store",
         upload_manager=upload_manager,
+        train_manager=train_manager,
     )
 
 
@@ -386,6 +389,96 @@ def test_dataset_upload_preflight_and_active_conflicts_are_409(tmp_path):
     assert "already in progress" in active.value.error
 
 
+def test_training_routes_use_index_enforce_conflicts_and_stop_contract(tmp_path):
+    dataset_id, dataset, _ = make_indexed_dataset(tmp_path)
+
+    class FakeTrainer:
+        def __init__(self):
+            self.calls = []
+            self.runs = [{"run_id": "older", "state": "DONE"}]
+            self.stop_result = True
+
+        def list_runs(self):
+            return self.runs
+
+        def start_train(self, **kwargs):
+            self.calls.append(kwargs)
+            return "run-1"
+
+        def stop(self, run_id):
+            if run_id == "missing":
+                raise KeyError(run_id)
+            self.calls.append(("stop", run_id))
+            return self.stop_result
+
+        def events_after(self, sequence):
+            return sequence, []
+
+    trainer = FakeTrainer()
+    app = make_app(tmp_path, train_manager=trainer)
+
+    assert call_route(app, "list_runs") == trainer.runs
+    started = call_route(
+        app,
+        "train_start",
+        TrainRequest(dataset_id=dataset_id, policy_type="act", steps=20),
+    )
+    assert started == {"run_id": "run-1"}
+    assert trainer.calls[0] == {
+        "dataset_id": dataset_id,
+        "dataset_path": str(dataset),
+        "policy_type": "act",
+        "steps": 20,
+    }
+    assert call_route(app, "train_stop", "run-1") == {"run_id": "run-1"}
+
+    with pytest.raises(GatewayAPIError) as missing:
+        call_route(app, "train_stop", "missing")
+    assert missing.value.status_code == 404
+
+    trainer.stop_result = False
+    with pytest.raises(GatewayAPIError) as inactive:
+        call_route(app, "train_stop", "run-1")
+    assert inactive.value.status_code == 409
+
+    with pytest.raises(GatewayAPIError) as unknown_dataset:
+        call_route(
+            app,
+            "train_start",
+            TrainRequest(dataset_id="missing", policy_type="act", steps=20),
+        )
+    assert unknown_dataset.value.status_code == 404
+
+
+def test_training_active_conflict_is_409(tmp_path):
+    dataset_id, _, _ = make_indexed_dataset(tmp_path)
+
+    class BusyTrainer:
+        def list_runs(self):
+            return []
+
+        def start_train(self, **kwargs):
+            del kwargs
+            raise TrainConflictError("another training run is already active")
+
+        def stop(self, run_id):
+            del run_id
+            return False
+
+        def events_after(self, sequence):
+            return sequence, []
+
+    app = make_app(tmp_path, train_manager=BusyTrainer())
+    with pytest.raises(GatewayAPIError) as conflict:
+        call_route(
+            app,
+            "train_start",
+            TrainRequest(dataset_id=dataset_id, policy_type="act", steps=20),
+        )
+    assert conflict.value.status_code == 409
+    assert "already active" in conflict.value.error
+
+
 def test_websocket_broadcasts_upload_events(tmp_path):
     upload_event = {
         "type": "upload",
@@ -398,6 +491,18 @@ def test_websocket_broadcasts_upload_events(tmp_path):
     class EventUploader:
         def events_after(self, sequence):
             return (1, [upload_event]) if sequence == 0 else (1, [])
+
+    train_event = {
+        "type": "train",
+        "run_id": "run-1",
+        "state": "RUNNING",
+        "step": 1,
+        "loss": 0.5,
+    }
+
+    class EventTrainer:
+        def events_after(self, sequence):
+            return (1, [train_event]) if sequence == 0 else (1, [])
 
     class FakeWebSocket:
         def __init__(self):
@@ -412,12 +517,17 @@ def test_websocket_broadcasts_upload_events(tmp_path):
         async def send_json(self, payload):
             self.sent.append(payload)
 
-    app = make_app(tmp_path, upload_manager=EventUploader())
+    app = make_app(
+        tmp_path,
+        upload_manager=EventUploader(),
+        train_manager=EventTrainer(),
+    )
     websocket = FakeWebSocket()
 
     call_route(app, "websocket_status", websocket)
 
     assert upload_event in websocket.sent
+    assert train_event in websocket.sent
 
 
 def test_commit_wait_reports_fault_and_sixty_second_timeout():
