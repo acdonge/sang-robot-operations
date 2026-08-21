@@ -1,23 +1,36 @@
 FROM ros:jazzy-ros-base
 
-# v0.6.0 릴리스 태그의 커밋 SHA (2026-07-13 검증, V2 §11: 태그가 아닌 SHA로 고정)
-ARG LEROBOT_REF=30da8e687a6dfc617fcd94afc367ac7071c376ce
-LABEL org.opencontainers.image.lerobot.revision="${LEROBOT_REF}"
-ENV LEROBOT_SHA="${LEROBOT_REF}"
-
-# ffmpeg: lerobot v0.6의 torchcodec 비디오 디코딩에 시스템 FFmpeg 공유 라이브러리 필수
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3-pip ffmpeg \
+    && apt-get install -y --no-install-recommends \
+      python3-pip \
+      python3-pytest \
+      python3-zmq \
+      python3-yaml \
+      iproute2 \
+      ros-jazzy-diagnostic-msgs \
+      ros-jazzy-geometry-msgs \
+      ros-jazzy-rosbag2 \
+      ros-jazzy-rosbag2-py \
+      ros-jazzy-rosbag2-storage-mcap \
+      ros-jazzy-rosidl-default-generators \
+      ros-jazzy-sensor-msgs \
+      ros-jazzy-std-msgs \
+      ros-jazzy-std-srvs \
+      ros-jazzy-tf2-ros \
+      ros-jazzy-trajectory-msgs \
+      ros-jazzy-visualization-msgs \
     && rm -rf /var/lib/apt/lists/*
 
-# --ignore-installed: apt가 설치한 packaging 등(RECORD 없음)을 pip가 제거하지 못해
-# 실패하는 것을 회피 — 신선한 이미지이므로 기존 배포판 패키지를 덮어써도 안전.
-# [training] extra 필수: dataset writer 의존성과 lerobot-train의 accelerate/wandb를 함께 설치한다.
 RUN python3 -m pip install --no-cache-dir --break-system-packages --ignore-installed \
-    "lerobot[training] @ https://github.com/huggingface/lerobot/archive/${LEROBOT_REF}.tar.gz"
+    "asyncua==2.0.1" \
+    "cryptography==50.0.0" \
+    "fastapi==0.140.0" \
+    "feetech-servo-sdk==1.0.0" \
+    httpx \
+    "opencv-python-headless==4.10.0.84" \
+    "pydantic==2.13.4" \
+    "pyOpenSSL==26.4.0" \
+    "rbpodo==0.16.14" \
+    "uvicorn[standard]==0.51.0"
 
-# uvicorn[standard]: WebSocket 프로토콜 지원(websockets) 포함 — 순정 uvicorn은 WS 업그레이드를 404 처리
-RUN python3 -m pip install --no-cache-dir --break-system-packages fastapi "uvicorn[standard]"
-
-# 워크스페이스는 이미지를 만들 때 복사하지 않고 실행 시 /ws에 마운트한다.
 WORKDIR /ws

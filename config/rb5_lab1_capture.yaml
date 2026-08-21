@@ -1,0 +1,33 @@
+schema_version: "1.0"
+profile_id: rb5-lab1-observation-v1
+agent_id: processing-lab1
+robot_id: rb5_lab1_eval_01
+qos_overrides_path: rb5_lab1_capture_qos.yaml
+
+clock:
+  sync_source: unverified_host_clock
+  quality: UNVERIFIED
+  provenance: ROS header timestamps are preserved; no PTP or NTP offset evidence is collected by this recorder.
+
+topics:
+  - key: rb5_joint
+    name: /rbpodo/joint_states
+    type: sensor_msgs/msg/JointState
+    asset_id: rb5-850e-lab1
+    calibration_ref: vendor-controller-measured-state
+    timestamp_provenance: Host CLOCK_REALTIME immediately after the vendor CobotData read.
+    require_header_timestamp: true
+  - key: d455_color
+    name: /rb5_lab1_eval_01/camera/d455_color/image_raw/compressed
+    type: sensor_msgs/msg/CompressedImage
+    asset_id: d455-camera-lab1
+    calibration_ref: pending-camera-calibration
+    timestamp_provenance: Host CLOCK_REALTIME when OpenCV capture returned; not hardware exposure time.
+    require_header_timestamp: true
+  - key: d405_color
+    name: /rb5_lab1_eval_01/camera/d405_color/image_raw/compressed
+    type: sensor_msgs/msg/CompressedImage
+    asset_id: d405-camera-lab1
+    calibration_ref: pending-camera-calibration
+    timestamp_provenance: Host CLOCK_REALTIME when OpenCV capture returned; not hardware exposure time.
+    require_header_timestamp: true

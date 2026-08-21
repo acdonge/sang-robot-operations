@@ -1,0 +1,81 @@
+schema_version: "0.1"
+
+arms:
+  - key: follower_left
+    role: follower
+    side: left
+    port: /dev/follower_left
+    calibration: calibration/bi_so101_follower_left.json
+    topic: /bi_so101/follower_left/joint_states_norm
+    publish_hz: 20
+    baudrate: 1000000
+    expected_model: 777
+  - key: follower_right
+    role: follower
+    side: right
+    port: /dev/follower_right
+    calibration: calibration/bi_so101_follower_right.json
+    topic: /bi_so101/follower_right/joint_states_norm
+    publish_hz: 20
+    baudrate: 1000000
+    expected_model: 777
+  - key: leader_left
+    role: leader
+    side: left
+    port: /dev/leader_left
+    calibration: calibration/bi_so101_leader_left.json
+    topic: /bi_so101/leader_left/joint_trajectory_norm
+    publish_hz: 20
+    baudrate: 1000000
+    expected_model: 777
+  - key: leader_right
+    role: leader
+    side: right
+    port: /dev/leader_right
+    calibration: calibration/bi_so101_leader_right.json
+    topic: /bi_so101/leader_right/joint_trajectory_norm
+    publish_hz: 20
+    baudrate: 1000000
+    expected_model: 777
+
+cameras:
+  - key: top
+    device: /dev/v4l/by-path/pci-0000:80:14.0-usb-0:4.1:1.0-video-index0
+    topic: /bi_so101/camera/top/color/image_rect_raw/compressed
+    width: 640
+    height: 480
+    fps: 30
+    fourcc: MJPG
+    fixed_fps: true
+  - key: left_side
+    device: /dev/v4l/by-path/pci-0000:80:14.0-usb-0:3.4:1.0-video-index0
+    topic: /bi_so101/camera/left_side/color/image_rect_raw/compressed
+    width: 640
+    height: 480
+    fps: 30
+    fourcc: MJPG
+    fixed_fps: true
+  - key: right_side
+    device: /dev/v4l/by-path/pci-0000:80:14.0-usb-0:3.2:1.0-video-index0
+    topic: /bi_so101/camera/right_side/color/image_rect_raw/compressed
+    width: 640
+    height: 480
+    fps: 30
+    fourcc: MJPG
+    fixed_fps: true
+  - key: left_wrist
+    device: /dev/v4l/by-path/pci-0000:80:14.0-usb-0:4.4:1.0-video-index0
+    topic: /bi_so101/camera/left_wrist/color/image_rect_raw/compressed
+    width: 640
+    height: 480
+    fps: 30
+    fourcc: MJPG
+    fixed_fps: true
+  - key: right_wrist
+    device: /dev/v4l/by-path/pci-0000:80:14.0-usb-0:4.2:1.0-video-index0
+    topic: /bi_so101/camera/right_wrist/color/image_rect_raw/compressed
+    width: 640
+    height: 480
+    fps: 30
+    fourcc: MJPG
+    fixed_fps: true

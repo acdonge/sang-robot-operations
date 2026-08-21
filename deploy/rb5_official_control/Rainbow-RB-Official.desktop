@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Rainbow RB Official UI (Manufacturer)
+Comment=Official Rainbow Robotics Linux UI for attended operation
+Exec=/home/lab1/bin/rb5-control/start_vendor_ui.sh
+Path=/home/lab1/Applications/Rainbow-RB-8.44/RB_Linux
+Icon=applications-engineering
+Terminal=false
+Categories=Science;Robotics;
+StartupNotify=true

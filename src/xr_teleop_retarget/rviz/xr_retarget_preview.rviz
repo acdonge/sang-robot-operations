@@ -1,0 +1,57 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Alpha: 0.5
+      Cell Size: 0.05
+      Class: rviz_default_plugins/Grid
+      Color: 120; 128; 135
+      Enabled: true
+      Name: SO-ARM Base Grid
+      Plane: XY
+      Reference Frame: soarm_base
+    - Class: rviz_default_plugins/TF
+      Enabled: true
+      Frame Timeout: 15
+      Marker Scale: 0.08
+      Name: TF
+      Show Arrows: true
+      Show Axes: true
+      Show Names: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: XR Retarget Preview
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /xr/retarget/markers
+  Enabled: true
+  Global Options:
+    Background Color: 24; 28; 31
+    Fixed Frame: soarm_base
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 0.85
+      Focal Point:
+        X: 0.25
+        Y: 0.0
+        Z: 0.18
+      Name: SO-ARM Preview
+      Pitch: 0.55
+      Yaw: 0.85
+Window Geometry:
+  Height: 900
+  Width: 1400

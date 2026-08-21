@@ -2,7 +2,12 @@ build/
 install/
 log/
 __pycache__/
+.pytest_cache/
 *.pyc
 store/
 .venv/
+.playwright-cli/
 
+# Machine-local state: databases, generated PKI, captures, and validation output.
+runtime/
+output/

@@ -1,0 +1,57 @@
+schema_version: "1.0.0"
+example_only: true
+enabled: false
+activation_not_before: phase_3
+
+southbound_classes:
+  - ros_adapter
+  - vendor_protocol_gateway
+  - native_opcua
+  - uninstrumented
+selected_class: native_opcua
+
+asset:
+  asset_id: welder-demo-01
+  asset_type: welder
+  display_name: Example native OPC UA welder
+  observed_binding: null
+  instrumentation_state: planned
+
+desired_connection_profile:
+  profile_id: cp-welder-demo-01
+  endpoint_url: opc.tcp://welder-demo.example.invalid:4840
+  server_application_uri: urn:vendor:welder:demo
+  transport_profile: opc.tcp
+  security:
+    mode: SignAndEncrypt
+    policy_ref: phase_3_security_policy_allowlist
+    client_certificate_ref: secret://opcua/clients/sang-central
+    trust_list_ref: secret://opcua/trust/native-welders
+    user_identity_ref: secret://opcua/users/welder-demo-01
+  reconnect:
+    initial_backoff_s: 1
+    maximum_backoff_s: 30
+  subscription:
+    publishing_interval_ms: 1000
+    queue_size: 1
+    discard_oldest: true
+
+observed_connection_profile:
+  endpoint_url: null
+  server_application_uri: null
+  server_certificate_thumbprint: null
+  namespace_uris: []
+  last_seen_at: null
+
+central_behavior:
+  join_key: asset_id
+  registry_binding_required: false
+  sqlite_snapshot_write: false
+  sqlite_health_event_write: false
+  output: opcua_shadow_report_only
+  control_methods_allowed: false
+
+notes:
+  - The reserved example.invalid domain prevents accidental connection.
+  - Secret values and private keys are never stored in this file or SQLite.
+  - Phase 3 must create the ConnectionProfile migration and security allowlist before enabling.

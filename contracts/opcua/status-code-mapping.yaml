@@ -1,0 +1,73 @@
+schema_version: "1.0.0"
+normative_source: nodesets.lock.yaml#opcua-status-codes
+
+status_codes:
+  Good:
+    value: "0x00000000"
+  Uncertain:
+    value: "0x40000000"
+  UncertainLastUsableValue:
+    value: "0x40900000"
+  UncertainDataSubNormal:
+    value: "0x40A40000"
+  BadDecodingError:
+    value: "0x80070000"
+  BadNoCommunication:
+    value: "0x80310000"
+  BadWaitingForInitialData:
+    value: "0x80320000"
+  BadTypeMismatch:
+    value: "0x80740000"
+  BadConfigurationError:
+    value: "0x80890000"
+
+sample_value_precedence:
+  - condition: manifest_or_mapping_invalid
+    status: BadConfigurationError
+    retain_last_value: false
+  - condition: discovered_ros_type_differs_from_manifest
+    status: BadTypeMismatch
+    retain_last_value: false
+  - condition: message_structure_invalid_or_expected_joint_missing
+    status: BadDecodingError
+    retain_last_value: false
+  - condition: no_sample_before_startup_grace_expires
+    status: BadWaitingForInitialData
+    retain_last_value: false
+    timing_ref: model-contract.yaml#timestamps.edge_quality_timing.initial_data_grace_s
+  - condition: optional_idle_source_has_never_published
+    status: BadWaitingForInitialData
+    retain_last_value: false
+    affects_robot_health: false
+  - condition: required_source_has_no_sample_after_startup_grace
+    status: BadNoCommunication
+    retain_last_value: false
+    affects_robot_health: true
+    timing_ref: model-contract.yaml#timestamps.edge_quality_timing.initial_data_grace_s
+  - condition: last_sample_exceeds_manifest_freshness_ms
+    status: UncertainLastUsableValue
+    retain_last_value: true
+  - condition: sample_is_fresh_but_rate_is_below_manifest_minimum
+    status: UncertainDataSubNormal
+    retain_last_value: true
+  - condition: timestamp_uses_gateway_receive_fallback
+    status: Uncertain
+    retain_last_value: true
+  - condition: source_clock_is_unsynchronized_beyond_contract_limit
+    status: Uncertain
+    retain_last_value: true
+    limit_ref: model-contract.yaml#clock_quality
+  - condition: sample_is_valid_fresh_rate_ok_and_time_valid
+    status: Good
+    retain_last_value: true
+
+health_variable_rule:
+  description: Health variables describe the evaluator and do not inherit sample quality.
+  valid_false_boolean_status: Good
+  evaluator_unavailable_status: BadNoCommunication
+
+source_aggregation:
+  fresh: all_topics_fresh
+  rate_ok: all_evaluated_topic_rates_ok_or_null_when_none_evaluated
+  required_robot_health: all_required_sources_fresh_and_not_explicitly_low_rate
+  optional_idle_action_affects_robot_health: false

@@ -1,0 +1,15 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Galaxy XR Mirror
+GenericName=XR Screen Mirror
+Comment=Mirror the Galaxy XR display over USB or Wi-Fi debugging
+Exec=/usr/bin/env XR_MIRROR_GUI=1 /home/sa08050/.local/bin/galaxy-xr-mirror
+TryExec=/home/sa08050/.local/bin/galaxy-xr-mirror
+Icon=video-display
+Terminal=false
+Categories=Development;
+Keywords=Galaxy;XR;ADB;Mirror;USB;WiFi;
+StartupNotify=true
+StartupWMClass=scrcpy
+X-GNOME-UsesNotifications=true

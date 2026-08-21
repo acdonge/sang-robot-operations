@@ -1,0 +1,77 @@
+schema_version: "0.1"
+
+robot:
+  robot_id: rb5_lab1_eval_01
+  model: rb5_850e
+  embodiment: rb5_850e_lab1_observation_v1
+  real_or_sim: real
+  host_id: processing-lab1
+  namespace: /robots/rb5_lab1_eval_01
+
+adapter:
+  package: rb5_readonly_adapter
+  executable: state_reader
+  kind: readonly_vendor_data_adapter
+  config_ref: 10.0.2.7:5001
+  version: 0.1.0
+
+capabilities:
+  manipulation: true
+  navigation: false
+  arm_count: 1
+  gripper: false
+  camera: true
+  force_torque: false
+
+interfaces:
+  state:
+    - key: observation.state
+      topics:
+        - /rbpodo/joint_states
+      message_type: sensor_msgs/msg/JointState
+      feature_names:
+        - base
+        - shoulder
+        - elbow
+        - wrist1
+        - wrist2
+        - wrist3
+      dtype: float32
+      shape: [6]
+      unit: rad
+      freshness_ms: 1000
+      minimum_rate_hz: 20
+  action: []
+  cameras:
+    - key: d455_color
+      topic: /rb5_lab1_eval_01/camera/d455_color/image_raw/compressed
+      message_type: sensor_msgs/msg/CompressedImage
+      encoding: jpeg
+      width: 640
+      height: 480
+      freshness_ms: 1000
+      minimum_rate_hz: 25
+    - key: d405_color
+      topic: /rb5_lab1_eval_01/camera/d405_color/image_raw/compressed
+      message_type: sensor_msgs/msg/CompressedImage
+      encoding: jpeg
+      width: 640
+      height: 480
+      freshness_ms: 1000
+      minimum_rate_hz: 25
+
+monitoring:
+  required_sources:
+    - observation.state
+    - d455_color
+    - d405_color
+
+control:
+  modes: [DISABLED]
+  default_mode: DISABLED
+
+ui:
+  display_name: RB5-850E Lab1 Evaluation
+  order: 31
+  panels: [health]
+  camera_order: [d455_color, d405_color]

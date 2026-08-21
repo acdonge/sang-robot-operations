@@ -1,0 +1,33 @@
+schema_version: "0.1"
+
+arms: []
+
+cameras:
+  - key: welding_view
+    device: /dev/camera-otos
+    topic: /rb5_lab1_eval_01/camera/welding_view/image_raw/compressed
+    width: 1920
+    height: 1080
+    fps: 30
+    fourcc: MJPG
+    fixed_fps: false
+    mjpg_passthrough: true
+    jpeg_quality: 90
+  - key: d455_color
+    device: /dev/camera-d455
+    topic: /rb5_lab1_eval_01/camera/d455_color/image_raw/compressed
+    width: 640
+    height: 480
+    fps: 30
+    fourcc: YUYV
+    fixed_fps: false
+    jpeg_quality: 85
+  - key: d405_color
+    device: /dev/camera-d405
+    topic: /rb5_lab1_eval_01/camera/d405_color/image_raw/compressed
+    width: 640
+    height: 480
+    fps: 30
+    fourcc: YUYV
+    fixed_fps: false
+    jpeg_quality: 85

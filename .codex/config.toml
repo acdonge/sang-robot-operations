@@ -1,0 +1,4 @@
+# Vendor-scene runners in this workspace need direct Isaac Sim scene inspection/control.
+# The full server definition and per-tool approval policy live in the user config.
+[mcp_servers.isaac_sim_control]
+enabled = true

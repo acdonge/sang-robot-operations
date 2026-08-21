@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>fleet_control_plane</name>
+  <version>0.1.0</version>
+  <description>Read-only central fleet registry and Admin Console.</description>
+  <maintainer email="kb083509@gmail.com">sa08050</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <exec_depend>python3-fastapi</exec_depend>
+  <exec_depend>python3-pydantic</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <exec_depend>robot_agent</exec_depend>
+  <exec_depend>sang_security</exec_depend>
+  <exec_depend>sang_opcua_gateway</exec_depend>
+  <exec_depend>python3-uvicorn</exec_depend>
+
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

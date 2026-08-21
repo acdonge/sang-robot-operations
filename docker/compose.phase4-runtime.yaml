@@ -1,0 +1,125 @@
+services:
+  agent:
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    user: "${SANG_UID:-1000}:${SANG_GID:-1000}"
+    init: true
+    network_mode: host
+    ipc: host
+    restart: unless-stopped
+    working_dir: /ws
+    environment:
+      HOME: /var/lib/sang
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:?set ROS_DOMAIN_ID}
+      ROS_AUTOMATIC_DISCOVERY_RANGE: ${ROS_AUTOMATIC_DISCOVERY_RANGE:-LOCALHOST}
+      RMW_IMPLEMENTATION: ${RMW_IMPLEMENTATION:-rmw_fastrtps_cpp}
+      FASTDDS_BUILTIN_TRANSPORTS: ${FASTDDS_BUILTIN_TRANSPORTS:-UDPv4}
+      PYTHONPATH: /ws/src/sang_security:/ws/src/fleet_control_plane:/ws/src/robot_agent:/ws/src/sang_opcua_gateway
+    volumes:
+      - ${SANG_WORKSPACE:?set SANG_WORKSPACE}:/ws:ro
+      - ${SANG_AGENT_DATA:?set SANG_AGENT_DATA}:/var/lib/sang
+      - ${SANG_EDGE_SECRETS:?set SANG_EDGE_SECRETS}:/run/secrets/sang:ro
+    command:
+      - python3
+      - -m
+      - robot_agent.node
+      - --manifest
+      - ${SANG_MANIFEST:?set SANG_MANIFEST}
+      - --mapping
+      - ${SANG_MAPPING:?set SANG_MAPPING}
+      - --agent-id
+      - ${SANG_AGENT_ID:?set SANG_AGENT_ID}
+      - --agent-name
+      - ${SANG_AGENT_NAME:?set SANG_AGENT_NAME}
+      - --control-plane-url
+      - ${CENTRAL_INGRESS_URL:?set CENTRAL_INGRESS_URL}
+      - --storage-path
+      - /var/lib/sang
+      - --interval-s
+      - ${HEARTBEAT_INTERVAL_S:-1}
+      - --timeout-s
+      - ${HEARTBEAT_TIMEOUT_S:-2}
+      - --startup-grace-s
+      - ${STARTUP_GRACE_S:-3}
+      - --preview-host
+      - 127.0.0.1
+      - --preview-port
+      - ${EDGE_PREVIEW_PORT:?set EDGE_PREVIEW_PORT}
+      - --preview-public-base-url
+      - http://127.0.0.1:${EDGE_PREVIEW_PORT:?set EDGE_PREVIEW_PORT}
+      - --suppress-preview-advertisement
+      - --heartbeat-security-mode
+      - mtls
+      - --heartbeat-schema-version
+      - "3"
+      - --secret-root
+      - /run/secrets/sang
+      - --tls-ca-bundle-ref
+      - secret://https/trust/ca-crl.pem
+      - --tls-client-certificate-ref
+      - secret://https/client/chain.pem
+      - --tls-client-private-key-ref
+      - secret://https/client/key.pem
+      - --local-health-key-ref
+      - secret://local/health-hmac.key
+      - --local-health-key-id
+      - ${LOCAL_HEALTH_KEY_ID:?set LOCAL_HEALTH_KEY_ID}
+
+  opcua-gateway:
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    user: "${SANG_UID:-1000}:${SANG_GID:-1000}"
+    init: true
+    network_mode: host
+    ipc: host
+    restart: unless-stopped
+    working_dir: /ws
+    environment:
+      HOME: /var/lib/sang
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:?set ROS_DOMAIN_ID}
+      ROS_AUTOMATIC_DISCOVERY_RANGE: ${ROS_AUTOMATIC_DISCOVERY_RANGE:-LOCALHOST}
+      RMW_IMPLEMENTATION: ${RMW_IMPLEMENTATION:-rmw_fastrtps_cpp}
+      FASTDDS_BUILTIN_TRANSPORTS: ${FASTDDS_BUILTIN_TRANSPORTS:-UDPv4}
+      PYTHONPATH: /ws/src/sang_security:/ws/src/fleet_control_plane:/ws/src/robot_agent:/ws/src/sang_opcua_gateway
+    volumes:
+      - ${SANG_WORKSPACE:?set SANG_WORKSPACE}:/ws:ro
+      - ${SANG_AGENT_DATA:?set SANG_AGENT_DATA}:/var/lib/sang
+      - ${SANG_EDGE_SECRETS:?set SANG_EDGE_SECRETS}:/run/secrets/sang:ro
+    command:
+      - python3
+      - -m
+      - sang_opcua_gateway.node
+      - --manifest
+      - ${SANG_MANIFEST:?set SANG_MANIFEST}
+      - --mapping
+      - ${SANG_MAPPING:?set SANG_MAPPING}
+      - --model-contract
+      - /ws/contracts/opcua/model-contract.yaml
+      - --status-codes
+      - /ws/contracts/opcua/status-code-mapping.yaml
+      - --nodeset
+      - /ws/contracts/opcua/SANG.NodeSet2.xml
+      - --agent-id
+      - ${SANG_AGENT_ID:?set SANG_AGENT_ID}
+      - --endpoint
+      - ${EDGE_OPCUA_ENDPOINT:?set EDGE_OPCUA_ENDPOINT}
+      - --preview-base-url
+      - http://127.0.0.1:${EDGE_PREVIEW_PORT:?set EDGE_PREVIEW_PORT}
+      - --security-mode
+      - sign-and-encrypt
+      - --secret-root
+      - /run/secrets/sang
+      - --server-certificate-ref
+      - secret://opcua/server/cert.pem
+      - --server-private-key-ref
+      - secret://opcua/server/key.pem
+      - --client-trust-directory-ref
+      - secret://opcua/trust/clients
+      - --client-crl-directory-ref
+      - secret://opcua/crl
+      - --authorized-user-certificate-ref
+      - secret://opcua/users/central-shadow.pem
+      - --local-health-key-ref
+      - secret://local/health-hmac.key
+      - --local-health-key-id
+      - ${LOCAL_HEALTH_KEY_ID:?set LOCAL_HEALTH_KEY_ID}
+      - --local-health-replay-db
+      - ${LOCAL_HEALTH_REPLAY_DB:-/var/lib/sang/local-health-replay.db}

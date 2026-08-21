@@ -1,0 +1,276 @@
+services:
+  rb5-net:
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    init: true
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+    environment:
+      RB5_INTERFACE: ${RB5_INTERFACE:-eth0}
+      RB5_HOST_CIDR: ${RB5_HOST_CIDR:-10.0.2.100/24}
+    command:
+      - bash
+      - -lc
+      - |
+        set -euo pipefail
+        cleanup() {
+          ip address del "$${RB5_HOST_CIDR}" dev "$${RB5_INTERFACE}" 2>/dev/null || true
+        }
+        trap cleanup EXIT INT TERM
+        ip address replace "$${RB5_HOST_CIDR}" dev "$${RB5_INTERFACE}"
+        while sleep 3600; do :; done
+
+  rb5-state:
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    user: "${SANG_UID:-1000}:${SANG_GID:-1000}"
+    init: true
+    network_mode: host
+    ipc: host
+    restart: unless-stopped
+    depends_on:
+      - rb5-net
+    working_dir: /ws
+    environment:
+      HOME: /tmp
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-42}
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      PYTHONPATH: /ws/src/rb5_readonly_adapter
+    volumes:
+      - ${SANG_WORKSPACE:?set SANG_WORKSPACE}:/ws:ro
+    command:
+      - python3
+      - -m
+      - rb5_readonly_adapter.node
+      - --robot-ip
+      - ${RB5_ROBOT_IP:-10.0.2.7}
+      - --data-port
+      - ${RB5_DATA_PORT:-5001}
+      - --topic
+      - /rbpodo/joint_states
+      - --publish-hz
+      - "30"
+      - --reconnect-s
+      - "0.25"
+
+  camera-otos:
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    user: "${SANG_UID:-1000}:${SANG_GID:-1000}"
+    group_add:
+      - "${SANG_VIDEO_GID:-44}"
+    init: true
+    network_mode: host
+    ipc: host
+    restart: unless-stopped
+    working_dir: /ws
+    environment:
+      HOME: /tmp
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-42}
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      PYTHONPATH: /ws/src/so101_readonly_adapter
+    volumes:
+      - ${SANG_WORKSPACE:?set SANG_WORKSPACE}:/ws:ro
+    devices:
+      - ${OTOS_DEVICE:?set OTOS_DEVICE}:/dev/camera-otos
+    command:
+      - python3
+      - -m
+      - so101_readonly_adapter.camera_node
+      - --config
+      - /ws/config/rb5_lab1_cameras.yaml
+      - --reconnect-s
+      - "0.25"
+      - --camera
+      - welding_view
+
+  camera-d455:
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    user: "${SANG_UID:-1000}:${SANG_GID:-1000}"
+    group_add:
+      - "${SANG_VIDEO_GID:-44}"
+    init: true
+    network_mode: host
+    ipc: host
+    restart: unless-stopped
+    working_dir: /ws
+    environment:
+      HOME: /tmp
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-42}
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      PYTHONPATH: /ws/src/so101_readonly_adapter
+    volumes:
+      - ${SANG_WORKSPACE:?set SANG_WORKSPACE}:/ws:ro
+    devices:
+      - ${D455_COLOR_DEVICE:?set D455_COLOR_DEVICE}:/dev/camera-d455
+    command:
+      - python3
+      - -m
+      - so101_readonly_adapter.camera_node
+      - --config
+      - /ws/config/rb5_lab1_cameras.yaml
+      - --reconnect-s
+      - "0.25"
+      - --camera
+      - d455_color
+
+  camera-d405:
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    user: "${SANG_UID:-1000}:${SANG_GID:-1000}"
+    group_add:
+      - "${SANG_VIDEO_GID:-44}"
+    init: true
+    network_mode: host
+    ipc: host
+    restart: unless-stopped
+    working_dir: /ws
+    environment:
+      HOME: /tmp
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-42}
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      PYTHONPATH: /ws/src/so101_readonly_adapter
+    volumes:
+      - ${SANG_WORKSPACE:?set SANG_WORKSPACE}:/ws:ro
+    devices:
+      - ${D405_COLOR_DEVICE:?set D405_COLOR_DEVICE}:/dev/camera-d405
+    command:
+      - python3
+      - -m
+      - so101_readonly_adapter.camera_node
+      - --config
+      - /ws/config/rb5_lab1_cameras.yaml
+      - --reconnect-s
+      - "0.25"
+      - --camera
+      - d405_color
+
+  sync-probe:
+    profiles: [sync-probe]
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    user: "${SANG_UID:-1000}:${SANG_GID:-1000}"
+    init: true
+    network_mode: host
+    ipc: host
+    working_dir: /ws
+    environment:
+      HOME: /tmp
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-42}
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      PYTHONPATH: /ws/src/robot_agent
+    volumes:
+      - ${SANG_WORKSPACE:?set SANG_WORKSPACE}:/ws:ro
+      - ${SANG_EDGE_DATA:?set SANG_EDGE_DATA}:/var/lib/sang
+    command:
+      - python3
+      - -m
+      - robot_agent.sync_probe
+      - --joint-topic
+      - /rbpodo/joint_states
+      - --camera
+      - d455_color=/rb5_lab1_eval_01/camera/d455_color/image_raw/compressed
+      - --camera
+      - d405_color=/rb5_lab1_eval_01/camera/d405_color/image_raw/compressed
+      - --duration-s
+      - ${SYNC_PROBE_DURATION_S:-600}
+      - --output-dir
+      - /var/lib/sang/sync-probes
+      - --minimum-joint-rate-hz
+      - "20"
+      - --minimum-camera-rate-hz
+      - "25"
+      - --max-gap-ms
+      - "250"
+      - --max-p95-skew-ms
+      - "50"
+      - --max-skew-ms
+      - "150"
+      - --minimum-moving-samples
+      - ${SYNC_PROBE_MIN_MOVING_SAMPLES:-0}
+
+  capture:
+    profiles: [capture]
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    user: "${SANG_UID:-1000}:${SANG_GID:-1000}"
+    init: true
+    network_mode: host
+    ipc: host
+    working_dir: /ws
+    environment:
+      HOME: /tmp
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-42}
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      PYTHONPATH: /ws/src/sang_mcap_recorder
+    volumes:
+      - ${SANG_WORKSPACE:?set SANG_WORKSPACE}:/ws:ro
+      - ${SANG_EDGE_DATA:?set SANG_EDGE_DATA}:/var/lib/sang
+    command:
+      - python3
+      - -m
+      - sang_mcap_recorder.cli
+      - --profile
+      - /ws/config/rb5_lab1_capture.yaml
+      - --capture-root
+      - /var/lib/sang/captures
+      - --duration-s
+      - ${CAPTURE_DURATION_S:-600}
+
+  agent:
+    profiles: [central]
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    user: "${SANG_UID:-1000}:${SANG_GID:-1000}"
+    init: true
+    network_mode: host
+    ipc: host
+    restart: unless-stopped
+    working_dir: /ws
+    environment:
+      HOME: /var/lib/sang
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-42}
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      PYTHONPATH: /ws/src/sang_security:/ws/src/fleet_control_plane:/ws/src/robot_agent
+    volumes:
+      - ${SANG_WORKSPACE:?set SANG_WORKSPACE}:/ws:ro
+      - ${SANG_EDGE_DATA:?set SANG_EDGE_DATA}:/var/lib/sang
+      - type: bind
+        source: ${SANG_EDGE_DATA:?set SANG_EDGE_DATA}/captures
+        target: /var/lib/sang/captures
+        read_only: true
+        bind:
+          create_host_path: false
+      - ${SANG_EDGE_SECRETS:?set SANG_EDGE_SECRETS}:/run/secrets/sang:ro
+    command:
+      - python3
+      - -m
+      - robot_agent.node
+      - --manifest
+      - /ws/manifests/rb5_lab1_eval_01.yaml
+      - --agent-id
+      - ${SANG_AGENT_ID:?set SANG_AGENT_ID}
+      - --agent-name
+      - Lab1 RB5 Processing Edge
+      - --control-plane-url
+      - ${CENTRAL_INGRESS_URL:?set CENTRAL_INGRESS_URL}
+      - --storage-path
+      - /var/lib/sang
+      - --capture-root
+      - /var/lib/sang/captures
+      - --preview-host
+      - 127.0.0.1
+      - --preview-port
+      - ${EDGE_PREVIEW_PORT:-8101}
+      - --preview-public-base-url
+      - http://127.0.0.1:${EDGE_PREVIEW_PORT:-8101}
+      - --suppress-preview-advertisement
+      - --heartbeat-security-mode
+      - mtls
+      - --secret-root
+      - /run/secrets/sang
+      - --tls-ca-bundle-ref
+      - secret://https/trust/ca-crl.pem
+      - --tls-client-certificate-ref
+      - secret://https/client/chain.pem
+      - --tls-client-private-key-ref
+      - secret://https/client/key.pem
+      - --local-health-key-ref
+      - secret://local/health-hmac.key
+      - --local-health-key-id
+      - ${LOCAL_HEALTH_KEY_ID:?set LOCAL_HEALTH_KEY_ID}

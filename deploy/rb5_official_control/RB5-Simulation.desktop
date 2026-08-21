@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=RB5 Safe Simulation
+Comment=Official Rainbow Robotics MoveIt with fake hardware
+Exec=/home/lab1/bin/rb5-control/start_simulation.sh
+Icon=applications-engineering
+Terminal=true
+Categories=Development;Robotics;
+StartupNotify=true

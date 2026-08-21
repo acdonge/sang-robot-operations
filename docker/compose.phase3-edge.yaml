@@ -1,0 +1,192 @@
+services:
+  fake-so101:
+    profiles: [fake]
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    user: "${SANG_UID:-1000}:${SANG_GID:-1000}"
+    init: true
+    network_mode: host
+    ipc: host
+    restart: unless-stopped
+    working_dir: /ws
+    environment:
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-42}
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      PYTHONPATH: /ws/src/so101_readonly_adapter
+    volumes:
+      - ${SANG_WORKSPACE:?set SANG_WORKSPACE}:/ws:ro
+    command:
+      - python3
+      - /ws/scripts/fake_so101_sources.py
+      - --config
+      - /ws/config/bi_so101_hardware.yaml
+      - --publish-hz
+      - "30"
+
+  arm-reader:
+    profiles: [physical]
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    user: "${SANG_UID:-1000}:${SANG_GID:-1000}"
+    group_add:
+      - "${SANG_DIALOUT_GID:-20}"
+    init: true
+    network_mode: host
+    ipc: host
+    restart: unless-stopped
+    working_dir: /ws
+    environment:
+      HOME: /tmp
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-42}
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      PYTHONPATH: /ws/src/so101_readonly_adapter
+    volumes:
+      - ${SANG_WORKSPACE:?set SANG_WORKSPACE}:/ws:ro
+      - /dev:/dev
+    device_cgroup_rules:
+      - "c 166:* rmw"
+    command:
+      - python3
+      - -m
+      - so101_readonly_adapter.arm_node
+      - --config
+      - /ws/config/bi_so101_hardware.yaml
+
+  camera-reader:
+    profiles: [physical]
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    user: "${SANG_UID:-1000}:${SANG_GID:-1000}"
+    group_add:
+      - "${SANG_VIDEO_GID:-44}"
+    init: true
+    network_mode: host
+    ipc: host
+    restart: unless-stopped
+    working_dir: /ws
+    environment:
+      HOME: /tmp
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-42}
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      PYTHONPATH: /ws/src/so101_readonly_adapter
+    volumes:
+      - ${SANG_WORKSPACE:?set SANG_WORKSPACE}:/ws:ro
+      - /dev:/dev
+    device_cgroup_rules:
+      - "c 81:* rmw"
+    command:
+      - python3
+      - -m
+      - so101_readonly_adapter.camera_node
+      - --config
+      - /ws/config/bi_so101_hardware.yaml
+
+  agent:
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    user: "${SANG_UID:-1000}:${SANG_GID:-1000}"
+    init: true
+    network_mode: host
+    ipc: host
+    restart: unless-stopped
+    working_dir: /ws
+    environment:
+      HOME: /var/lib/sang
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-42}
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      PYTHONPATH: /ws/src/sang_security:/ws/src/fleet_control_plane:/ws/src/robot_agent:/ws/src/sang_opcua_gateway
+    volumes:
+      - ${SANG_WORKSPACE:?set SANG_WORKSPACE}:/ws:ro
+      - ${SANG_EDGE_DATA:?set SANG_EDGE_DATA}:/var/lib/sang
+      - ${SANG_EDGE_SECRETS:?set SANG_EDGE_SECRETS}:/run/secrets/sang:ro
+    command:
+      - python3
+      - -m
+      - robot_agent.node
+      - --manifest
+      - /ws/manifests/bi_so101_01.yaml
+      - --mapping
+      - /ws/contracts/opcua/bi_so101_01.mapping.v2.yaml
+      - --agent-id
+      - ${SANG_AGENT_ID:-workcell-soarm-01}
+      - --agent-name
+      - ${SANG_AGENT_NAME:-SO-ARM Edge Laptop}
+      - --control-plane-url
+      - ${CENTRAL_INGRESS_URL:?set CENTRAL_INGRESS_URL}
+      - --storage-path
+      - /var/lib/sang
+      - --preview-host
+      - 127.0.0.1
+      - --preview-port
+      - ${EDGE_PREVIEW_PORT:-8101}
+      - --preview-public-base-url
+      - http://127.0.0.1:${EDGE_PREVIEW_PORT:-8101}
+      - --suppress-preview-advertisement
+      - --heartbeat-security-mode
+      - mtls
+      - --secret-root
+      - /run/secrets/sang
+      - --tls-ca-bundle-ref
+      - secret://https/trust/ca-crl.pem
+      - --tls-client-certificate-ref
+      - secret://https/client/chain.pem
+      - --tls-client-private-key-ref
+      - secret://https/client/key.pem
+      - --local-health-key-ref
+      - secret://local/health-hmac.key
+      - --local-health-key-id
+      - ${LOCAL_HEALTH_KEY_ID:?set LOCAL_HEALTH_KEY_ID}
+
+  opcua-gateway:
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    user: "${SANG_UID:-1000}:${SANG_GID:-1000}"
+    init: true
+    network_mode: host
+    ipc: host
+    restart: unless-stopped
+    working_dir: /ws
+    environment:
+      HOME: /var/lib/sang
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-42}
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      PYTHONPATH: /ws/src/sang_security:/ws/src/fleet_control_plane:/ws/src/robot_agent:/ws/src/sang_opcua_gateway
+    volumes:
+      - ${SANG_WORKSPACE:?set SANG_WORKSPACE}:/ws:ro
+      - ${SANG_EDGE_DATA:?set SANG_EDGE_DATA}:/var/lib/sang
+      - ${SANG_EDGE_SECRETS:?set SANG_EDGE_SECRETS}:/run/secrets/sang:ro
+    command:
+      - python3
+      - -m
+      - sang_opcua_gateway.node
+      - --manifest
+      - /ws/manifests/bi_so101_01.yaml
+      - --mapping
+      - /ws/contracts/opcua/bi_so101_01.mapping.v2.yaml
+      - --model-contract
+      - /ws/contracts/opcua/model-contract.yaml
+      - --status-codes
+      - /ws/contracts/opcua/status-code-mapping.yaml
+      - --nodeset
+      - /ws/contracts/opcua/SANG.NodeSet2.xml
+      - --agent-id
+      - ${SANG_AGENT_ID:-workcell-soarm-01}
+      - --endpoint
+      - ${EDGE_OPCUA_ENDPOINT:?set EDGE_OPCUA_ENDPOINT}
+      - --preview-base-url
+      - http://127.0.0.1:${EDGE_PREVIEW_PORT:-8101}
+      - --security-mode
+      - sign-and-encrypt
+      - --secret-root
+      - /run/secrets/sang
+      - --server-certificate-ref
+      - secret://opcua/server/cert.pem
+      - --server-private-key-ref
+      - secret://opcua/server/key.pem
+      - --client-trust-directory-ref
+      - secret://opcua/trust/clients
+      - --client-crl-directory-ref
+      - secret://opcua/crl
+      - --authorized-user-certificate-ref
+      - secret://opcua/users/central-shadow.pem
+      - --local-health-key-ref
+      - secret://local/health-hmac.key
+      - --local-health-key-id
+      - ${LOCAL_HEALTH_KEY_ID:?set LOCAL_HEALTH_KEY_ID}
+      - --local-health-replay-db
+      - /var/lib/sang/local-health-replay.db

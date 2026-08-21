@@ -1,0 +1,15 @@
+uint8 PROTOCOL_VERSION=1
+
+std_msgs/Header header
+uint8 protocol_version
+uint32 sequence
+
+geometry_msgs/PoseStamped left_target
+geometry_msgs/PoseStamped right_target
+float32 left_gripper
+float32 right_gripper
+bool left_enabled
+bool right_enabled
+bool bimanual_enabled
+string left_inhibit_reason
+string right_inhibit_reason

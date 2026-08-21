@@ -1,0 +1,17 @@
+/rbpodo/joint_states:
+  history: keep_last
+  depth: 100
+  reliability: best_effort
+  durability: volatile
+
+/rb5_lab1_eval_01/camera/d405_color/image_raw/compressed:
+  history: keep_last
+  depth: 100
+  reliability: best_effort
+  durability: volatile
+
+/rb5_lab1_eval_01/camera/d455_color/image_raw/compressed:
+  history: keep_last
+  depth: 100
+  reliability: best_effort
+  durability: volatile

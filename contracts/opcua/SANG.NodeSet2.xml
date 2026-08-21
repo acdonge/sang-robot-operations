@@ -1,0 +1,444 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+SPDX-License-Identifier: Apache-2.0
+SANG read-only observation information model.
+-->
+<UANodeSet
+  xmlns="http://opcfoundation.org/UA/2011/03/UANodeSet.xsd"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:uax="http://opcfoundation.org/UA/2008/02/Types.xsd"
+  LastModified="2026-08-04T00:00:00Z">
+  <NamespaceUris>
+    <Uri>urn:sang:fleet:model:1</Uri>
+  </NamespaceUris>
+  <Models>
+    <Model
+      ModelUri="urn:sang:fleet:model:1"
+      Version="1.0.0"
+      ModelVersion="1.0.0"
+      PublicationDate="2026-08-04T00:00:00Z">
+      <RequiredModel
+        ModelUri="http://opcfoundation.org/UA/"
+        Version="1.05.07"
+        ModelVersion="1.5.7"
+        PublicationDate="2026-05-01T00:00:00Z" />
+    </Model>
+  </Models>
+  <Aliases>
+    <Alias Alias="Boolean">i=1</Alias>
+    <Alias Alias="UInt32">i=7</Alias>
+    <Alias Alias="UInt64">i=9</Alias>
+    <Alias Alias="Float">i=10</Alias>
+    <Alias Alias="Double">i=11</Alias>
+    <Alias Alias="String">i=12</Alias>
+    <Alias Alias="DateTime">i=13</Alias>
+    <Alias Alias="IdType">i=256</Alias>
+    <Alias Alias="NumericRange">i=291</Alias>
+    <Alias Alias="HasProperty">i=46</Alias>
+    <Alias Alias="HasComponent">i=47</Alias>
+    <Alias Alias="HasSubtype">i=45</Alias>
+    <Alias Alias="HasTypeDefinition">i=40</Alias>
+    <Alias Alias="HasModellingRule">i=37</Alias>
+  </Aliases>
+
+  <UAObjectType NodeId="ns=1;s=type/SangRobotObservationType" BrowseName="1:SangRobotObservationType">
+    <DisplayName>SangRobotObservationType</DisplayName>
+    <Description>Read-only projection root for one manifest-defined robot observation.</Description>
+    <References>
+      <Reference ReferenceType="HasSubtype" IsForward="false">i=58</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;s=type/SangRobotObservationType/Model</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;s=type/SangRobotObservationType/RealOrSim</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;s=type/SangRobotObservationType/ManifestSchemaVersion</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;s=type/SangRobotObservationType/FsmState</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;s=type/SangRobotObservationType/Phase</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;s=type/SangRobotObservationType/SourcesFresh</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;s=type/SangRobotObservationType/RatesOk</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;s=type/SangRobotObservationType/Fault</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;s=type/SangRobotObservationType/Sources</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;s=type/SangRobotObservationType/Clock</Reference>
+    </References>
+  </UAObjectType>
+  <UAVariable NodeId="ns=1;s=type/SangRobotObservationType/Model" BrowseName="1:Model" ParentNodeId="ns=1;s=type/SangRobotObservationType" DataType="String" AccessLevel="1" UserAccessLevel="1">
+    <DisplayName>Model</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+    </References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangRobotObservationType/RealOrSim" BrowseName="1:RealOrSim" ParentNodeId="ns=1;s=type/SangRobotObservationType" DataType="String" AccessLevel="1" UserAccessLevel="1">
+    <DisplayName>RealOrSim</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+    </References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangRobotObservationType/ManifestSchemaVersion" BrowseName="1:ManifestSchemaVersion" ParentNodeId="ns=1;s=type/SangRobotObservationType" DataType="String" AccessLevel="1" UserAccessLevel="1">
+    <DisplayName>ManifestSchemaVersion</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+    </References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangRobotObservationType/FsmState" BrowseName="1:FsmState" ParentNodeId="ns=1;s=type/SangRobotObservationType" DataType="String" AccessLevel="1" UserAccessLevel="1" MinimumSamplingInterval="1000">
+    <DisplayName>FsmState</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+    </References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangRobotObservationType/Phase" BrowseName="1:Phase" ParentNodeId="ns=1;s=type/SangRobotObservationType" DataType="String" AccessLevel="1" UserAccessLevel="1" MinimumSamplingInterval="1000">
+    <DisplayName>Phase</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+    </References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangRobotObservationType/SourcesFresh" BrowseName="1:SourcesFresh" ParentNodeId="ns=1;s=type/SangRobotObservationType" DataType="Boolean" AccessLevel="1" UserAccessLevel="1" MinimumSamplingInterval="1000">
+    <DisplayName>SourcesFresh</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+    </References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangRobotObservationType/RatesOk" BrowseName="1:RatesOk" ParentNodeId="ns=1;s=type/SangRobotObservationType" DataType="Boolean" AccessLevel="1" UserAccessLevel="1" MinimumSamplingInterval="1000">
+    <DisplayName>RatesOk</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+    </References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangRobotObservationType/Fault" BrowseName="1:Fault" ParentNodeId="ns=1;s=type/SangRobotObservationType" DataType="String" AccessLevel="1" UserAccessLevel="1" MinimumSamplingInterval="1000">
+    <DisplayName>Fault</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+      <Reference ReferenceType="HasModellingRule">i=80</Reference>
+    </References>
+  </UAVariable>
+  <UAObject NodeId="ns=1;s=type/SangRobotObservationType/Sources" BrowseName="1:Sources" ParentNodeId="ns=1;s=type/SangRobotObservationType">
+    <DisplayName>Sources</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=61</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+    </References>
+  </UAObject>
+  <UAObject NodeId="ns=1;s=type/SangRobotObservationType/Clock" BrowseName="1:Clock" ParentNodeId="ns=1;s=type/SangRobotObservationType">
+    <DisplayName>Clock</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">ns=1;s=type/SangClockStatusType</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+    </References>
+  </UAObject>
+
+  <UAObjectType NodeId="ns=1;s=type/SangSourceHealthType" BrowseName="1:SangSourceHealthType">
+    <DisplayName>SangSourceHealthType</DisplayName>
+    <Description>Aggregate health for one manifest source.</Description>
+    <References>
+      <Reference ReferenceType="HasSubtype" IsForward="false">i=58</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;s=type/SangSourceHealthType/Required</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;s=type/SangSourceHealthType/FreshnessMs</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;s=type/SangSourceHealthType/Fresh</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;s=type/SangSourceHealthType/RateOk</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;s=type/SangSourceHealthType/Topics</Reference>
+    </References>
+  </UAObjectType>
+  <UAVariable NodeId="ns=1;s=type/SangSourceHealthType/Required" BrowseName="1:Required" ParentNodeId="ns=1;s=type/SangSourceHealthType" DataType="Boolean" AccessLevel="1" UserAccessLevel="1">
+    <DisplayName>Required</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+    </References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangSourceHealthType/FreshnessMs" BrowseName="1:FreshnessMs" ParentNodeId="ns=1;s=type/SangSourceHealthType" DataType="UInt32" AccessLevel="1" UserAccessLevel="1">
+    <DisplayName>FreshnessMs</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+    </References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangSourceHealthType/Fresh" BrowseName="1:Fresh" ParentNodeId="ns=1;s=type/SangSourceHealthType" DataType="Boolean" AccessLevel="1" UserAccessLevel="1" MinimumSamplingInterval="500">
+    <DisplayName>Fresh</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+    </References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangSourceHealthType/RateOk" BrowseName="1:RateOk" ParentNodeId="ns=1;s=type/SangSourceHealthType" DataType="Boolean" AccessLevel="1" UserAccessLevel="1" MinimumSamplingInterval="500">
+    <DisplayName>RateOk</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+    </References>
+  </UAVariable>
+  <UAObject NodeId="ns=1;s=type/SangSourceHealthType/Topics" BrowseName="1:Topics" ParentNodeId="ns=1;s=type/SangSourceHealthType">
+    <DisplayName>Topics</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=61</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+    </References>
+  </UAObject>
+
+  <UAObjectType NodeId="ns=1;s=type/SangTopicHealthType" BrowseName="1:SangTopicHealthType">
+    <DisplayName>SangTopicHealthType</DisplayName>
+    <Description>Health for one ROS topic within a manifest source.</Description>
+    <References>
+      <Reference ReferenceType="HasSubtype" IsForward="false">i=58</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;s=type/SangTopicHealthType/Topic</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;s=type/SangTopicHealthType/MinimumRateHz</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;s=type/SangTopicHealthType/AgeMs</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;s=type/SangTopicHealthType/RateHz</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;s=type/SangTopicHealthType/RateOk</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;s=type/SangTopicHealthType/Sequence</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;s=type/SangTopicHealthType/Fresh</Reference>
+    </References>
+  </UAObjectType>
+  <UAVariable NodeId="ns=1;s=type/SangTopicHealthType/Topic" BrowseName="1:Topic" ParentNodeId="ns=1;s=type/SangTopicHealthType" DataType="String" AccessLevel="1" UserAccessLevel="1">
+    <DisplayName>Topic</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+    </References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangTopicHealthType/MinimumRateHz" BrowseName="1:MinimumRateHz" ParentNodeId="ns=1;s=type/SangTopicHealthType" DataType="Double" AccessLevel="1" UserAccessLevel="1">
+    <DisplayName>MinimumRateHz</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+    </References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangTopicHealthType/AgeMs" BrowseName="1:AgeMs" ParentNodeId="ns=1;s=type/SangTopicHealthType" DataType="Double" AccessLevel="1" UserAccessLevel="1" MinimumSamplingInterval="500">
+    <DisplayName>AgeMs</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+    </References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangTopicHealthType/RateHz" BrowseName="1:RateHz" ParentNodeId="ns=1;s=type/SangTopicHealthType" DataType="Double" AccessLevel="1" UserAccessLevel="1" MinimumSamplingInterval="500">
+    <DisplayName>RateHz</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+    </References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangTopicHealthType/RateOk" BrowseName="1:RateOk" ParentNodeId="ns=1;s=type/SangTopicHealthType" DataType="Boolean" AccessLevel="1" UserAccessLevel="1" MinimumSamplingInterval="500">
+    <DisplayName>RateOk</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+    </References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangTopicHealthType/Sequence" BrowseName="1:Sequence" ParentNodeId="ns=1;s=type/SangTopicHealthType" DataType="UInt64" AccessLevel="1" UserAccessLevel="1" MinimumSamplingInterval="500">
+    <DisplayName>Sequence</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+    </References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangTopicHealthType/Fresh" BrowseName="1:Fresh" ParentNodeId="ns=1;s=type/SangTopicHealthType" DataType="Boolean" AccessLevel="1" UserAccessLevel="1" MinimumSamplingInterval="500">
+    <DisplayName>Fresh</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+    </References>
+  </UAVariable>
+
+  <UAObjectType NodeId="ns=1;s=type/SangJointFeatureType" BrowseName="1:SangJointFeatureType">
+    <DisplayName>SangJointFeatureType</DisplayName>
+    <Description>One latest-value joint feature from a manifest state or observed action source.</Description>
+    <References>
+      <Reference ReferenceType="HasSubtype" IsForward="false">i=58</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;s=type/SangJointFeatureType/FeatureName</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;s=type/SangJointFeatureType/SourceKey</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;s=type/SangJointFeatureType/Topic</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;s=type/SangJointFeatureType/Semantic</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;s=type/SangJointFeatureType/Unit</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;s=type/SangJointFeatureType/Value</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;s=type/SangJointFeatureType/TimestampProvenance</Reference>
+    </References>
+  </UAObjectType>
+  <UAVariable NodeId="ns=1;s=type/SangJointFeatureType/FeatureName" BrowseName="1:FeatureName" ParentNodeId="ns=1;s=type/SangJointFeatureType" DataType="String" AccessLevel="1" UserAccessLevel="1">
+    <DisplayName>FeatureName</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+    </References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangJointFeatureType/SourceKey" BrowseName="1:SourceKey" ParentNodeId="ns=1;s=type/SangJointFeatureType" DataType="String" AccessLevel="1" UserAccessLevel="1">
+    <DisplayName>SourceKey</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+    </References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangJointFeatureType/Topic" BrowseName="1:Topic" ParentNodeId="ns=1;s=type/SangJointFeatureType" DataType="String" AccessLevel="1" UserAccessLevel="1">
+    <DisplayName>Topic</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+    </References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangJointFeatureType/Semantic" BrowseName="1:Semantic" ParentNodeId="ns=1;s=type/SangJointFeatureType" DataType="String" AccessLevel="1" UserAccessLevel="1">
+    <DisplayName>Semantic</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+    </References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangJointFeatureType/Unit" BrowseName="1:Unit" ParentNodeId="ns=1;s=type/SangJointFeatureType" DataType="String" AccessLevel="1" UserAccessLevel="1">
+    <DisplayName>Unit</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+    </References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangJointFeatureType/Value" BrowseName="1:Value" ParentNodeId="ns=1;s=type/SangJointFeatureType" DataType="Float" AccessLevel="1" UserAccessLevel="1" MinimumSamplingInterval="50">
+    <DisplayName>Value</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+    </References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangJointFeatureType/TimestampProvenance" BrowseName="1:TimestampProvenance" ParentNodeId="ns=1;s=type/SangJointFeatureType" DataType="String" AccessLevel="1" UserAccessLevel="1" MinimumSamplingInterval="50">
+    <DisplayName>TimestampProvenance</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+    </References>
+  </UAVariable>
+
+  <UAObjectType NodeId="ns=1;s=type/SangCameraSourceType" BrowseName="1:SangCameraSourceType">
+    <DisplayName>SangCameraSourceType</DisplayName>
+    <Description>Read-only camera metadata and stream reference without frame bytes.</Description>
+    <References>
+      <Reference ReferenceType="HasSubtype" IsForward="false">ns=1;s=type/SangSourceHealthType</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;s=type/SangCameraSourceType/SourceKey</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;s=type/SangCameraSourceType/Topic</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;s=type/SangCameraSourceType/MessageType</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;s=type/SangCameraSourceType/Encoding</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;s=type/SangCameraSourceType/Width</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;s=type/SangCameraSourceType/Height</Reference>
+      <Reference ReferenceType="HasProperty">ns=1;s=type/SangCameraSourceType/ConfiguredFps</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;s=type/SangCameraSourceType/LastSequence</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;s=type/SangCameraSourceType/StreamUri</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;s=type/SangCameraSourceType/TimestampProvenance</Reference>
+    </References>
+  </UAObjectType>
+  <UAVariable NodeId="ns=1;s=type/SangCameraSourceType/SourceKey" BrowseName="1:SourceKey" ParentNodeId="ns=1;s=type/SangCameraSourceType" DataType="String" AccessLevel="1" UserAccessLevel="1">
+    <DisplayName>SourceKey</DisplayName>
+    <References><Reference ReferenceType="HasTypeDefinition">i=68</Reference><Reference ReferenceType="HasModellingRule">i=78</Reference></References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangCameraSourceType/Topic" BrowseName="1:Topic" ParentNodeId="ns=1;s=type/SangCameraSourceType" DataType="String" AccessLevel="1" UserAccessLevel="1">
+    <DisplayName>Topic</DisplayName>
+    <References><Reference ReferenceType="HasTypeDefinition">i=68</Reference><Reference ReferenceType="HasModellingRule">i=78</Reference></References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangCameraSourceType/MessageType" BrowseName="1:MessageType" ParentNodeId="ns=1;s=type/SangCameraSourceType" DataType="String" AccessLevel="1" UserAccessLevel="1">
+    <DisplayName>MessageType</DisplayName>
+    <References><Reference ReferenceType="HasTypeDefinition">i=68</Reference><Reference ReferenceType="HasModellingRule">i=78</Reference></References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangCameraSourceType/Encoding" BrowseName="1:Encoding" ParentNodeId="ns=1;s=type/SangCameraSourceType" DataType="String" AccessLevel="1" UserAccessLevel="1">
+    <DisplayName>Encoding</DisplayName>
+    <References><Reference ReferenceType="HasTypeDefinition">i=68</Reference><Reference ReferenceType="HasModellingRule">i=78</Reference></References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangCameraSourceType/Width" BrowseName="1:Width" ParentNodeId="ns=1;s=type/SangCameraSourceType" DataType="UInt32" AccessLevel="1" UserAccessLevel="1">
+    <DisplayName>Width</DisplayName>
+    <References><Reference ReferenceType="HasTypeDefinition">i=68</Reference><Reference ReferenceType="HasModellingRule">i=78</Reference></References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangCameraSourceType/Height" BrowseName="1:Height" ParentNodeId="ns=1;s=type/SangCameraSourceType" DataType="UInt32" AccessLevel="1" UserAccessLevel="1">
+    <DisplayName>Height</DisplayName>
+    <References><Reference ReferenceType="HasTypeDefinition">i=68</Reference><Reference ReferenceType="HasModellingRule">i=78</Reference></References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangCameraSourceType/ConfiguredFps" BrowseName="1:ConfiguredFps" ParentNodeId="ns=1;s=type/SangCameraSourceType" DataType="Double" AccessLevel="1" UserAccessLevel="1">
+    <DisplayName>ConfiguredFps</DisplayName>
+    <References><Reference ReferenceType="HasTypeDefinition">i=68</Reference><Reference ReferenceType="HasModellingRule">i=78</Reference></References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangCameraSourceType/LastSequence" BrowseName="1:LastSequence" ParentNodeId="ns=1;s=type/SangCameraSourceType" DataType="UInt64" AccessLevel="1" UserAccessLevel="1" MinimumSamplingInterval="500">
+    <DisplayName>LastSequence</DisplayName>
+    <References><Reference ReferenceType="HasTypeDefinition">i=63</Reference><Reference ReferenceType="HasModellingRule">i=78</Reference></References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangCameraSourceType/StreamUri" BrowseName="1:StreamUri" ParentNodeId="ns=1;s=type/SangCameraSourceType" DataType="String" AccessLevel="1" UserAccessLevel="1" MinimumSamplingInterval="500">
+    <DisplayName>StreamUri</DisplayName>
+    <References><Reference ReferenceType="HasTypeDefinition">i=63</Reference><Reference ReferenceType="HasModellingRule">i=80</Reference></References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangCameraSourceType/TimestampProvenance" BrowseName="1:TimestampProvenance" ParentNodeId="ns=1;s=type/SangCameraSourceType" DataType="String" AccessLevel="1" UserAccessLevel="1" MinimumSamplingInterval="500">
+    <DisplayName>TimestampProvenance</DisplayName>
+    <References><Reference ReferenceType="HasTypeDefinition">i=63</Reference><Reference ReferenceType="HasModellingRule">i=78</Reference></References>
+  </UAVariable>
+  <UAObjectType NodeId="ns=1;s=type/SangClockStatusType" BrowseName="1:SangClockStatusType">
+    <DisplayName>SangClockStatusType</DisplayName>
+    <Description>Read-only clock synchronization evidence for timestamp interpretation.</Description>
+    <References>
+      <Reference ReferenceType="HasSubtype" IsForward="false">i=58</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;s=type/SangClockStatusType/SyncSource</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;s=type/SangClockStatusType/State</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;s=type/SangClockStatusType/OffsetMs</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;s=type/SangClockStatusType/SkewPpm</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;s=type/SangClockStatusType/LastCheck</Reference>
+      <Reference ReferenceType="HasComponent">ns=1;s=type/SangClockStatusType/Quality</Reference>
+    </References>
+  </UAObjectType>
+  <UAVariable NodeId="ns=1;s=type/SangClockStatusType/SyncSource" BrowseName="1:SyncSource" ParentNodeId="ns=1;s=type/SangClockStatusType" DataType="String" AccessLevel="1" UserAccessLevel="1" MinimumSamplingInterval="1000">
+    <DisplayName>SyncSource</DisplayName>
+    <References><Reference ReferenceType="HasTypeDefinition">i=63</Reference><Reference ReferenceType="HasModellingRule">i=78</Reference></References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangClockStatusType/State" BrowseName="1:State" ParentNodeId="ns=1;s=type/SangClockStatusType" DataType="String" AccessLevel="1" UserAccessLevel="1" MinimumSamplingInterval="1000">
+    <DisplayName>State</DisplayName>
+    <References><Reference ReferenceType="HasTypeDefinition">i=63</Reference><Reference ReferenceType="HasModellingRule">i=78</Reference></References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangClockStatusType/OffsetMs" BrowseName="1:OffsetMs" ParentNodeId="ns=1;s=type/SangClockStatusType" DataType="Double" AccessLevel="1" UserAccessLevel="1" MinimumSamplingInterval="1000">
+    <DisplayName>OffsetMs</DisplayName>
+    <References><Reference ReferenceType="HasTypeDefinition">i=63</Reference><Reference ReferenceType="HasModellingRule">i=78</Reference></References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangClockStatusType/SkewPpm" BrowseName="1:SkewPpm" ParentNodeId="ns=1;s=type/SangClockStatusType" DataType="Double" AccessLevel="1" UserAccessLevel="1" MinimumSamplingInterval="1000">
+    <DisplayName>SkewPpm</DisplayName>
+    <References><Reference ReferenceType="HasTypeDefinition">i=63</Reference><Reference ReferenceType="HasModellingRule">i=78</Reference></References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangClockStatusType/LastCheck" BrowseName="1:LastCheck" ParentNodeId="ns=1;s=type/SangClockStatusType" DataType="DateTime" AccessLevel="1" UserAccessLevel="1" MinimumSamplingInterval="1000">
+    <DisplayName>LastCheck</DisplayName>
+    <References><Reference ReferenceType="HasTypeDefinition">i=63</Reference><Reference ReferenceType="HasModellingRule">i=78</Reference></References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=type/SangClockStatusType/Quality" BrowseName="1:Quality" ParentNodeId="ns=1;s=type/SangClockStatusType" DataType="String" AccessLevel="1" UserAccessLevel="1" MinimumSamplingInterval="1000">
+    <DisplayName>Quality</DisplayName>
+    <References><Reference ReferenceType="HasTypeDefinition">i=63</Reference><Reference ReferenceType="HasModellingRule">i=78</Reference></References>
+  </UAVariable>
+
+  <UAObject NodeId="ns=1;s=metadata/model" BrowseName="1:urn:sang:fleet:model:1" ParentNodeId="i=11715">
+    <DisplayName>urn:sang:fleet:model:1</DisplayName>
+    <References>
+      <Reference ReferenceType="HasComponent" IsForward="false">i=11715</Reference>
+      <Reference ReferenceType="HasTypeDefinition">i=11616</Reference>
+    </References>
+  </UAObject>
+  <UAVariable NodeId="ns=1;s=metadata/model/NamespaceUri" BrowseName="NamespaceUri" ParentNodeId="ns=1;s=metadata/model" DataType="String" AccessLevel="1" UserAccessLevel="1">
+    <DisplayName>NamespaceUri</DisplayName>
+    <References><Reference ReferenceType="HasProperty" IsForward="false">ns=1;s=metadata/model</Reference><Reference ReferenceType="HasTypeDefinition">i=68</Reference></References>
+    <Value><uax:String>urn:sang:fleet:model:1</uax:String></Value>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=metadata/model/NamespaceVersion" BrowseName="NamespaceVersion" ParentNodeId="ns=1;s=metadata/model" DataType="String" AccessLevel="1" UserAccessLevel="1">
+    <DisplayName>NamespaceVersion</DisplayName>
+    <References><Reference ReferenceType="HasProperty" IsForward="false">ns=1;s=metadata/model</Reference><Reference ReferenceType="HasTypeDefinition">i=68</Reference></References>
+    <Value><uax:String>1.0.0</uax:String></Value>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=metadata/model/NamespacePublicationDate" BrowseName="NamespacePublicationDate" ParentNodeId="ns=1;s=metadata/model" DataType="DateTime" AccessLevel="1" UserAccessLevel="1">
+    <DisplayName>NamespacePublicationDate</DisplayName>
+    <References><Reference ReferenceType="HasProperty" IsForward="false">ns=1;s=metadata/model</Reference><Reference ReferenceType="HasTypeDefinition">i=68</Reference></References>
+    <Value><uax:DateTime>2026-08-04T00:00:00Z</uax:DateTime></Value>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=metadata/model/IsNamespaceSubset" BrowseName="IsNamespaceSubset" ParentNodeId="ns=1;s=metadata/model" DataType="Boolean" AccessLevel="1" UserAccessLevel="1">
+    <DisplayName>IsNamespaceSubset</DisplayName>
+    <References><Reference ReferenceType="HasProperty" IsForward="false">ns=1;s=metadata/model</Reference><Reference ReferenceType="HasTypeDefinition">i=68</Reference></References>
+    <Value><uax:Boolean>false</uax:Boolean></Value>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=metadata/model/StaticNodeIdTypes" BrowseName="StaticNodeIdTypes" ParentNodeId="ns=1;s=metadata/model" DataType="IdType" ValueRank="1" ArrayDimensions="0" AccessLevel="1" UserAccessLevel="1">
+    <DisplayName>StaticNodeIdTypes</DisplayName>
+    <References><Reference ReferenceType="HasProperty" IsForward="false">ns=1;s=metadata/model</Reference><Reference ReferenceType="HasTypeDefinition">i=68</Reference></References>
+    <Value><uax:ListOfInt32><uax:Int32>1</uax:Int32></uax:ListOfInt32></Value>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=metadata/model/StaticNumericNodeIdRange" BrowseName="StaticNumericNodeIdRange" ParentNodeId="ns=1;s=metadata/model" DataType="NumericRange" ValueRank="1" ArrayDimensions="0" AccessLevel="1" UserAccessLevel="1">
+    <DisplayName>StaticNumericNodeIdRange</DisplayName>
+    <References><Reference ReferenceType="HasProperty" IsForward="false">ns=1;s=metadata/model</Reference><Reference ReferenceType="HasTypeDefinition">i=68</Reference></References>
+  </UAVariable>
+  <UAVariable NodeId="ns=1;s=metadata/model/StaticStringNodeIdPattern" BrowseName="StaticStringNodeIdPattern" ParentNodeId="ns=1;s=metadata/model" DataType="String" AccessLevel="1" UserAccessLevel="1">
+    <DisplayName>StaticStringNodeIdPattern</DisplayName>
+    <References><Reference ReferenceType="HasProperty" IsForward="false">ns=1;s=metadata/model</Reference><Reference ReferenceType="HasTypeDefinition">i=68</Reference></References>
+    <Value><uax:String>^(type|metadata)/[A-Za-z0-9/._~-]+$</uax:String></Value>
+  </UAVariable>
+</UANodeSet>

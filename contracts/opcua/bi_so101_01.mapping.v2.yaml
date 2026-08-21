@@ -1,0 +1,395 @@
+schema_version: "2.0.0"
+profile: sang-readonly-observation-v1
+manifest: manifests/bi_so101_01.yaml
+
+identity:
+  agent_id: "{agent_id}"
+  robot_id: bi_so101_01
+  display_name: Sang Dual SO-101
+  model: bi_so101
+  embodiment: bi_so101_v1
+  real_or_sim: real
+  instance_namespace_uri: urn:sang:fleet:edge:1
+  root_type: SangRobotObservationType
+  root_node_id: s=agent/{agent_id}/robot/bi_so101_01
+
+robot_metadata:
+  fields:
+    model: bi_so101
+    real_or_sim: real
+    manifest_schema_version: "0.1"
+  node_id_template: s=agent/{agent_id}/robot/bi_so101_01/field/{field_path}
+
+robot_health:
+  fields:
+    - fsm_state
+    - phase
+    - sources_fresh
+    - rates_ok
+    - fault
+  node_id_template: s=agent/{agent_id}/robot/bi_so101_01/field/{field_path}
+
+source_container:
+  node_id: s=agent/{agent_id}/robot/bi_so101_01/sources
+
+clock_projection:
+  type: SangClockStatusType
+  node_id: s=agent/{agent_id}/robot/bi_so101_01/clock
+  fields:
+    - sync_source
+    - state
+    - offset_ms
+    - skew_ppm
+    - last_check
+    - quality
+  field_node_id_template: s=agent/{agent_id}/robot/bi_so101_01/clock/field/{field_path}
+  phase_1_default:
+    sync_source: local_system_clock
+    state: unsupported
+    offset_ms: null
+    skew_ppm: null
+    last_check: null
+    quality: local_only
+
+source_health_template:
+  source_type: SangSourceHealthType
+  source_node_id_template: s=agent/{agent_id}/robot/bi_so101_01/source/{source_key}
+  source_fields:
+    - required
+    - freshness_ms
+    - fresh
+    - rate_ok
+  source_field_node_id_template: s=agent/{agent_id}/robot/bi_so101_01/source/{source_key}/field/{field_path}
+  topic_container_node_id_template: s=agent/{agent_id}/robot/bi_so101_01/source/{source_key}/field/topics
+  topic_browse_parent: model_namespace_Topics_component
+  topic_type: SangTopicHealthType
+  topic_node_id_template: s=agent/{agent_id}/robot/bi_so101_01/source/{source_key}/topic/{topic}
+  topic_fields:
+    - topic
+    - age_ms
+    - rate_hz
+    - minimum_rate_hz
+    - rate_ok
+    - sequence
+    - fresh
+  topic_field_node_id_template: s=agent/{agent_id}/robot/bi_so101_01/source/{source_key}/topic/{topic}/field/{field_path}
+
+engineering_units:
+  lerobot_normalized:
+    canonical_uri: urn:sang:unit:lerobot-normalized:1
+    display_name: LeRobot normalized position
+    symbol: normalized
+
+feature_contract:
+  finite_values_required: true
+  exact_joint_name_match_required: true
+  duplicate_joint_names_allowed: false
+  projected_fields:
+    - feature_name
+    - source_key
+    - topic
+    - semantic
+    - unit
+    - value
+    - timestamp_provenance
+
+sources:
+  - key: observation.state
+    kind: state
+    required: true
+    message_type: sensor_msgs/msg/JointState
+    freshness_ms: 1000
+    minimum_rate_hz: 18.0
+    semantic: actual_position
+    ros_selector:
+      names_field: name
+      values_field: position
+      exact_features_per_topic: 6
+    feature_type: SangJointFeatureType
+    feature_node_id_template: s=agent/{agent_id}/robot/bi_so101_01/source/observation.state/feature/{feature_name}
+    feature_field_node_id_template: s=agent/{agent_id}/robot/bi_so101_01/source/observation.state/feature/{feature_name}/field/{field_path}
+    topics:
+      - topic: /bi_so101/follower_left/joint_states_norm
+        features:
+          - name: left_shoulder_pan
+            order: 0
+            selector: {type: joint_name, value: left_shoulder_pan}
+            opcua_data_type: Float
+            engineering_unit: lerobot_normalized
+            valid_range: [-100.0, 100.0]
+            semantic: actual_position
+          - name: left_shoulder_lift
+            order: 1
+            selector: {type: joint_name, value: left_shoulder_lift}
+            opcua_data_type: Float
+            engineering_unit: lerobot_normalized
+            valid_range: [-100.0, 100.0]
+            semantic: actual_position
+          - name: left_elbow_flex
+            order: 2
+            selector: {type: joint_name, value: left_elbow_flex}
+            opcua_data_type: Float
+            engineering_unit: lerobot_normalized
+            valid_range: [-100.0, 100.0]
+            semantic: actual_position
+          - name: left_wrist_flex
+            order: 3
+            selector: {type: joint_name, value: left_wrist_flex}
+            opcua_data_type: Float
+            engineering_unit: lerobot_normalized
+            valid_range: [-100.0, 100.0]
+            semantic: actual_position
+          - name: left_wrist_roll
+            order: 4
+            selector: {type: joint_name, value: left_wrist_roll}
+            opcua_data_type: Float
+            engineering_unit: lerobot_normalized
+            valid_range: [-100.0, 100.0]
+            semantic: actual_position
+          - name: left_gripper
+            order: 5
+            selector: {type: joint_name, value: left_gripper}
+            opcua_data_type: Float
+            engineering_unit: lerobot_normalized
+            valid_range: [0.0, 100.0]
+            semantic: actual_position
+      - topic: /bi_so101/follower_right/joint_states_norm
+        features:
+          - name: right_shoulder_pan
+            order: 6
+            selector: {type: joint_name, value: right_shoulder_pan}
+            opcua_data_type: Float
+            engineering_unit: lerobot_normalized
+            valid_range: [-100.0, 100.0]
+            semantic: actual_position
+          - name: right_shoulder_lift
+            order: 7
+            selector: {type: joint_name, value: right_shoulder_lift}
+            opcua_data_type: Float
+            engineering_unit: lerobot_normalized
+            valid_range: [-100.0, 100.0]
+            semantic: actual_position
+          - name: right_elbow_flex
+            order: 8
+            selector: {type: joint_name, value: right_elbow_flex}
+            opcua_data_type: Float
+            engineering_unit: lerobot_normalized
+            valid_range: [-100.0, 100.0]
+            semantic: actual_position
+          - name: right_wrist_flex
+            order: 9
+            selector: {type: joint_name, value: right_wrist_flex}
+            opcua_data_type: Float
+            engineering_unit: lerobot_normalized
+            valid_range: [-100.0, 100.0]
+            semantic: actual_position
+          - name: right_wrist_roll
+            order: 10
+            selector: {type: joint_name, value: right_wrist_roll}
+            opcua_data_type: Float
+            engineering_unit: lerobot_normalized
+            valid_range: [-100.0, 100.0]
+            semantic: actual_position
+          - name: right_gripper
+            order: 11
+            selector: {type: joint_name, value: right_gripper}
+            opcua_data_type: Float
+            engineering_unit: lerobot_normalized
+            valid_range: [0.0, 100.0]
+            semantic: actual_position
+
+  - key: action
+    kind: action
+    required: false
+    message_type: trajectory_msgs/msg/JointTrajectory
+    freshness_ms: 1000
+    minimum_rate_hz: 18.0
+    manifest_semantic: absolute_joint_target
+    semantic: observed_absolute_joint_target
+    idle_behavior: BadWaitingForInitialData_without_robot_health_degradation
+    ros_selector:
+      names_field: joint_names
+      values_field: points[0].positions
+      exact_points: 1
+      exact_features_per_topic: 6
+    feature_type: SangJointFeatureType
+    feature_node_id_template: s=agent/{agent_id}/robot/bi_so101_01/source/action/feature/{feature_name}
+    feature_field_node_id_template: s=agent/{agent_id}/robot/bi_so101_01/source/action/feature/{feature_name}/field/{field_path}
+    topics:
+      - topic: /bi_so101/leader_left/joint_trajectory_norm
+        features:
+          - name: left_shoulder_pan
+            order: 0
+            selector: {type: joint_name, value: left_shoulder_pan}
+            opcua_data_type: Float
+            engineering_unit: lerobot_normalized
+            valid_range: [-100.0, 100.0]
+            semantic: observed_absolute_joint_target
+          - name: left_shoulder_lift
+            order: 1
+            selector: {type: joint_name, value: left_shoulder_lift}
+            opcua_data_type: Float
+            engineering_unit: lerobot_normalized
+            valid_range: [-100.0, 100.0]
+            semantic: observed_absolute_joint_target
+          - name: left_elbow_flex
+            order: 2
+            selector: {type: joint_name, value: left_elbow_flex}
+            opcua_data_type: Float
+            engineering_unit: lerobot_normalized
+            valid_range: [-100.0, 100.0]
+            semantic: observed_absolute_joint_target
+          - name: left_wrist_flex
+            order: 3
+            selector: {type: joint_name, value: left_wrist_flex}
+            opcua_data_type: Float
+            engineering_unit: lerobot_normalized
+            valid_range: [-100.0, 100.0]
+            semantic: observed_absolute_joint_target
+          - name: left_wrist_roll
+            order: 4
+            selector: {type: joint_name, value: left_wrist_roll}
+            opcua_data_type: Float
+            engineering_unit: lerobot_normalized
+            valid_range: [-100.0, 100.0]
+            semantic: observed_absolute_joint_target
+          - name: left_gripper
+            order: 5
+            selector: {type: joint_name, value: left_gripper}
+            opcua_data_type: Float
+            engineering_unit: lerobot_normalized
+            valid_range: [0.0, 100.0]
+            semantic: observed_absolute_joint_target
+      - topic: /bi_so101/leader_right/joint_trajectory_norm
+        features:
+          - name: right_shoulder_pan
+            order: 6
+            selector: {type: joint_name, value: right_shoulder_pan}
+            opcua_data_type: Float
+            engineering_unit: lerobot_normalized
+            valid_range: [-100.0, 100.0]
+            semantic: observed_absolute_joint_target
+          - name: right_shoulder_lift
+            order: 7
+            selector: {type: joint_name, value: right_shoulder_lift}
+            opcua_data_type: Float
+            engineering_unit: lerobot_normalized
+            valid_range: [-100.0, 100.0]
+            semantic: observed_absolute_joint_target
+          - name: right_elbow_flex
+            order: 8
+            selector: {type: joint_name, value: right_elbow_flex}
+            opcua_data_type: Float
+            engineering_unit: lerobot_normalized
+            valid_range: [-100.0, 100.0]
+            semantic: observed_absolute_joint_target
+          - name: right_wrist_flex
+            order: 9
+            selector: {type: joint_name, value: right_wrist_flex}
+            opcua_data_type: Float
+            engineering_unit: lerobot_normalized
+            valid_range: [-100.0, 100.0]
+            semantic: observed_absolute_joint_target
+          - name: right_wrist_roll
+            order: 10
+            selector: {type: joint_name, value: right_wrist_roll}
+            opcua_data_type: Float
+            engineering_unit: lerobot_normalized
+            valid_range: [-100.0, 100.0]
+            semantic: observed_absolute_joint_target
+          - name: right_gripper
+            order: 11
+            selector: {type: joint_name, value: right_gripper}
+            opcua_data_type: Float
+            engineering_unit: lerobot_normalized
+            valid_range: [0.0, 100.0]
+            semantic: observed_absolute_joint_target
+
+  - key: top
+    kind: camera
+    required: true
+    type: SangCameraSourceType
+    topic: /bi_so101/camera/top/color/image_rect_raw/compressed
+    message_type: sensor_msgs/msg/CompressedImage
+    encoding: jpeg
+    width: 640
+    height: 480
+    configured_fps: 30.0
+    freshness_ms: 1000
+    minimum_rate_hz: 25.0
+
+  - key: left_side
+    kind: camera
+    required: true
+    type: SangCameraSourceType
+    topic: /bi_so101/camera/left_side/color/image_rect_raw/compressed
+    message_type: sensor_msgs/msg/CompressedImage
+    encoding: jpeg
+    width: 640
+    height: 480
+    configured_fps: 30.0
+    freshness_ms: 1000
+    minimum_rate_hz: 25.0
+
+  - key: right_side
+    kind: camera
+    required: true
+    type: SangCameraSourceType
+    topic: /bi_so101/camera/right_side/color/image_rect_raw/compressed
+    message_type: sensor_msgs/msg/CompressedImage
+    encoding: jpeg
+    width: 640
+    height: 480
+    configured_fps: 30.0
+    freshness_ms: 1000
+    minimum_rate_hz: 25.0
+
+  - key: left_wrist
+    kind: camera
+    required: true
+    type: SangCameraSourceType
+    topic: /bi_so101/camera/left_wrist/color/image_rect_raw/compressed
+    message_type: sensor_msgs/msg/CompressedImage
+    encoding: jpeg
+    width: 640
+    height: 480
+    configured_fps: 30.0
+    freshness_ms: 1000
+    minimum_rate_hz: 25.0
+
+  - key: right_wrist
+    kind: camera
+    required: true
+    type: SangCameraSourceType
+    topic: /bi_so101/camera/right_wrist/color/image_rect_raw/compressed
+    message_type: sensor_msgs/msg/CompressedImage
+    encoding: jpeg
+    width: 640
+    height: 480
+    configured_fps: 30.0
+    freshness_ms: 1000
+    minimum_rate_hz: 25.0
+
+camera_projection:
+  exposes_frame_bytes: false
+  fields:
+    - source_key
+    - topic
+    - message_type
+    - encoding
+    - width
+    - height
+    - configured_fps
+    - last_sequence
+    - stream_uri
+    - timestamp_provenance
+  field_node_id_template: s=agent/{agent_id}/robot/bi_so101_01/source/{source_key}/field/{field_path}
+
+expected_coverage:
+  state_features: 12
+  action_features: 12
+  cameras: 5
+  sources: 7
+  topics: 9
+  required_sources: 6
+  optional_sources: 1

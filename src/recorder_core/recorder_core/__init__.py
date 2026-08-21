@@ -1,2 +1,0 @@
-"""Manifest-driven recorder core."""
-

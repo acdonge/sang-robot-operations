@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Stop RB5 Control UI
+Comment=Stop the official RB5 control or simulation container
+Exec=/home/lab1/bin/rb5-control/stop_control.sh
+Icon=process-stop
+Terminal=true
+Categories=Development;Robotics;
+StartupNotify=true

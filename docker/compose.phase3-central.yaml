@@ -1,0 +1,140 @@
+services:
+  admin:
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    user: "${SANG_UID:-1000}:${SANG_GID:-1000}"
+    init: true
+    network_mode: host
+    restart: unless-stopped
+    working_dir: /ws
+    environment:
+      HOME: /var/lib/sang
+      PYTHONPATH: /ws/src/sang_security:/ws/src/fleet_control_plane:/ws/src/robot_agent:/ws/src/sang_opcua_gateway
+    volumes:
+      - ${SANG_WORKSPACE:?set SANG_WORKSPACE}:/ws:ro
+      - ${SANG_CENTRAL_DATA:?set SANG_CENTRAL_DATA}:/var/lib/sang
+    command:
+      - python3
+      - -m
+      - fleet_control_plane.serve
+      - --db-path
+      - /var/lib/sang/fleet.db
+      - --host
+      - 127.0.0.1
+      - --port
+      - ${CENTRAL_ADMIN_PORT:-8090}
+
+  agent-ingress:
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    user: "${SANG_UID:-1000}:${SANG_GID:-1000}"
+    init: true
+    network_mode: host
+    restart: unless-stopped
+    working_dir: /ws
+    environment:
+      HOME: /var/lib/sang
+      PYTHONPATH: /ws/src/sang_security:/ws/src/fleet_control_plane:/ws/src/robot_agent:/ws/src/sang_opcua_gateway
+    volumes:
+      - ${SANG_WORKSPACE:?set SANG_WORKSPACE}:/ws:ro
+      - ${SANG_CENTRAL_DATA:?set SANG_CENTRAL_DATA}:/var/lib/sang
+      - ${SANG_CENTRAL_SECRETS:?set SANG_CENTRAL_SECRETS}:/run/secrets/sang:ro
+    command:
+      - python3
+      - -m
+      - fleet_control_plane.agent_ingress
+      - --db-path
+      - /var/lib/sang/fleet.db
+      - --host
+      - 0.0.0.0
+      - --port
+      - ${CENTRAL_INGRESS_PORT:-8443}
+      - --secret-root
+      - /run/secrets/sang
+      - --server-certificate-ref
+      - secret://https/server/chain.pem
+      - --server-private-key-ref
+      - secret://https/server/key.pem
+      - --client-ca-crl-bundle-ref
+      - secret://https/trust/ca-crl.pem
+
+  shadow:
+    profiles: [validation]
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    user: "${SANG_UID:-1000}:${SANG_GID:-1000}"
+    init: true
+    network_mode: host
+    working_dir: /ws
+    environment:
+      HOME: /var/lib/sang
+      PYTHONPATH: /ws/src/sang_security:/ws/src/fleet_control_plane:/ws/src/robot_agent:/ws/src/sang_opcua_gateway
+    volumes:
+      - ${SANG_WORKSPACE:?set SANG_WORKSPACE}:/ws:ro
+      - ${SANG_CENTRAL_DATA:?set SANG_CENTRAL_DATA}:/var/lib/sang
+      - ${SANG_CENTRAL_SECRETS:?set SANG_CENTRAL_SECRETS}:/run/secrets/sang:ro
+    command:
+      - python3
+      - -m
+      - fleet_control_plane.opcua_shadow
+      - --control-plane-url
+      - http://127.0.0.1:${CENTRAL_ADMIN_PORT:-8090}
+      - --agent-id
+      - ${SANG_AGENT_ID:-workcell-soarm-01}
+      - --robot-id
+      - ${SANG_ROBOT_ID:-bi_so101_01}
+      - --db-path
+      - /var/lib/sang/fleet.db
+      - --connection-profile-id
+      - ${SANG_AGENT_ID:-workcell-soarm-01}-opcua
+      - --duration-s
+      - ${SHADOW_DURATION_S:-60}
+      - --security-mode
+      - sign-and-encrypt
+      - --secret-root
+      - /run/secrets/sang
+      - --application-uri
+      - urn:sang:central:control-plane
+      - --server-certificate-ref
+      - secret://opcua/pins/edge-cert.pem
+      - --report
+      - /var/lib/sang/phase3-shadow.json
+
+  shadow-final-gate:
+    profiles: [final-validation]
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    user: "${SANG_UID:-1000}:${SANG_GID:-1000}"
+    init: true
+    network_mode: host
+    working_dir: /ws
+    environment:
+      HOME: /var/lib/sang
+      PYTHONPATH: /ws/src/sang_security:/ws/src/fleet_control_plane:/ws/src/robot_agent:/ws/src/sang_opcua_gateway
+    volumes:
+      - ${SANG_WORKSPACE:?set SANG_WORKSPACE}:/ws:ro
+      - ${SANG_CENTRAL_DATA:?set SANG_CENTRAL_DATA}:/var/lib/sang
+      - ${SANG_CENTRAL_SECRETS:?set SANG_CENTRAL_SECRETS}:/run/secrets/sang:ro
+    command:
+      - python3
+      - -m
+      - fleet_control_plane.opcua_shadow
+      - --control-plane-url
+      - http://127.0.0.1:${CENTRAL_ADMIN_PORT:-8090}
+      - --agent-id
+      - ${SANG_AGENT_ID:-workcell-soarm-01}
+      - --robot-id
+      - ${SANG_ROBOT_ID:-bi_so101_01}
+      - --db-path
+      - /var/lib/sang/fleet.db
+      - --connection-profile-id
+      - ${SANG_AGENT_ID:-workcell-soarm-01}-opcua
+      - --duration-s
+      - ${SHADOW_FINAL_DURATION_S:-7200}
+      - --final-gate
+      - --security-mode
+      - sign-and-encrypt
+      - --secret-root
+      - /run/secrets/sang
+      - --application-uri
+      - urn:sang:central:control-plane
+      - --server-certificate-ref
+      - secret://opcua/pins/edge-cert.pem
+      - --report
+      - /var/lib/sang/phase3-shadow-final.json

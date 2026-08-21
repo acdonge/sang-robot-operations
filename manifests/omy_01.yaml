@@ -1,0 +1,88 @@
+schema_version: "0.1"
+
+robot:
+  robot_id: omy_01
+  model: omy_f3m
+  embodiment: omy_f3m_v1
+  real_or_sim: real
+  host_id: workcell-omy-01
+  namespace: /robots/omy_01
+
+adapter:
+  package: physical_ai_server
+  executable: physical_ai_server
+  kind: upstream_topic_contract
+  config_ref: physical_ai_server/config/omy_f3m_config.yaml
+  version: jazzy
+
+capabilities:
+  manipulation: true
+  navigation: false
+  arm_count: 1
+  gripper: true
+  camera: true
+  force_torque: false
+
+interfaces:
+  state:
+    - key: observation.state
+      topics:
+        - /joint_states
+      message_type: sensor_msgs/msg/JointState
+      feature_names:
+        - joint1
+        - joint2
+        - joint3
+        - joint4
+        - joint5
+        - joint6
+        - rh_r1_joint
+      dtype: float32
+      shape: [7]
+      unit: rad
+      freshness_ms: 1000
+  action:
+    - key: action
+      topics:
+        - /leader/joint_trajectory
+      message_type: trajectory_msgs/msg/JointTrajectory
+      feature_names:
+        - joint1
+        - joint2
+        - joint3
+        - joint4
+        - joint5
+        - joint6
+        - rh_r1_joint
+      dtype: float32
+      shape: [7]
+      semantics: observed_joint_target
+      unit: rad
+      freshness_ms: 1000
+  cameras:
+    - key: cam_top
+      topic: /camera/cam_top/color/image_raw/compressed
+      message_type: sensor_msgs/msg/CompressedImage
+      encoding: jpeg
+      freshness_ms: 1000
+    - key: cam_wrist
+      topic: /camera/cam_wrist/color/image_rect_raw/compressed
+      message_type: sensor_msgs/msg/CompressedImage
+      encoding: jpeg
+      freshness_ms: 1000
+
+monitoring:
+  required_sources:
+    - observation.state
+    - cam_top
+    - cam_wrist
+
+control:
+  modes: [DISABLED]
+  default_mode: DISABLED
+
+ui:
+  display_name: OMY F3M
+  order: 20
+  panels: [health]
+  camera_order: [cam_top, cam_wrist]

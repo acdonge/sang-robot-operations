@@ -1,0 +1,239 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1040" viewBox="0 0 1600 1040" role="img" aria-labelledby="title desc">
+  <title id="title">SANG 로봇 운영 플랫폼 현재 구현 범위와 향후 로드맵</title>
+  <desc id="desc">현재 구현된 ROS2 관측, Robot Agent, 읽기 전용 OPC UA, 중앙 Fleet Control Plane, Admin 및 Operator UI와 향후 다중 Edge, 데이터 플랫폼, 안전 제어 및 AAS 확장 계획을 보여주는 아키텍처 다이어그램</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f5f1e7"/>
+      <stop offset="1" stop-color="#e8eee9"/>
+    </linearGradient>
+    <linearGradient id="currentHead" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#0f766e"/>
+      <stop offset="1" stop-color="#155e75"/>
+    </linearGradient>
+    <linearGradient id="futureHead" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#d97706"/>
+      <stop offset="1" stop-color="#b45309"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#17332d" flood-opacity="0.12"/>
+    </filter>
+    <marker id="arrowTeal" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0f766e"/>
+    </marker>
+    <marker id="arrowAmber" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 z" fill="#d97706"/>
+    </marker>
+    <style>
+      .sans { font-family: "Pretendard", "Noto Sans KR", "DejaVu Sans", sans-serif; }
+      .mono { font-family: "IBM Plex Mono", "Noto Sans Mono CJK KR", monospace; }
+      .title { font-size: 38px; font-weight: 800; letter-spacing: -1.3px; fill: #102a27; }
+      .subtitle { font-size: 17px; font-weight: 500; fill: #53645f; }
+      .section { font-size: 23px; font-weight: 800; fill: #fff; letter-spacing: -0.4px; }
+      .sectionSub { font-size: 13px; font-weight: 600; fill: #d8f3ef; letter-spacing: 0.7px; }
+      .columnTitle { font-size: 17px; font-weight: 800; fill: #173a35; }
+      .columnMeta { font-size: 11px; font-weight: 700; fill: #5c6e68; letter-spacing: 1.4px; }
+      .cardTitle { font-size: 15px; font-weight: 800; fill: #153631; }
+      .cardBody { font-size: 12.5px; font-weight: 500; fill: #4a5f59; }
+      .cardMono { font-size: 10.8px; font-weight: 600; fill: #61756f; }
+      .roadTitle { font-size: 16px; font-weight: 800; fill: #4a2a0b; }
+      .roadBody { font-size: 12px; font-weight: 500; fill: #66533f; }
+      .pill { font-size: 12px; font-weight: 800; letter-spacing: 0.4px; }
+      .footer { font-size: 12px; font-weight: 600; fill: #60716c; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1040" fill="url(#bg)"/>
+  <path d="M0 0H1600V13H0Z" fill="#ea553b"/>
+  <path d="M1280 -20C1400 45 1505 28 1630 110" fill="none" stroke="#ffffff" stroke-width="90" opacity="0.34"/>
+  <path d="M-60 960C140 850 185 940 350 1045" fill="none" stroke="#c4ddd5" stroke-width="88" opacity="0.34"/>
+
+  <!-- Header -->
+  <g class="sans">
+    <text x="66" y="74" class="title">SANG 로봇 운영 플랫폼</text>
+    <text x="68" y="105" class="subtitle">현재 구현 범위와 앞으로 구현할 프로그램 · 2026.08</text>
+    <rect x="1165" y="50" width="366" height="45" rx="22.5" fill="#fff8ed" stroke="#e7b467"/>
+    <circle cx="1190" cy="72.5" r="7" fill="#0f766e"/>
+    <text x="1207" y="78" class="pill" fill="#80520b">현재 안전 경계: 관측 전용 · 로봇 제어 없음</text>
+  </g>
+
+  <!-- Current implementation -->
+  <g filter="url(#shadow)">
+    <rect x="60" y="135" width="1480" height="510" rx="18" fill="#fafcf9" stroke="#b8cbc5"/>
+    <path d="M78 135H1522A18 18 0 0 1 1540 153V201H60V153A18 18 0 0 1 78 135Z" fill="url(#currentHead)"/>
+  </g>
+  <g class="sans">
+    <text x="87" y="170" class="section">현재 구현됨</text>
+    <text x="242" y="169" class="sectionSub">IMPLEMENTED · OBSERVATION-FIRST</text>
+    <rect x="1345" y="151" width="162" height="32" rx="16" fill="#d9f6ef"/>
+    <text x="1426" y="172" text-anchor="middle" class="pill" fill="#0f675f">PHASE 4 · M2</text>
+  </g>
+
+  <!-- Column backgrounds -->
+  <g>
+    <rect x="84" y="224" width="326" height="390" rx="13" fill="#edf7f3" stroke="#c1dcd4"/>
+    <rect x="448" y="224" width="326" height="390" rx="13" fill="#eef5f6" stroke="#c4d8dc"/>
+    <rect x="812" y="224" width="326" height="390" rx="13" fill="#f2f5ee" stroke="#d0d9c7"/>
+    <rect x="1176" y="224" width="340" height="390" rx="13" fill="#f8f4e9" stroke="#dfd2b9"/>
+  </g>
+
+  <!-- Flow arrows -->
+  <g fill="none" stroke="#0f766e" stroke-width="3" marker-end="url(#arrowTeal)">
+    <path d="M410 414H438"/>
+    <path d="M774 414H802"/>
+    <path d="M1138 414H1166"/>
+  </g>
+  <g class="sans">
+    <text x="424" y="401" text-anchor="middle" class="cardMono">ROS 2</text>
+    <text x="788" y="401" text-anchor="middle" class="cardMono">mTLS</text>
+    <text x="1152" y="401" text-anchor="middle" class="cardMono">HTTP/WS</text>
+  </g>
+
+  <!-- Column 1 -->
+  <g class="sans">
+    <text x="106" y="257" class="columnMeta">01 · ASSETS</text>
+    <text x="106" y="282" class="columnTitle">로봇 · 카메라 · 시뮬레이션</text>
+
+    <rect x="105" y="301" width="284" height="64" rx="9" fill="#fff" stroke="#c2d8d2"/>
+    <rect x="105" y="301" width="7" height="64" rx="3.5" fill="#10a187"/>
+    <text x="127" y="327" class="cardTitle">SO-101 양팔</text>
+    <text x="127" y="348" class="cardBody">4개 버스 · MJPG 카메라 5대</text>
+
+    <rect x="105" y="376" width="284" height="64" rx="9" fill="#fff" stroke="#c2d8d2"/>
+    <rect x="105" y="376" width="7" height="64" rx="3.5" fill="#16a085"/>
+    <text x="127" y="402" class="cardTitle">OMY F3M</text>
+    <text x="127" y="423" class="cardBody">관절 · 손목/상단 RealSense 관측</text>
+
+    <rect x="105" y="451" width="284" height="64" rx="9" fill="#fff" stroke="#c2d8d2"/>
+    <rect x="105" y="451" width="7" height="64" rx="3.5" fill="#1f8a76"/>
+    <text x="127" y="477" class="cardTitle">RB5-850E</text>
+    <text x="127" y="498" class="cardBody">제조사 상태 채널 · D405/D455/OTOS</text>
+
+    <rect x="105" y="526" width="284" height="64" rx="9" fill="#fff" stroke="#c2d8d2"/>
+    <rect x="105" y="526" width="7" height="64" rx="3.5" fill="#287c8e"/>
+    <text x="127" y="552" class="cardTitle">Isaac Sim</text>
+    <text x="127" y="573" class="cardBody">OMY/RB5 vendor USD 관측 프로파일</text>
+  </g>
+
+  <!-- Column 2 -->
+  <g class="sans">
+    <text x="470" y="257" class="columnMeta">02 · PROCESSING EDGE</text>
+    <text x="470" y="282" class="columnTitle">로봇별 Processing PC</text>
+
+    <rect x="469" y="301" width="284" height="64" rx="9" fill="#fff" stroke="#c3d5d8"/>
+    <text x="490" y="327" class="cardTitle">ROS2 Adapter / Vendor SDK</text>
+    <text x="490" y="348" class="cardBody">관절·카메라 topic을 공통 인터페이스로</text>
+
+    <rect x="469" y="376" width="284" height="64" rx="9" fill="#fff" stroke="#c3d5d8"/>
+    <text x="490" y="402" class="cardTitle">Robot Agent</text>
+    <text x="490" y="423" class="cardBody">rate · freshness · FSM · heartbeat</text>
+
+    <rect x="469" y="451" width="284" height="64" rx="9" fill="#fff" stroke="#c3d5d8"/>
+    <text x="490" y="477" class="cardTitle">OPC UA Edge Gateway</text>
+    <text x="490" y="498" class="cardBody">SignAndEncrypt · read-only · Mapping v2</text>
+
+    <rect x="469" y="526" width="284" height="64" rx="9" fill="#fff" stroke="#c3d5d8"/>
+    <text x="490" y="552" class="cardTitle">Local MCAP Recorder</text>
+    <text x="490" y="573" class="cardBody">압축 영상/관절 원본 · SHA-256 · 불변 세션</text>
+  </g>
+
+  <!-- Column 3 -->
+  <g class="sans">
+    <text x="834" y="257" class="columnMeta">03 · CENTRAL</text>
+    <text x="834" y="282" class="columnTitle">중앙 관리 서버</text>
+
+    <rect x="833" y="301" width="284" height="64" rx="9" fill="#fff" stroke="#cfd8c9"/>
+    <text x="854" y="327" class="cardTitle">Fleet Control Plane</text>
+    <text x="854" y="348" class="cardBody">Agent/Asset/Workcell 상태 집계</text>
+
+    <rect x="833" y="376" width="284" height="64" rx="9" fill="#fff" stroke="#cfd8c9"/>
+    <text x="854" y="402" class="cardTitle">Task Registry</text>
+    <text x="854" y="423" class="cardBody">Task Definition · Run · 자산 예약</text>
+
+    <rect x="833" y="451" width="284" height="64" rx="9" fill="#fff" stroke="#cfd8c9"/>
+    <text x="854" y="477" class="cardTitle">Central OPC UA Shadow</text>
+    <text x="854" y="498" class="cardBody">Edge 상태 비교 · reconnect · replay 방지</text>
+
+    <rect x="833" y="526" width="284" height="64" rx="9" fill="#fff" stroke="#cfd8c9"/>
+    <text x="854" y="552" class="cardTitle">SQLite 원장</text>
+    <text x="854" y="573" class="cardBody">Registry · 이벤트 · 감사 · 녹화 메타데이터</text>
+  </g>
+
+  <!-- Column 4 -->
+  <g class="sans">
+    <text x="1198" y="257" class="columnMeta">04 · USER EXPERIENCE</text>
+    <text x="1198" y="282" class="columnTitle">현재 사용자 화면</text>
+
+    <rect x="1197" y="301" width="298" height="64" rx="9" fill="#fff" stroke="#ded1b9"/>
+    <text x="1218" y="327" class="cardTitle">Admin UI</text>
+    <text x="1218" y="348" class="cardBody">Fleet · 상세 상태 · 이벤트 · 구성 관리</text>
+
+    <rect x="1197" y="376" width="298" height="64" rx="9" fill="#fff" stroke="#ded1b9"/>
+    <text x="1218" y="402" class="cardTitle">Operator UI</text>
+    <text x="1218" y="423" class="cardBody">선택한 Task Run의 자산만 표시</text>
+
+    <rect x="1197" y="451" width="298" height="64" rx="9" fill="#fff" stroke="#ded1b9"/>
+    <text x="1218" y="477" class="cardTitle">On-demand Camera</text>
+    <text x="1218" y="498" class="cardBody">선택한 카메라 1대만 MJPEG 미리보기</text>
+
+    <rect x="1197" y="526" width="298" height="64" rx="9" fill="#fff" stroke="#ded1b9"/>
+    <text x="1218" y="552" class="cardTitle">Recording Inventory</text>
+    <text x="1218" y="573" class="cardBody">완료/실패 세션 메타데이터 조회</text>
+  </g>
+
+  <!-- Future roadmap -->
+  <g filter="url(#shadow)">
+    <rect x="60" y="680" width="1480" height="294" rx="18" fill="#fffaf2" stroke="#e5c58f"/>
+    <path d="M78 680H1522A18 18 0 0 1 1540 698V741H60V698A18 18 0 0 1 78 680Z" fill="url(#futureHead)"/>
+  </g>
+  <g class="sans">
+    <text x="87" y="716" class="section">앞으로 구현</text>
+    <text x="234" y="715" class="sectionSub" fill="#ffedcf">ROADMAP · SAFETY-GATED EXPANSION</text>
+  </g>
+
+  <!-- Road arrows -->
+  <g fill="none" stroke="#d97706" stroke-width="3" marker-end="url(#arrowAmber)">
+    <path d="M500 854H540"/>
+    <path d="M1010 854H1050"/>
+  </g>
+
+  <!-- Roadmap cards -->
+  <g class="sans">
+    <rect x="85" y="764" width="415" height="178" rx="13" fill="#fff4de" stroke="#e8bd77"/>
+    <rect x="103" y="782" width="97" height="26" rx="13" fill="#dc7b12"/>
+    <text x="151.5" y="800" text-anchor="middle" class="pill" fill="#fff">NEXT · P4</text>
+    <text x="103" y="834" class="roadTitle">다중 Edge 운영 완성</text>
+    <text x="103" y="859" class="roadBody">• Agent별 인증서·포트·ROS domain·runtime 격리</text>
+    <text x="103" y="881" class="roadBody">• OMY/RB5 Mapping v2 · 물리/Sim 5개 동시 검증</text>
+    <text x="103" y="903" class="roadBody">• 2시간 soak · 인증서 회전 · 장애 격리 · 시간 품질</text>
+    <text x="103" y="925" class="cardMono">목표: 한 Edge 장애가 다른 로봇과 중앙에 영향 0</text>
+
+    <rect x="540" y="764" width="470" height="178" rx="13" fill="#fff8ea" stroke="#e7cb96"/>
+    <rect x="558" y="782" width="120" height="26" rx="13" fill="#b7791f"/>
+    <text x="618" y="800" text-anchor="middle" class="pill" fill="#fff">DATA · OPS</text>
+    <text x="558" y="834" class="roadTitle">운영·데이터 플랫폼</text>
+    <text x="558" y="859" class="roadBody">• 인증 Preview Relay · PTP/NTP 시간 품질 진단</text>
+    <text x="558" y="881" class="roadBody">• Object Storage · 세션 Catalog · LeRobot 변환</text>
+    <text x="558" y="903" class="roadBody">• TaskRun 상태 전이 · typed workflow · VLA 학습 연결</text>
+    <text x="558" y="925" class="cardMono">MCAP = 원본 원장 · 학습 데이터는 파생 산출물</text>
+
+    <rect x="1050" y="764" width="465" height="178" rx="13" fill="#f1f5f4" stroke="#bacbc6"/>
+    <rect x="1068" y="782" width="126" height="26" rx="13" fill="#4b6660"/>
+    <text x="1131" y="800" text-anchor="middle" class="pill" fill="#fff">LATER · GATED</text>
+    <text x="1068" y="834" class="roadTitle" fill="#243b37">안전 제어·상호운용 확장</text>
+    <text x="1068" y="859" class="roadBody">• Control Mode Manager · lease · TTL/deadman</text>
+    <text x="1068" y="881" class="roadBody">• 다중 로봇 협업 workflow · zone/process interlock</text>
+    <text x="1068" y="903" class="roadBody">• 필요 시 Central OPC UA Aggregator · 이후 AAS mapping</text>
+    <text x="1068" y="925" class="cardMono">안전 전제 검증 전에는 actuator command를 추가하지 않음</text>
+  </g>
+
+  <!-- Footer -->
+  <g class="sans">
+    <circle cx="72" cy="1009" r="6" fill="#0f766e"/>
+    <text x="87" y="1014" class="footer">청록 = 구현 완료</text>
+    <circle cx="226" cy="1009" r="6" fill="#d97706"/>
+    <text x="241" y="1014" class="footer">주황 = 다음 구현</text>
+    <circle cx="387" cy="1009" r="6" fill="#60716c"/>
+    <text x="402" y="1014" class="footer">회색 = 안전 검증 후 장기 확장</text>
+    <text x="1530" y="1014" text-anchor="end" class="footer mono">SANG / ROS 2 · OPC UA · MCAP</text>
+  </g>
+</svg>

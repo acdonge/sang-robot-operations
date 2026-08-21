@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#18211d">
+  <title>SANG Operator Station</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./operator.css?v=20260803.1">
+  <script type="module" src="./operator.js?v=20260803.1"></script>
+</head>
+<body>
+  <div class="operator-shell">
+    <header class="operator-header">
+      <a class="operator-brand" href="/" aria-label="관리자 Fleet 화면으로 이동">
+        <span class="brand-glyph" aria-hidden="true"></span>
+        <span><strong>SANG</strong><small>OPERATOR STATION</small></span>
+      </a>
+      <div class="run-switcher">
+        <label for="run-selector">ACTIVE TASK RUN</label>
+        <select id="run-selector"><option value="">Run을 선택하세요</option></select>
+      </div>
+      <div class="live-state">
+        <span id="connection-dot" class="live-dot" aria-hidden="true"></span>
+        <div><strong id="connection-label">연결 중</strong><small id="updated-at">--:--:--</small></div>
+      </div>
+    </header>
+
+    <main>
+      <section class="run-hero">
+        <div>
+          <p class="kicker">RUN-SCOPED LIVE CONTRACT</p>
+          <h1 id="run-title">Task Run을 선택하세요</h1>
+          <p id="run-meta" class="run-meta">Admin에서 구성된 실행 단위만 이 화면에 나타납니다.</p>
+        </div>
+        <div class="run-state-block"><span>STATE</span><strong id="run-state">IDLE</strong></div>
+      </section>
+
+      <section class="preflight" aria-label="작업 준비 상태">
+        <div><span>ASSIGNED</span><strong id="assigned-count">0</strong><small>assets</small></div>
+        <div><span>HEALTHY</span><strong id="healthy-count">0</strong><small>live bindings</small></div>
+        <div><span>ATTENTION</span><strong id="attention-count">0</strong><small>review before work</small></div>
+        <div><span>CAMERAS</span><strong id="camera-count">0</strong><small>on demand</small></div>
+      </section>
+
+      <section class="workspace-grid">
+        <div class="left-stack">
+          <section class="station-panel asset-panel">
+            <div class="panel-title"><div><p class="kicker">ROLE MAP</p><h2>작업 자산</h2></div><span>SERVER FILTERED</span></div>
+            <div id="asset-grid" class="asset-grid" aria-live="polite">
+              <p class="empty-message">Run을 선택하면 배정된 자산만 표시됩니다.</p>
+            </div>
+          </section>
+
+          <section class="station-panel telemetry-panel">
+            <div class="panel-title"><div><p class="kicker">ROS2 OBSERVATION</p><h2>로봇 텔레메트리</h2></div><span>READ ONLY</span></div>
+            <div id="telemetry-list" class="telemetry-list"></div>
+          </section>
+        </div>
+
+        <section class="station-panel vision-panel">
+          <div class="panel-title"><div><p class="kicker">VISION / ON DEMAND</p><h2>카메라</h2></div><span>1 STREAM MAX</span></div>
+          <div class="vision-layout">
+            <div id="camera-list" class="camera-list"></div>
+            <div class="preview-stage">
+              <div id="preview-placeholder" class="preview-placeholder">
+                <span>NO ACTIVE STREAM</span>
+                <p>카메라를 선택한 뒤 미리보기를 시작하세요.</p>
+              </div>
+              <img id="preview-image" alt="선택한 카메라 실시간 미리보기" hidden>
+              <div class="preview-caption">
+                <div><strong id="preview-name">카메라 미선택</strong><span id="preview-topic">대기 중</span></div>
+                <button id="preview-toggle" type="button" disabled>미리보기 시작</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section class="boundary-note">
+        <strong>MONITORING BOUNDARY</strong>
+        <span>현재 Operator 앱은 관측 전용입니다. 로봇 제어, 정책 실행, 녹화 시작은 명시적인 Safety/Control Mode 계약 이후 별도 기능으로 추가됩니다.</span>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

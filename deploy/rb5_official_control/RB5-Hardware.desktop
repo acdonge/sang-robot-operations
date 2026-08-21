@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=RB5 Hardware Control (Attended)
+Comment=Official Rainbow Robotics MoveIt control - attended lab use only
+Exec=/home/lab1/bin/rb5-control/start_hardware.sh
+Icon=applications-engineering
+Terminal=true
+Categories=Development;Robotics;
+StartupNotify=true

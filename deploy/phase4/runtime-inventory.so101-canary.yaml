@@ -1,0 +1,22 @@
+schema_version: "1.0.0"
+
+central:
+  # Documentation address: replace with the Central mTLS ingress address.
+  ingress_url: https://192.0.2.10:8443
+
+runtimes:
+  - agent_id: workcell-soarm-01
+    agent_name: Sang Dual SO-101
+    robot_id: bi_so101_01
+    processing_node_id: processing-soarm-01
+    # Documentation address: must resolve to this Processing Node from Central.
+    endpoint_host: 192.0.2.20
+    opcua_port: 4840
+    preview_port: 8101
+    ros_domain_id: 42
+    manifest: manifests/bi_so101_01.yaml
+    mapping: contracts/opcua/bi_so101_01.mapping.v2.yaml
+    runtime_directory: agents/workcell-soarm-01
+    heartbeat_interval_s: 1
+    heartbeat_timeout_s: 2
+    startup_grace_s: 3

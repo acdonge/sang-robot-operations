@@ -1,0 +1,154 @@
+schema_version: "1.0.0"
+profile_id: sang-readonly-observation-v1
+status: frozen_for_phase_1
+
+model:
+  namespace_uri: urn:sang:fleet:model:1
+  version: "1.0.0"
+  publication_date: "2026-08-04T00:00:00Z"
+  required_model:
+    uri: http://opcfoundation.org/UA/
+    version: "1.05.07"
+    model_version: "1.5.7"
+    publication_date: "2026-05-01T00:00:00Z"
+  validation_model:
+    uri: http://opcfoundation.org/UA/
+    version: "1.05.07"
+    model_version: "1.5.7"
+    publication_date: "2026-07-30T00:00:00Z"
+
+edge:
+  instance_namespace_uri: urn:sang:fleet:edge:1
+  application_uri_template: urn:sang:agent:{agent_id}
+  gateway_per_agent: 1
+  sends_heartbeat: false
+  writable_application_variables: 0
+  application_methods: 0
+
+companion_alignment:
+  robotics:
+    model_uri: http://opcfoundation.org/UA/Robotics/
+    version: "1.02"
+    profile: read_only_observation_alignment
+    conformance_claim: false
+  machine_vision:
+    model_uri: http://opcfoundation.org/UA/MachineVision
+    version: "1.0.0"
+    profile: future_complete_vision_systems_only
+    conformance_claim: false
+
+node_ids:
+  identifier_type: string
+  maximum_identifier_utf8_bytes: 2048
+  persisted_identity:
+    - application_uri
+    - namespace_uri
+    - identifier
+  encoding:
+    algorithm: rfc3986_percent_encoding_of_utf8
+    unescaped_characters: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
+    hex_case: upper
+    encode_exactly_once: true
+    reject_empty_component: true
+  field_path_style: lower_snake_case
+  browse_names: defined_by_SANG.NodeSet2.xml
+  templates:
+    agent: agent/{agent_id}
+    robot: agent/{agent_id}/robot/{robot_id}
+    robot_field: agent/{agent_id}/robot/{robot_id}/field/{field_path}
+    source: agent/{agent_id}/robot/{robot_id}/source/{source_key}
+    source_field: agent/{agent_id}/robot/{robot_id}/source/{source_key}/field/{field_path}
+    topic: agent/{agent_id}/robot/{robot_id}/source/{source_key}/topic/{topic}
+    topic_field: agent/{agent_id}/robot/{robot_id}/source/{source_key}/topic/{topic}/field/{field_path}
+  test_vectors:
+    - raw: observation.state
+      encoded: observation.state
+    - raw: left wrist
+      encoded: left%20wrist
+    - raw: camera/top
+      encoded: camera%2Ftop
+    - raw: 100%
+      encoded: 100%25
+    - raw: "손목"
+      encoded: "%EC%86%90%EB%AA%A9"
+
+timestamps:
+  source_timestamp:
+    primary: valid_nonzero_ros_header_stamp
+    fallback: gateway_receive_utc
+    fallback_provenance: gateway_receive_fallback
+    fallback_minimum_status: Uncertain
+  server_timestamp: gateway_update_utc
+  central_received_at:
+    location: phase_2_shadow_report_only
+    overwrites_source_timestamp: false
+  health_evaluation_timestamp: gateway_health_evaluation_utc
+  edge_quality_timing:
+    initial_data_grace_s: 3
+    subscription_reconnect_grace_s: 3
+    basis: robot_agent_default_startup_grace
+  phase_2:
+    status: frozen
+    comparison_window_s: 6
+    startup_grace_s: 40
+    reconnect_grace_s: 40
+    local_health_snapshot_timeout_s: 12
+    heartbeat_max_gap_s: 12
+    minimum_strict_duration_s: 7200
+
+clock_quality:
+  preferred_sync: ptp
+  fallback_sync: ntp
+  maximum_good_absolute_offset_ms: 10.0
+  maximum_good_absolute_skew_ppm: 100.0
+  unsupported_loopback_state: local_only
+  remote_unknown_or_exceeded_limit_status: Uncertain
+
+latest_value:
+  ros_ingest: every_valid_message
+  retained_samples_per_variable: 1
+  lossless_guarantee: false
+  discard_oldest: true
+  history_source: ROS_2_and_MCAP
+
+missing_value_representation:
+  consumer_must_check_status_code_first: true
+  bad_status_wire_value: Null
+  bad_status_rule: server_ignores_supplied_value
+  uncertain_unavailable_numeric_sentinel: NaN
+  uncertain_unavailable_boolean_sentinel: false
+  uncertain_unavailable_unsigned_integer_sentinel: 0
+  uncertain_unavailable_datetime_sentinel: "1970-01-01T00:00:00Z"
+
+monitored_item_profiles:
+  joint_values:
+    requested_sampling_ms: 50
+    publishing_ms: 100
+    maximum_revised_sampling_ms: 100
+    queue_size: 1
+
+  camera_and_source_health:
+    requested_sampling_ms: 500
+    publishing_ms: 1000
+    maximum_revised_publishing_ms: 2000
+    queue_size: 1
+  robot_and_clock_health:
+    requested_sampling_ms: 1000
+    publishing_ms: 1000
+    maximum_revised_publishing_ms: 2000
+    queue_size: 1
+
+phase_1_live_validation:
+  minimum_matched_samples_per_active_topic: 10
+  maximum_unmatched_read_ratio: 0.01
+  required_timestamp_provenance: ros_header
+  recursive_application_tree_audit: true
+
+phase_1_performance_gate:
+  measurement_duration_s: 300
+  repetitions: 3
+  comparison: gateway_off_vs_gateway_on_same_manifest_and_input
+  host_cpu_p95_median_max_increase_percentage_points: 10
+  minimum_free_ram_median_max_decrease_mib: 512
+  source_rate_max_regression_percent: 5
+  claims_dds_wire_traffic_measurement: false

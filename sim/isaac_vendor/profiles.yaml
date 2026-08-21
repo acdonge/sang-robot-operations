@@ -1,0 +1,190 @@
+schema_version: "0.2"
+
+profiles:
+  omy:
+    manufacturer: ROBOTIS
+    model: omy_f3m
+    provenance:
+      source_url: https://github.com/ROBOTIS-GIT/robotis_lab
+      source_revision: 0f2f9a86abb198ce459af36767fd3aff1f59e65a
+      license: Apache-2.0
+    known_issues:
+      - The composed scene does not contain robotis_lab cam_top or cam_wrist; the runtime camera adapter must spawn them.
+    scene:
+      path: ../../../issacsim_setting_usd/OMY_ai3m/usd/omy_f3m.usd
+      sha256: 719270f9565bc944e3ad2ccb24ae439aa0b53945273b11b0bfe197f01cbc2615
+      articulation_prim_path: /World/OMY/OMY/world
+      joint_prim_root: /World/OMY/OMY/joints
+      disabled_prims:
+        - /World/ActionGraph
+      required_prims:
+        - /World/OMY/OMY/world
+        - /World/OMY/OMY/link6
+    artifacts:
+      - role: vendor_archive
+        path: ../../../issacsim_setting_usd/omy_usd 1.zip
+        sha256: 77f6c0f14b8e23c9a9c657ce2f66d79d5c009bf5226a317924a091692d6d2b0a
+      - role: official_robot_usd
+        path: ../../../issacsim_setting_usd/OMY_ai3m/usd/OMY.usd
+        sha256: 9d562a393ff88405dfc13878e6bed256141d0228e72ec60d2ac978cf6f1c2d07
+    joints:
+      controlled: [joint1, joint2, joint3, joint4, joint5, joint6, rh_r1_joint]
+      ready_positions:
+        joint1: 0.0
+        joint2: -1.55
+        joint3: 2.66
+        joint4: -1.1
+        joint5: 1.6
+        joint6: 0.0
+        rh_r1_joint: 0.0
+      actuators:
+        - name: DY_80
+          joints: [joint1, joint2]
+          drive_type: force
+          stiffness: 120.0
+          damping: 4.0
+          max_force: 61.4
+          max_velocity_rad_s: 6.0
+        - name: DY_70
+          joints: [joint3, joint4, joint5, joint6]
+          drive_type: force
+          stiffness: 120.0
+          damping: 4.0
+          max_force: 31.7
+          max_velocity_rad_s: 6.0
+        - name: gripper
+          joints: [rh_r1_joint, rh_r2, rh_l1, rh_l2]
+          drive_type: force
+          stiffness: 100.0
+          damping: 4.0
+          max_force: 30.0
+          max_velocity_rad_s: 2.2
+      exercise:
+        joint: joint1
+        delta_rad: 0.1
+        minimum_motion_rad: 0.05
+        maximum_error_rad: 0.02
+        settle_steps: 60
+        exercise_steps: 120
+    observation:
+      joint_state_topic: /joint_states
+      joint_state_frame_id: omy_sim_01/base_link
+      publish_rate_hz: 30
+      joint_minimum_rate_hz: 20
+      jpeg_quality: 85
+    cameras:
+      - key: cam_wrist
+        topic: /camera/cam_wrist/color/image_rect_raw/compressed
+        frame_id: omy_sim_01/cam_wrist
+        prim_path: /World/OMY/OMY/link6/cam_wrist
+        required_in_scene: false
+        provisioned_by: robotis_lab_runtime
+        mode: link_mount_look_at
+        width: 848
+        height: 480
+        minimum_rate_hz: 25
+        focal_length: 11.8
+        focus_distance: 200.0
+        horizontal_aperture: 20.955
+        clipping_range: [0.01, 100.0]
+        translation: [0.0, -0.08, 0.07]
+        target: [0.03, -0.38, 0.96]
+        forward_offset_m: 0.10
+      - key: cam_top
+        topic: /camera/cam_top/color/image_rect_raw/compressed
+        frame_id: omy_sim_01/cam_top
+        prim_path: /World/SangSensors/omy/cam_top
+        required_in_scene: false
+        provisioned_by: robotis_lab_runtime
+        mode: world_look_at
+        width: 848
+        height: 480
+        minimum_rate_hz: 25
+        focal_length: 10.0
+        focus_distance: 200.0
+        horizontal_aperture: 20.955
+        clipping_range: [0.01, 100.0]
+        position: [0.8, -1.2, 2.3]
+        target: [0.0, -0.35, 1.05]
+
+  rb5:
+    manufacturer: Rainbow Robotics
+    model: rb5_850e
+    provenance:
+      source_url: https://github.com/RainbowRobotics/rbpodo_ros2
+      source_revision: vendor_archive_9676fc50dd00d49258de0e24a9177166b460a9a92758423fbdce7e2de12dc152
+      license: vendor-asset-and-upstream-driver-terms
+    known_issues:
+      - The scene references two OBJ peg files as USD references, so their visuals do not load.
+      - The robot USD contains an unresolved /visuals/tcp reference; the six-axis articulation still loads.
+    scene:
+      path: ../../../issacsim_setting_usd/RB5_850E/assets/rb5_850e_scene.usd
+      sha256: 5837e8eb41c67024a4d461f07e3d63dc53bde338209fd64c6c238ceb187972ce
+      articulation_prim_path: /World/rb5
+      joint_prim_root: /World/rb5/joints
+      disabled_prims: []
+      required_prims:
+        - /World/rb5
+        - /World/rb5/link6
+        - /World/front_cam
+    artifacts:
+      - role: vendor_archive
+        path: ../../../issacsim_setting_usd/rb5_usd.zip
+        sha256: 9676fc50dd00d49258de0e24a9177166b460a9a92758423fbdce7e2de12dc152
+      - role: robot_usd
+        path: ../../../issacsim_setting_usd/RB5_850E/assets/rb5_850e.usd
+        sha256: e5752af2216fc9adc9e2c74a39ebdd7abbabc369561e25e63db0944e6640d747
+      - role: rbpodo_urdf
+        path: ../../../issacsim_setting_usd/RB5_850E/assets/rbpodo_description/robots/rb5_850e.urdf
+        sha256: b4d72aa527534bbf64038287254b3939393c127788dc51ccfdcb42785b0fee46
+    joints:
+      controlled: [base, shoulder, elbow, wrist1, wrist2, wrist3]
+      ready_positions:
+        base: 0.0
+        shoulder: 0.0
+        elbow: 0.0
+        wrist1: 0.0
+        wrist2: 0.0
+        wrist3: 0.0
+      actuators:
+        - name: rb5_vendor_drive
+          joints: [base, shoulder, elbow, wrist1, wrist2, wrist3]
+          drive_type: acceleration
+          stiffness: 625.0
+          damping: 0.0
+          max_force: 10.0
+          max_velocity_rad_s: 3.14
+      exercise:
+        joint: base
+        delta_rad: 0.1
+        minimum_motion_rad: 0.05
+        maximum_error_rad: 0.02
+        settle_steps: 60
+        exercise_steps: 120
+    observation:
+      joint_state_topic: /rbpodo/joint_states
+      joint_state_frame_id: rb5_850e_sim_01/base_link
+      publish_rate_hz: 30
+      joint_minimum_rate_hz: 20
+      jpeg_quality: 85
+    cameras:
+      - key: cam_wrist
+        topic: /rbpodo/camera/wrist/color/image_rect_raw/compressed
+        frame_id: rb5_850e_sim_01/cam_wrist
+        prim_path: /World/rb5/link6/wrist_cam/body/RSD455/Camera_OmniVision_OV9782_Color
+        required_in_scene: true
+        provisioned_by: vendor_scene
+        mode: existing
+        width: 640
+        height: 480
+        minimum_rate_hz: 25
+      - key: cam_front
+        topic: /rbpodo/camera/front/color/image_rect_raw/compressed
+        frame_id: rb5_850e_sim_01/cam_front
+        prim_path: /World/front_cam/body/RSD455/Camera_OmniVision_OV9782_Color
+        required_in_scene: true
+        provisioned_by: vendor_scene
+        mode: existing
+        width: 640
+        height: 480
+        minimum_rate_hz: 25

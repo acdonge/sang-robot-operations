@@ -1,0 +1,14 @@
+diff --git a/rbpodo_hardware/src/robot.cpp b/rbpodo_hardware/src/robot.cpp
+index 68967b1..e3139cc 100644
+--- a/rbpodo_hardware/src/robot.cpp
++++ b/rbpodo_hardware/src/robot.cpp
+@@ -45,7 +45,8 @@ Robot::Robot(const string& ip, bool simulation, const rclcpp::Logger& logger)
+   } else {
+     set_operation_mode(OperationMode::Real);
+   }
+-  set_speed_bar(1.0);
++  // SANG attended-lab safety patch: start at 1%, never upstream's 100%.
++  set_speed_bar(0.01);
+ 
+   read_thread_stop_.store(false);
+   read_thread_ = thread([this]() {
