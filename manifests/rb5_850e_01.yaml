@@ -49,6 +49,7 @@ interfaces:
       encoding: jpeg
       width: 848
       height: 480
+      fps: 10
       freshness_ms: 1500
       minimum_rate_hz: 8
 

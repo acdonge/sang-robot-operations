@@ -193,9 +193,9 @@ revoke the old credential before the new fingerprint has been observed.
 ## Attended Acceptance
 
 Open only Central `8443/tcp` inbound from the Edge test subnet and Edge `4840/tcp` inbound from Central.
-Keep `8090` and `8101` loopback-only. Then verify:
+Keep `18091` and `8101` loopback-only. Then verify:
 
-1. Admin `http://127.0.0.1:8090` shows the remote Agent and its source health. Remote preview buttons are
+1. Admin `http://127.0.0.1:18091` shows the remote Agent and its source health. Remote preview buttons are
    unavailable by design.
 2. The secure shadow completes with no divergence:
 

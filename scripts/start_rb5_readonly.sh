@@ -9,6 +9,7 @@ RB5_DATA_PORT="${RB5_DATA_PORT:-5001}"
 RB5_HOST_CIDR="${RB5_HOST_CIDR:-10.0.2.100/24}"
 RB5_MANAGEMENT_GATEWAY="${RB5_MANAGEMENT_GATEWAY:-192.168.0.1}"
 RB5_PREVIEW_PORT="${RB5_PREVIEW_PORT:-8103}"
+SANG_CONTROL_PLANE_URL="${SANG_CONTROL_PLANE_URL:-http://127.0.0.1:18091}"
 ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-30}"
 RB5_NET_CONTAINER="${RB5_NET_CONTAINER:-sang-rb5-net}"
 RB5_ADAPTER_CONTAINER="${RB5_ADAPTER_CONTAINER:-sang-rb5-adapter}"
@@ -118,6 +119,7 @@ docker run -d --init --restart unless-stopped --network host --ipc host \
     -e "ROS_DOMAIN_ID=${ROS_DOMAIN_ID}" \
     -e RMW_IMPLEMENTATION=rmw_fastrtps_cpp \
     -e "RB5_PREVIEW_PORT=${RB5_PREVIEW_PORT}" \
+    -e "SANG_CONTROL_PLANE_URL=${SANG_CONTROL_PLANE_URL}" \
     -v "${WS_ROOT}:/ws:ro" \
     "${RB5_DOCKER_IMAGE}" \
     bash -lc '
@@ -125,12 +127,12 @@ docker run -d --init --restart unless-stopped --network host --ipc host \
         set +u
         source /opt/ros/jazzy/setup.bash
         set -u
-        export PYTHONPATH=/ws/src/robot_agent:${PYTHONPATH:-}
+        export PYTHONPATH=/ws/src/sang_security:/ws/src/fleet_control_plane:/ws/src/robot_agent:${PYTHONPATH:-}
         exec python3 -m robot_agent.node \
             --manifest /ws/manifests/rb5_850e_01.yaml \
             --agent-id workcell-rb5-01 \
             --agent-name "RB5-850E Management" \
-            --control-plane-url http://127.0.0.1:8090 \
+            --control-plane-url "${SANG_CONTROL_PLANE_URL}" \
             --interval-s 1 \
             --timeout-s 2 \
             --startup-grace-s 3 \

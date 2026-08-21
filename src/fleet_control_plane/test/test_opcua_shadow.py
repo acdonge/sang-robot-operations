@@ -364,6 +364,7 @@ def test_registered_profile_drives_shadow_endpoint_and_security_refs(tmp_path):
     _, loaded = apply_registered_opcua_profile(options)
 
     assert loaded["profile_id"] == "soarm-opcua"
+    assert options.control_plane_url == "http://127.0.0.1:18091"
     assert options.endpoint == profile.desired_endpoint
     assert options.application_certificate_ref == profile.client_certificate_ref
     assert options.server_trust_directory_ref == profile.trust_list_ref

@@ -53,12 +53,12 @@ def test_preview_server_serves_health_snapshot_and_mjpeg():
     try:
         request = Request(
             base + "/healthz",
-            headers={"Origin": "http://127.0.0.1:8090"},
+            headers={"Origin": "http://127.0.0.1:18091"},
         )
         with urlopen(request, timeout=1) as response:
             assert response.status == 200
             assert response.headers["Access-Control-Allow-Origin"] == (
-                "http://127.0.0.1:8090"
+                "http://127.0.0.1:18091"
             )
             assert response.read() == b'{"status":"ok"}'
         denied_request = Request(

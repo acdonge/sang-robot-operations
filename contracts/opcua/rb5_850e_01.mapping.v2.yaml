@@ -1,0 +1,192 @@
+schema_version: "2.0.0"
+profile: sang-readonly-observation-v1
+manifest: manifests/rb5_850e_01.yaml
+
+identity:
+  agent_id: "{agent_id}"
+  robot_id: rb5_850e_01
+  display_name: RB5-850E
+  model: rb5_850e
+  embodiment: rb5_850e_v1
+  real_or_sim: real
+  instance_namespace_uri: urn:sang:fleet:edge:1
+  root_type: SangRobotObservationType
+  root_node_id: s=agent/{agent_id}/robot/rb5_850e_01
+
+robot_metadata:
+  fields:
+    model: rb5_850e
+    real_or_sim: real
+    manifest_schema_version: "0.1"
+  node_id_template: s=agent/{agent_id}/robot/rb5_850e_01/field/{field_path}
+
+robot_health:
+  fields:
+    - fsm_state
+    - phase
+    - sources_fresh
+    - rates_ok
+    - fault
+  node_id_template: s=agent/{agent_id}/robot/rb5_850e_01/field/{field_path}
+
+source_container:
+  node_id: s=agent/{agent_id}/robot/rb5_850e_01/sources
+
+clock_projection:
+  type: SangClockStatusType
+  node_id: s=agent/{agent_id}/robot/rb5_850e_01/clock
+  fields:
+    - sync_source
+    - state
+    - offset_ms
+    - skew_ppm
+    - last_check
+    - quality
+  field_node_id_template: s=agent/{agent_id}/robot/rb5_850e_01/clock/field/{field_path}
+  phase_1_default:
+    sync_source: local_system_clock
+    state: unsupported
+    offset_ms: null
+    skew_ppm: null
+    last_check: null
+    quality: local_only
+
+source_health_template:
+  source_type: SangSourceHealthType
+  source_node_id_template: s=agent/{agent_id}/robot/rb5_850e_01/source/{source_key}
+  source_fields:
+    - required
+    - freshness_ms
+    - fresh
+    - rate_ok
+  source_field_node_id_template: s=agent/{agent_id}/robot/rb5_850e_01/source/{source_key}/field/{field_path}
+  topic_container_node_id_template: s=agent/{agent_id}/robot/rb5_850e_01/source/{source_key}/field/topics
+  topic_browse_parent: model_namespace_Topics_component
+  topic_type: SangTopicHealthType
+  topic_node_id_template: s=agent/{agent_id}/robot/rb5_850e_01/source/{source_key}/topic/{topic}
+  topic_fields:
+    - topic
+    - age_ms
+    - rate_hz
+    - minimum_rate_hz
+    - rate_ok
+    - sequence
+    - fresh
+  topic_field_node_id_template: s=agent/{agent_id}/robot/rb5_850e_01/source/{source_key}/topic/{topic}/field/{field_path}
+
+engineering_units:
+  rad:
+    canonical_uri: urn:sang:unit:radian:1
+    display_name: radian
+    symbol: rad
+
+feature_contract:
+  finite_values_required: true
+  exact_joint_name_match_required: true
+  duplicate_joint_names_allowed: false
+  projected_fields:
+    - feature_name
+    - source_key
+    - topic
+    - semantic
+    - unit
+    - value
+    - timestamp_provenance
+
+sources:
+  - key: observation.state
+    kind: state
+    required: true
+    message_type: sensor_msgs/msg/JointState
+    freshness_ms: 1000
+    minimum_rate_hz: 20.0
+    semantic: actual_position
+    ros_selector:
+      names_field: name
+      values_field: position
+      exact_features_per_topic: 6
+    feature_type: SangJointFeatureType
+    feature_node_id_template: s=agent/{agent_id}/robot/rb5_850e_01/source/observation.state/feature/{feature_name}
+    feature_field_node_id_template: s=agent/{agent_id}/robot/rb5_850e_01/source/observation.state/feature/{feature_name}/field/{field_path}
+    topics:
+      - topic: /rbpodo/joint_states
+        features:
+          - name: base
+            order: 0
+            selector: {type: joint_name, value: base}
+            opcua_data_type: Float
+            engineering_unit: rad
+            valid_range: [-6.283185307179586, 6.283185307179586]
+            semantic: actual_position
+          - name: shoulder
+            order: 1
+            selector: {type: joint_name, value: shoulder}
+            opcua_data_type: Float
+            engineering_unit: rad
+            valid_range: [-6.283185307179586, 6.283185307179586]
+            semantic: actual_position
+          - name: elbow
+            order: 2
+            selector: {type: joint_name, value: elbow}
+            opcua_data_type: Float
+            engineering_unit: rad
+            valid_range: [-2.8797932657906435, 2.8797932657906435]
+            semantic: actual_position
+          - name: wrist1
+            order: 3
+            selector: {type: joint_name, value: wrist1}
+            opcua_data_type: Float
+            engineering_unit: rad
+            valid_range: [-6.283185307179586, 6.283185307179586]
+            semantic: actual_position
+          - name: wrist2
+            order: 4
+            selector: {type: joint_name, value: wrist2}
+            opcua_data_type: Float
+            engineering_unit: rad
+            valid_range: [-6.283185307179586, 6.283185307179586]
+            semantic: actual_position
+          - name: wrist3
+            order: 5
+            selector: {type: joint_name, value: wrist3}
+            opcua_data_type: Float
+            engineering_unit: rad
+            valid_range: [-6.283185307179586, 6.283185307179586]
+            semantic: actual_position
+
+  - key: cam_wrist
+    kind: camera
+    required: true
+    type: SangCameraSourceType
+    topic: /rbpodo/camera/wrist/color/image_rect_raw/compressed
+    message_type: sensor_msgs/msg/CompressedImage
+    encoding: jpeg
+    width: 848
+    height: 480
+    configured_fps: 10.0
+    freshness_ms: 1500
+    minimum_rate_hz: 8.0
+
+camera_projection:
+  exposes_frame_bytes: false
+  fields:
+    - source_key
+    - topic
+    - message_type
+    - encoding
+    - width
+    - height
+    - configured_fps
+    - last_sequence
+    - stream_uri
+    - timestamp_provenance
+  field_node_id_template: s=agent/{agent_id}/robot/rb5_850e_01/source/{source_key}/field/{field_path}
+
+expected_coverage:
+  state_features: 6
+  action_features: 0
+  cameras: 1
+  sources: 2
+  topics: 2
+  required_sources: 2
+  optional_sources: 0

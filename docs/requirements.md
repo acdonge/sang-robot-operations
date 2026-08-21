@@ -55,7 +55,7 @@ source /opt/ros/jazzy/setup.bash
 colcon build --symlink-install
 source install/setup.bash
 
-PYTHONPATH="$PWD/src/fleet_control_plane:$PWD/src/robot_agent:$PWD/src/so101_readonly_adapter:$PWD/src/rb5_readonly_adapter:$PWD/src/sang_opcua_gateway:$PWD/src/sang_mcap_recorder:$PWD/sim:${PYTHONPATH:-}" \
+PYTHONPATH="$PWD/src/sang_security:$PWD/src/fleet_control_plane:$PWD/src/robot_agent:$PWD/src/so101_readonly_adapter:$PWD/src/rb5_readonly_adapter:$PWD/src/sang_opcua_gateway:$PWD/src/sang_mcap_recorder:$PWD/sim:${PYTHONPATH:-}" \
 /usr/bin/python3 -m pytest -p no:cacheprovider \
   src/fleet_control_plane/test src/robot_agent/test src/so101_readonly_adapter/test \
   src/rb5_readonly_adapter/test src/sang_opcua_gateway/test src/sang_mcap_recorder/test \

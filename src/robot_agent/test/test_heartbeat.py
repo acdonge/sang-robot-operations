@@ -176,6 +176,7 @@ def test_agent_startup_grace_defaults_and_validation():
     assert options.suppress_preview_advertisement is False
     assert options.heartbeat_schema_version == 1
     assert options.mapping == []
+    assert options.control_plane_url == "http://127.0.0.1:18091"
     with pytest.raises(SystemExit):
         parse_args(
             [

@@ -44,3 +44,6 @@ The legacy v1 file is retained only for a coordinated rollback of both processes
 Generate per-Agent OPC UA Gateway identities, ports, replay stores and runtime directories with
 collision validation. Add OMY/RB5 feature mappings only after vendor-confirmed representation limits
 are available.
+
+Follow-up: the vendor limits and all four remaining physical/simulation mappings were added and
+validated in `PHASE4_M4_MULTI_ROBOT_MAPPING_V2_2026-08-21.md`.

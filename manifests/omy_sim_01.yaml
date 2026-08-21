@@ -42,6 +42,7 @@ interfaces:
       encoding: jpeg
       width: 848
       height: 480
+      fps: 30
       freshness_ms: 1000
       minimum_rate_hz: 25
     - key: cam_top
@@ -50,6 +51,7 @@ interfaces:
       encoding: jpeg
       width: 848
       height: 480
+      fps: 30
       freshness_ms: 1000
       minimum_rate_hz: 25
 

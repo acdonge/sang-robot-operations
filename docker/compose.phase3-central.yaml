@@ -21,7 +21,7 @@ services:
       - --host
       - 127.0.0.1
       - --port
-      - ${CENTRAL_ADMIN_PORT:-8090}
+      - ${CENTRAL_ADMIN_PORT:-18091}
 
   agent-ingress:
     image: ${SANG_IMAGE:-sang-fleet:jazzy}
@@ -75,7 +75,7 @@ services:
       - -m
       - fleet_control_plane.opcua_shadow
       - --control-plane-url
-      - http://127.0.0.1:${CENTRAL_ADMIN_PORT:-8090}
+      - http://127.0.0.1:${CENTRAL_ADMIN_PORT:-18091}
       - --agent-id
       - ${SANG_AGENT_ID:-workcell-soarm-01}
       - --robot-id
@@ -116,7 +116,7 @@ services:
       - -m
       - fleet_control_plane.opcua_shadow
       - --control-plane-url
-      - http://127.0.0.1:${CENTRAL_ADMIN_PORT:-8090}
+      - http://127.0.0.1:${CENTRAL_ADMIN_PORT:-18091}
       - --agent-id
       - ${SANG_AGENT_ID:-workcell-soarm-01}
       - --robot-id

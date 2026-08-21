@@ -25,7 +25,7 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
         default=Path("/ws/ui-operator"),
     )
     parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=8090)
+    parser.add_argument("--port", type=int, default=18091)
     parser.add_argument("--online-ttl-s", type=float, default=12.0)
     parser.add_argument("--offline-ttl-s", type=float, default=30.0)
     options = parser.parse_args(args)

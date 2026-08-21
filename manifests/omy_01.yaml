@@ -64,12 +64,20 @@ interfaces:
       topic: /camera/cam_top/color/image_raw/compressed
       message_type: sensor_msgs/msg/CompressedImage
       encoding: jpeg
+      width: 848
+      height: 480
+      fps: 10
       freshness_ms: 1000
+      minimum_rate_hz: 8
     - key: cam_wrist
       topic: /camera/cam_wrist/color/image_rect_raw/compressed
       message_type: sensor_msgs/msg/CompressedImage
       encoding: jpeg
+      width: 848
+      height: 480
+      fps: 10
       freshness_ms: 1000
+      minimum_rate_hz: 8
 
 monitoring:
   required_sources:

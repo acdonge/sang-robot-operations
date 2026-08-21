@@ -18,6 +18,9 @@ STREAM_PATH = re.compile(r"^/robots/([^/]+)/cameras/([^/]+)\.(mjpg|jpg)$")
 HEALTH_SNAPSHOT_PATH = re.compile(r"^/health/v1/robots/([^/]+)/latest$")
 ALLOWED_PREVIEW_ORIGINS = frozenset(
     {
+        "http://127.0.0.1:18091",
+        "http://localhost:18091",
+        "http://[::1]:18091",
         "http://127.0.0.1:8090",
         "http://localhost:8090",
         "http://[::1]:8090",

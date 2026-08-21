@@ -275,7 +275,7 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--mapping", action="append", default=[], type=Path)
     parser.add_argument("--agent-id")
     parser.add_argument("--agent-name", default=socket.gethostname())
-    parser.add_argument("--control-plane-url", default="http://127.0.0.1:8090")
+    parser.add_argument("--control-plane-url", default="http://127.0.0.1:18091")
     parser.add_argument("--storage-path", type=Path, default=Path("/"))
     parser.add_argument("--capture-root", type=Path)
     parser.add_argument("--interval-s", type=float, default=5.0)

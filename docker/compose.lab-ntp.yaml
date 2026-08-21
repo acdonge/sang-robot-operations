@@ -1,0 +1,32 @@
+services:
+  ntp:
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    container_name: sang-phase3-lab-ntp
+    init: true
+    network_mode: host
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - SETGID
+      - SETUID
+    volumes:
+      - ${SANG_WORKSPACE:?set SANG_WORKSPACE}:/ws:ro
+    tmpfs:
+      - /tmp:mode=1777
+      # Pinned sang-fleet:jazzy image identity: _chrony=100:102.
+      - /run/chrony:uid=100,gid=102,mode=0750
+    healthcheck:
+      test: ["CMD-SHELL", "chronyc tracking | grep -q 'Leap status.*Normal'"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 30s
+    command:
+      - /usr/sbin/chronyd
+      - -d
+      - -x
+      - -f
+      - /ws/deploy/time/chrony-lab.conf

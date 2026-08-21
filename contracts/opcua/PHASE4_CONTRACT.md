@@ -1,9 +1,9 @@
 # Phase 4 Multi-Edge Contract
 
-Status: **IMPLEMENTING / M3 COMPLETE**. The runtime identity foundation, repeatable per-Agent HTTPS
+Status: **IMPLEMENTING / M4 COMPLETE**. The runtime identity foundation, repeatable per-Agent HTTPS
 and OPC UA enrollment, generated isolated runtime bundles, one OMY Isaac heartbeat-v3 canary and the
-SO-101 Mapping Schema v2 foundation are implemented. OMY/RB5 Gateway mappings, the five-runtime
-conformance topology and final gate have not run. The
+SO-101 live read-only runtime plus OMY/RB5 physical/simulation Mapping Schema v2 contracts are
+implemented. The five-runtime conformance topology and final gate have not run. The
 earlier Phase 3 timing gate remains
 a recorded failure; on 2026-08-06 the user accepted its Lab1-only CPU contention as non-production
 hardware debt and authorized Phase 4 implementation to proceed without converting that result to PASS.
@@ -120,9 +120,11 @@ M2 adds schema `2.0.0` while retaining v1 as a rollback parser. The default SO-1
 selector, dense order, OPC UA `Float`, engineering unit, finite valid range and semantic for all 24
 state/action features. Gateway range enforcement now reads those feature records instead of inferring
 gripper ranges from names. A canonical mapping SHA-256 is combined into the Agent/Gateway local-health
-manifest digest, so mixed files fail closed. Existing SO-101 NodeIds are unchanged. OMY and RB5 ranges
-remain blocked on vendor-confirmed representation limits; the bundled RB5 URDF is not used because
-observed vendor data has already exceeded those limits.
+manifest digest, so mixed files fail closed. Existing SO-101 NodeIds are unchanged. M4 adds exact
+manifest coverage for OMY, RB5 and their Isaac Sim counterparts. OMY bounds come from the pinned
+ROBOTIS OMY F3M URDF. RB5 bounds come from the Rainbow Robotics system specification (`+/-360 deg`,
+with `elbow` at `+/-165 deg`) and are converted to radians after the read-only adapter converts vendor
+`jnt_ang` degrees. The bundled RB5 URDF's narrower generic `+/-3.14` values are not authoritative.
 
 ## Central Observation
 

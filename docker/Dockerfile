@@ -6,6 +6,7 @@ RUN apt-get update \
       python3-pytest \
       python3-zmq \
       python3-yaml \
+      chrony \
       iproute2 \
       ros-jazzy-diagnostic-msgs \
       ros-jazzy-geometry-msgs \

@@ -72,7 +72,7 @@ ros2 run fleet_control_plane fleet_control_plane \
   --ui-dir /ws/ui-admin \
   --operator-ui-dir /ws/ui-operator \
   --host 127.0.0.1 \
-  --port 8090
+  --port 18091
 ```
 
 별도 터미널에서 SO-101 Agent:
@@ -84,11 +84,11 @@ ros2 run robot_agent robot_agent \
   --manifest /ws/manifests/bi_so101_01.yaml \
   --mapping /ws/contracts/opcua/bi_so101_01.mapping.v2.yaml \
   --agent-name "SO-ARM Workcell" \
-  --control-plane-url http://127.0.0.1:8090 \
+  --control-plane-url http://127.0.0.1:18091 \
   --preview-port 8101
 ```
 
-`http://127.0.0.1:8090`을 열면 실제 ROS 2 topic freshness가 표시됩니다. `/config.html`에서
+`http://127.0.0.1:18091`을 열면 실제 ROS 2 topic freshness가 표시됩니다. `/config.html`에서
 Processing Node, Asset, Workcell, Task Definition과 Task Run을 순서대로 구성하고, 생성된 Run의
 `OPERATOR 열기`를 누르면 `/operator/#run/<run_id>`에서 배정된 자산만 볼 수 있습니다. 센서 topic이 아직
 발행되지 않으면 로봇은 `DEGRADED`로 보이는 것이 정상입니다.
@@ -101,7 +101,7 @@ Agent를 같은 PC에서 띄우고, 해당 드라이버가 ROS 2 topic을 발행
 ros2 run robot_agent robot_agent \
   --manifest /ws/manifests/omy_01.yaml \
   --agent-name "OMY Assembly Cell" \
-  --control-plane-url http://127.0.0.1:8090 \
+  --control-plane-url http://127.0.0.1:18091 \
   --preview-port 8102
 
 # 중앙 서버에서 RB5 관리망 + read-only adapter + Agent 시작
@@ -268,7 +268,7 @@ Agent와 Central이 `READY / 7 of 7 healthy`인 상태에서 2시간 strict soak
 
 ```bash
 ros2 run fleet_control_plane fleet_soak \
-  --control-plane-url http://127.0.0.1:8090 \
+  --control-plane-url http://127.0.0.1:18091 \
   --agent-id workcell-soarm-01 \
   --robot-id bi_so101_01 \
   --duration-s 7200 \
@@ -282,7 +282,7 @@ ros2 run fleet_control_plane fleet_soak \
 
 ```bash
 ros2 run fleet_control_plane fleet_soak \
-  --control-plane-url http://127.0.0.1:8090 \
+  --control-plane-url http://127.0.0.1:18091 \
   --agent-id workcell-soarm-01 \
   --robot-id bi_so101_01 \
   --duration-s 60 \

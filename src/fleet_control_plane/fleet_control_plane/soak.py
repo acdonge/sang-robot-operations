@@ -358,7 +358,7 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--control-plane-url",
-        default="http://127.0.0.1:8090",
+        default="http://127.0.0.1:18091",
     )
     parser.add_argument("--agent-id", required=True)
     parser.add_argument("--robot-id", required=True)

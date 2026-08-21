@@ -553,7 +553,7 @@ critical 3건을 수정한 뒤 focused Opus 재검토가 `PASS`를 반환했다.
 
 #### Phase 4 - Multi-edge conformance
 
-- 상태: **IMPLEMENTING / M3 COMPLETE**. 중앙 우선 heartbeat v3 호환, nullable Asset
+- 상태: **IMPLEMENTING / M4 COMPLETE**. 중앙 우선 heartbeat v3 호환, nullable Asset
   `runtime_kind`, 생성·수정 불일치 거부, heartbeat identity drift 이벤트, 명시적 Agent v3
   선택을 구현했다. 기존 로컬 v1과 원격 v2는 유지된다. 세부 배치·identity·PKI·mapping·acceptance 계약은
   `contracts/opcua/PHASE4_CONTRACT.md`를 따른다.
@@ -565,7 +565,8 @@ critical 3건을 수정한 뒤 focused Opus 재검토가 `PASS`를 반환했다.
 - mapping schema v2와 feature별 범위 enforcement는 **M2 완료**다. SO-101의 24개 feature는
   selector/order/Float/unit/range/semantic을 파일에서 선언하고, Agent/Gateway는 canonical mapping
   digest를 local-health manifest digest에 결합한다. v1은 동일 NodeId 롤백 계약으로 남긴다.
-  OMY/RB5 범위는 제조사 representation limit 확인 전 임의 지정하지 않는다.
+  OMY는 ROBOTIS 공식 URDF, RB5는 제조사 시스템 사양의 `+/-360 deg`와 elbow `+/-165 deg`를
+  rad로 변환해 physical/simulation 네 profile에 적용했다.
 - per-Agent HTTPS/OPC UA enrollment, runtime inventory 충돌 검증과 deterministic Compose bundle
   생성은 **M3 완료**다. bounded parallel shadow와 latest-only observation projection은 다음 slice다.
 - native OPC UA 또는 vendor protocol 장비 예시와 `UNINSTRUMENTED` 자산을 함께 표현. 이 단계의
@@ -642,18 +643,18 @@ adapter를 추가한다.
   transport-loss gate, SHA-256 및 실패 `.partial` 보존
 - Phase 3.6: bounded local recording inventory, additive heartbeat/Central snapshot과 Admin
   최근 세션 표시. 원본 MCAP·영상 전송 및 원격 녹화 제어 없음
-- Phase 4 M1-M3: physical/simulation runtime identity, SO-101 mapping schema v2, Agent별 HTTPS/OPC UA
-  인증서·pin·HMAC·replay path와 충돌 검증된 runtime/Compose bundle 생성
+- Phase 4 M1-M4: physical/simulation runtime identity, 5개 robot profile mapping schema v2,
+  Agent별 HTTPS/OPC UA 인증서·pin·HMAC·replay path와 충돌 검증된 runtime/Compose bundle 생성
 
 ### 다음 단계
 
 1. Phase 3 Edge 노트북에서 fake source -> physical SO-101, reconnect, CRL 배포, 인증서 회전과
    `shadow-final-gate` 입회 evidence 완료
 2. 중단된 Phase 2 uninterrupted 2-hour final gate debt 완료
-3. Phase 4 `runtime_kind`와 feature별 unit/range mapping schema v2 동결 **완료(SO-101 foundation)**
+3. Phase 4 `runtime_kind`와 feature별 unit/range mapping schema v2 동결 **완료(5 profiles)**
 4. shared CA 아래 반복 가능한 per-Agent enrollment와 포트/domain/runtime-directory 충돌 검증 구현
    **완료(SO-101 canary foundation)**
-5. OMY, RB5, OMY-sim, RB5-sim profile을 하나씩 추가하고 각 focused conformance 통과
+5. OMY, RB5, OMY-sim, RB5-sim profile을 하나씩 추가하고 각 focused conformance 통과 **완료**
 6. 5개 profile bounded parallel shadow, latest observation과 one-Edge-kill 장애 격리 구현
 7. 구성 수정/폐기와 `DRAFT -> READY -> ACTIVE -> COMPLETE/FAILED` 상태 전이 설계
 8. 인증된 preview relay와 PTP/NTP 시간 품질 진단, 중앙 Object Storage 업로드·session catalog와

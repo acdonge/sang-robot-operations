@@ -72,7 +72,17 @@ def test_omy_manifest_matches_robotis_monitoring_topics():
     assert cameras["cam_wrist"].topics == (
         "/camera/cam_wrist/color/image_rect_raw/compressed",
     )
-    assert all(source.minimum_rate_hz is None for source in manifest.sources)
+    assert all(camera.minimum_rate_hz == 8.0 for camera in cameras.values())
+    assert all(
+        source.minimum_rate_hz is None
+        for source in manifest.sources
+        if source.kind in {"state", "action"}
+    )
+    raw = yaml.safe_load(OMY_MANIFEST_PATH.read_text(encoding="utf-8"))
+    assert all(
+        (camera["width"], camera["height"], camera["fps"]) == (848, 480, 10)
+        for camera in raw["interfaces"]["cameras"]
+    )
 
 
 def test_rb5_manifest_uses_native_rbpodo_joint_state_contract():
@@ -111,6 +121,11 @@ def test_rb5_manifest_uses_native_rbpodo_joint_state_contract():
     )
     assert camera.minimum_rate_hz == 8.0
     assert camera.required
+    assert (
+        raw["interfaces"]["cameras"][0]["width"],
+        raw["interfaces"]["cameras"][0]["height"],
+    ) == (848, 480)
+    assert raw["interfaces"]["cameras"][0]["fps"] == 10
     assert raw["capabilities"]["camera"] is True
     assert raw["ui"]["camera_order"] == ["cam_wrist"]
 

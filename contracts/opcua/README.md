@@ -6,7 +6,7 @@
 - Publication date: `2026-08-04`
 - First embodiment: `bi_so101_01` (`Sang Dual SO-101`)
 - Runtime implementation: Phase 1 complete; Phase 2 hardened short/reconnect pass; Phase 3 local
-  distributed software gate pass; Phase 4 Mapping Schema v2 foundation complete
+  distributed software gate pass; Phase 4 Mapping Schema v2 covers SO-101, OMY and RB5 physical/sim
 - Control methods and writable application nodes: forbidden
 - AAS mapping: deferred
 
@@ -24,6 +24,10 @@ and the latest runtime observation.
 | `model-contract.yaml` | Freezes namespaces, NodeIds, time, sampling and performance rules. |
 | `status-code-mapping.yaml` | Freezes data-quality precedence and OPC UA StatusCodes. |
 | `bi_so101_01.mapping.v2.yaml` | Default SO-101 per-feature mapping with digest binding. |
+| `omy_01.mapping.v2.yaml` | Physical OMY state, observed action and camera mapping. |
+| `omy_sim_01.mapping.v2.yaml` | Isaac Sim OMY state and camera mapping. |
+| `rb5_850e_01.mapping.v2.yaml` | Physical RB5 state and wrist-camera mapping. |
+| `rb5_850e_sim_01.mapping.v2.yaml` | Isaac Sim RB5 state and camera mapping. |
 | `bi_so101_01.mapping.yaml` | Legacy v1 rollback mapping with unchanged NodeIds. |
 | `native-opcua-endpoint.example.yaml` | Inactive, secret-free example for the 3+1 native path. |
 | `PHASE0_VALIDATION.md` | Reproducible coverage and official validator evidence. |
@@ -33,6 +37,7 @@ and the latest runtime observation.
 | `PHASE3_VALIDATION.md` | Local distributed security/build/smoke evidence and remaining laptop gate. |
 | `PHASE4_CONTRACT.md` | Draft multi-edge contract for SO-101, OMY, RB5 and Isaac Sim. |
 | `../../docs/PHASE4_M2_MAPPING_SCHEMA_V2_2026-08-07.md` | Mapping Schema v2 implementation evidence. |
+| `../../docs/PHASE4_M4_MULTI_ROBOT_MAPPING_V2_2026-08-21.md` | OMY/RB5 physical/sim mapping evidence and provenance. |
 
 ## Model decision
 
@@ -75,6 +80,9 @@ The `/`, space, `%` and non-ASCII test vectors in `model-contract.yaml` are norm
 - SO-101 joint values are OPC UA `Float` in `lerobot_normalized` units.
 - Mapping v2 declares each feature independently. The current SO-101 non-gripper ranges are
   `[-100, 100]` and gripper ranges are `[0, 100]`; the Gateway does not infer ranges from names.
+- OMY and RB5 mappings expose radians. OMY uses the pinned ROBOTIS URDF ranges; RB5 uses the
+  manufacturer-published `+/-360 deg` range with `+/-165 deg` for `elbow`. These are telemetry
+  validity bounds, not an alternate motion, collision or safety-control layer.
 - Camera frame bytes are never OPC UA Variables. Only identity, configuration, health, sequence,
   source time and on-demand stream URI are exposed.
 - A valid ROS header stamp becomes `SourceTimestamp`.
@@ -141,14 +149,14 @@ not product source, and stay under `output/validation/`.
 
 ### 3. Mapping coverage
 
-Coverage validation must compare `bi_so101_01.mapping.v2.yaml` with
-`manifests/bi_so101_01.yaml` and fail on any of these conditions:
+Coverage validation must compare every `*.mapping.v2.yaml` with its matching manifest and fail on
+any of these conditions:
 
 - state or action feature order differs;
 - source key, topic, required flag, freshness or minimum rate differs;
 - camera key, topic, encoding, width, height or FPS differs;
 - an encoded NodeId exceeds 2048 bytes or collides;
-- the mapping does not contain exactly 12 state features, 12 action features and 5 cameras;
+- declared state/action/camera/source/topic coverage differs from the loaded contract;
 - a mapped application Variable is writable or a SANG application Method exists.
 
 The v2 validator also rejects undeclared engineering units, non-finite or non-increasing ranges,

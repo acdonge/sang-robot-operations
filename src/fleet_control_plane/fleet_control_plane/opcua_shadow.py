@@ -894,7 +894,7 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Compare loopback OPC UA health against Central heartbeat snapshots"
     )
-    parser.add_argument("--control-plane-url", default="http://127.0.0.1:8090")
+    parser.add_argument("--control-plane-url", default="http://127.0.0.1:18091")
     parser.add_argument("--endpoint")
     parser.add_argument("--agent-id", required=True)
     parser.add_argument("--robot-id", required=True)
