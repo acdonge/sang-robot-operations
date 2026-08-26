@@ -7,8 +7,8 @@
   <title>SANG Data Catalog</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="/styles.css?v=20260821.1">
-  <link rel="stylesheet" href="/catalog.css?v=20260824.5">
-  <script type="module" src="/catalog.js?v=20260824.4"></script>
+  <link rel="stylesheet" href="/catalog.css?v=20260826.1">
+  <script type="module" src="/catalog.js?v=20260826.1"></script>
 </head>
 <body>
   <div class="shell">
@@ -40,6 +40,7 @@
         <div><span>COMPLETE</span><strong id="complete-count">0</strong></div>
         <div><span>STAGING</span><strong id="staging-count">0</strong></div>
         <div><span>DECLARED SIZE</span><strong id="total-size">0 B</strong></div>
+        <div><span>LEROBOT DERIVED</span><strong id="derivation-count">0</strong></div>
         <div><span>CENTRAL CLOCK</span><strong id="clock-state">UNKNOWN</strong><small id="clock-offset">--</small></div>
       </section>
 
@@ -59,6 +60,16 @@
         <aside id="session-detail" class="catalog-detail" aria-label="세션 상세">
           <div class="catalog-placeholder"><span>01</span><strong>세션을 선택하세요.</strong><p>토픽, 자산, 시간 범위와 객체 SHA-256을 확인할 수 있습니다.</p></div>
         </aside>
+      </section>
+
+      <section class="derivation-panel" aria-label="LeRobot 파생 데이터셋">
+        <header class="derivation-header">
+          <div><p class="eyebrow">DERIVED / OBSERVATION ONLY</p><h2>LeRobot 데이터셋</h2><p>품질 PASS MCAP에서 생성된 재현 가능한 학습용 파생본입니다.</p></div>
+          <strong id="derivation-result-count">0 artifacts</strong>
+        </header>
+        <div class="derivation-head" aria-hidden="true"><span>Dataset / Source</span><span>Segment</span><span>Features</span><span>Output</span></div>
+        <div id="derivation-list" class="derivation-list" aria-live="polite"></div>
+        <p class="derivation-note">원본 MCAP은 변경되지 않으며, 현재 파생본에는 action feature가 없습니다.</p>
       </section>
 
       <section id="playback-panel" class="playback-panel" aria-label="녹화 카메라 재생" hidden>

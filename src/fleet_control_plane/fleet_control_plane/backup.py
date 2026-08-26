@@ -129,6 +129,55 @@ def referenced_objects(database: Path) -> list[dict[str, Any]]:
                     "sha256": row["manifest_sha256"],
                 }
             )
+        quality_table = connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'recording_quality_reports'"
+        ).fetchone()
+        if quality_table is not None:
+            objects.extend(
+                {
+                    "object_key": row["object_key"],
+                    "size_bytes": row["report_size_bytes"],
+                    "sha256": row["report_sha256"],
+                }
+                for row in connection.execute(
+                    """
+                    SELECT quality.object_key, quality.report_size_bytes,
+                           quality.report_sha256
+                    FROM recording_quality_reports AS quality
+                    JOIN recording_sessions AS sessions
+                      ON sessions.session_id = quality.session_id
+                    WHERE sessions.state = 'COMPLETE'
+                    ORDER BY quality.object_key
+                    """
+                ).fetchall()
+            )
+        derivation_table = connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'dataset_derivations'"
+        ).fetchone()
+        if derivation_table is not None:
+            for row in connection.execute(
+                """
+                SELECT output_object_key, output_size_bytes, output_sha256,
+                       manifest_object_key, manifest_size_bytes, manifest_sha256
+                FROM dataset_derivations
+                WHERE state = 'COMPLETE'
+                ORDER BY derivation_id
+                """
+            ).fetchall():
+                objects.extend(
+                    (
+                        {
+                            "object_key": row["output_object_key"],
+                            "size_bytes": row["output_size_bytes"],
+                            "sha256": row["output_sha256"],
+                        },
+                        {
+                            "object_key": row["manifest_object_key"],
+                            "size_bytes": row["manifest_size_bytes"],
+                            "sha256": row["manifest_sha256"],
+                        },
+                    )
+                )
     except sqlite3.Error as exc:
         raise BackupError(f"cannot enumerate recording objects: {exc}") from exc
     finally:

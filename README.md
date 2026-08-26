@@ -1,7 +1,8 @@
 # SANG Fleet Workspace
 
 여러 로봇과 작업 PC를 ROS 2로 관찰하고 중앙 관리자 화면에서 관리하기 위한 새 워크스페이스입니다.
-이전 V2 Recorder, LeRobot writer, 학습·추론·HF 업로드, 구 UI는 제거했습니다.
+이전 V2 Recorder와 직접 기록형 LeRobot writer, 학습·추론·HF 업로드, 구 UI는 제거했습니다.
+대신 검증된 MCAP 원본에서 observation-only LeRobot v3 데이터셋을 만드는 별도 파생 경로를 제공합니다.
 
 ## 현재 구성
 
@@ -12,6 +13,7 @@ RB5 D405 Robot Agent PC ──> compressed ROS 2 image ──> on-demand preview
 Robot ROS 2 topics ──> robot_agent ──heartbeat v1(loopback) / v2(mTLS)──> fleet_control_plane ──> ui-admin
           ├─local health snapshot─> sang_opcua_gateway ──OPC UA read-only──> Central shadow Client
           ├─allowlisted observations─> sang_mcap_recorder ──> local immutable MCAP ──verified upload─> Central Object Store
+          │                                                          └─quality PASS─> observation-only LeRobot v3
           ├─fixed capture worker <──mTLS pull── Task Run Capture Job <── ui-operator
           └────────raw values────> sang_opcua_gateway
                                                         ├─run scope──────> ui-operator
@@ -20,7 +22,7 @@ Galaxy XR ──> xr_teleop_bridge ──> xr_teleop_retarget (개발 중, 입�
 ```
 
 - `src/fleet_control_plane`: 중앙 Agent/자산/TaskRun registry, 인증·감사, 영속 Capture Job,
-  녹화 catalog/Object Store, backup/restore와 read-only OPC UA aggregate
+  녹화 catalog/Object Store, observation-only LeRobot 파생, backup/restore와 read-only OPC UA aggregate
 - `src/robot_agent`: manifest 기반 ROS 2 관절/action/camera topic freshness 감시
 - `src/so101_readonly_adapter`: SO-101 4개 bus 읽기와 Innomaker 카메라 MJPG publish
 - `src/sang_opcua_gateway`: Phase 0 계약을 사용하는 loopback read-only OPC UA Edge sidecar
@@ -31,9 +33,9 @@ Galaxy XR ──> xr_teleop_bridge ──> xr_teleop_retarget (개발 중, 입�
 - `src/xr_teleop_*`: Galaxy XR 입력과 SO-ARM target preview 개발 코드
 - `manifests`: 로봇별 ROS 2 topic과 상태 감시 계약
 
-`robot_agent`, MCAP recorder와 XR는 actuator 명령을 publish하지 않습니다. LeRobot writer와
-VLA 학습은 이 저장소에 포함되어 있지 않으며, 로컬 MCAP 원본 뒤의 별도 파생 worker로 연결할
-예정입니다.
+`robot_agent`, MCAP recorder, LeRobot 파생기와 XR는 actuator 명령을 publish하지 않습니다.
+현재 파생기는 측정 관절값과 카메라만 내보내며 `action` feature를 만들지 않습니다. VLA 학습과
+정책 실행은 아직 이 저장소에 포함되어 있지 않습니다.
 
 Robot/Camera Operations v1의 저장소 구분, 최초 설치, Edge 업로드, 원격 TLS/OPC UA,
 backup·upgrade·rollback 절차는 [`docs/ROBOT_CAMERA_OPERATIONS_V1.md`](docs/ROBOT_CAMERA_OPERATIONS_V1.md)를
@@ -68,6 +70,42 @@ Task Run UI 녹화의 구현·운용 계약과 Lab1 실측 결과는
 참조합니다.
 웹 재생기의 범위와 실측 결과는 [`PLAN_MCAP_WEB_PLAYBACK.md`](PLAN_MCAP_WEB_PLAYBACK.md)와
 [`docs/MCAP_WEB_PLAYBACK_ACCEPTANCE_2026-08-24.md`](docs/MCAP_WEB_PLAYBACK_ACCEPTANCE_2026-08-24.md)를
+참조합니다.
+
+### LeRobot observation-only 파생
+
+Central의 `COMPLETE` 및 품질 `PASS` 세션에서 하나의 관절 상태와 한 개 이상의 JPEG 카메라를
+선택해 LeRobot v3 데이터셋을 만듭니다. 원본 MCAP은 그대로 유지되고, SQLite에는 파생 이력과
+해시만, Object Store에는 H.264 영상이 포함된 tar와 `sang-derivation.json`이 저장됩니다.
+
+LeRobot `0.4.3`이 설치된 `leisaac` 환경에서 실행합니다.
+
+```bash
+cd "/home/sa08050/app developer/v2_ws"
+source "$HOME/miniconda3/etc/profile.d/conda.sh"
+conda activate leisaac
+
+PYTHONPATH="$PWD/src/fleet_control_plane:${PYTHONPATH:-}" \
+python -m fleet_control_plane.lerobot_derivation \
+  --db-path runtime/phase3-lab1/central/fleet.db \
+  --object-store-root runtime/phase3-lab1/objects \
+  --work-root runtime/phase3-lab1/derivation-work \
+  --session-id capture-c0d93d51f619448ca378a5ce3d669e64 \
+  --robot-manifest manifests/rb5_lab1_eval_01.yaml \
+  --state-topic-key rb5_joint \
+  --camera-topic-key d405_color \
+  --camera-topic-key d455_color \
+  --camera-topic-key welding_view \
+  --start-offset-s 10 \
+  --end-offset-s 15 \
+  --fps 30 \
+  --task "Observe RB5 weld-cell motion with D405, D455, and OTOS cameras"
+```
+
+같은 요청은 동일한 파생 ID를 반환해 중복 데이터셋을 만들지 않습니다. 결과는 Admin
+`/catalog.html`의 `LeRobot 데이터셋` 영역에서 조회하고 tar로 받을 수 있습니다. 정확한 계약과
+첫 실측 결과는 [`docs/LEROBOT_DERIVATION_CONTRACT.md`](docs/LEROBOT_DERIVATION_CONTRACT.md)와
+[`docs/LEROBOT_DERIVATION_ACCEPTANCE_2026-08-26.md`](docs/LEROBOT_DERIVATION_ACCEPTANCE_2026-08-26.md)를
 참조합니다.
 
 ## Docker 환경

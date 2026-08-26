@@ -224,7 +224,7 @@ def test_runtime_generation_is_idempotent_and_agent_scoped(tmp_path):
     assert profile["server_certificate_ref"] == (
         "secret://opcua/pins/workcell-soarm-01.pem"
     )
-    assert store.schema_versions() == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    assert store.schema_versions() == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 
 
 def test_runtime_generation_refuses_to_replace_changed_env(tmp_path):

@@ -19,10 +19,10 @@ Out of scope: synthetic next-state actions, policy training, hardware-trigger sy
 - [x] M0: Complete the attended RB5 Run through the existing state-transition API and verify four reservations are released.
 - [x] M1: Add a server-enforced, quality-gated Operator Run completion flow and focused UI/API tests.
 - [x] M2: Back up and verify the Robot/Camera v1 runtime, then create a Git release checkpoint.
-- [ ] M3: Freeze the installed LeRobot version and an observation-only derivation contract.
-- [ ] M4: Implement bounded MCAP conversion, immutable derived-object storage, provenance catalog, and tests.
-- [ ] M5: Expose derivation status in the Catalog and run an end-to-end conversion against the accepted RB5 session.
-- [ ] M6: Run regression, browser, backup, and no-actuation gates; record final evidence.
+- [x] M3: Freeze the installed LeRobot version and an observation-only derivation contract.
+- [x] M4: Implement bounded MCAP conversion, immutable derived-object storage, provenance catalog, and tests.
+- [x] M5: Expose derivation status in the Catalog and run an end-to-end conversion against the accepted RB5 session.
+- [x] M6: Run regression, browser, backup, and no-actuation gates; record final evidence.
 
 ## Decisions Log
 
@@ -32,7 +32,10 @@ Out of scope: synthetic next-state actions, policy training, hardware-trigger sy
 - 2026-08-26: Raw MCAP and its quality report remain authoritative and immutable; LeRobot output is a derived artifact with source hashes.
 - 2026-08-26: Run completion uses the newest Capture Job, not merely the newest successful one, so a later failed or cancelled attempt cannot be hidden by an earlier PASS.
 - 2026-08-26: Robot/Camera v1 backup is `/home/sa08050/sang-backups/robot-camera-v1-20260826T131714Z`; verification passed for SQLite schema versions 1-10 and 24 immutable objects (50,085,234,199 bytes).
+- 2026-08-26: The converter is frozen to clean LeRobot dataset API files from package 0.4.3, dataset format v3.0 and commit `b0c3f2291b3f7753fd530172ec4bca0ed0a0d8ce`; the full contract is `docs/LEROBOT_DERIVATION_CONTRACT.md`.
+- 2026-08-26: The first real derivation is `lerobot-130a79833af4a0ccc5ad5a5b`: 151 frames at 30 Hz over 5 seconds, three cameras, maximum skew 23.408 ms, and no `action` feature.
+- 2026-08-26: Final backup `/home/sa08050/sang-backups/robot-camera-lerobot-v1-20260826T135014Z` verified schema versions 1-11 and 29 immutable objects totaling 50,092,099,490 bytes, including quality reports and the LeRobot tar/manifest.
 
 ## Current State
 
-M0-M2 are complete. `rb5-ui-capture-acceptance-20260824` is terminal COMPLETE at revision 3 and all four assignments are unreserved. The quality-gated Operator closeout is live, the verified runtime backup is recorded above, and all 436 tests across nine package suites pass. The release checkpoint tag is `robot-camera-operations-v1-20260826`. M3 LeRobot version and derivation contract are next.
+M0-M6 are complete. `rb5-ui-capture-acceptance-20260824` is terminal COMPLETE at revision 3 and all four assignments are unreserved. The quality-gated Operator closeout is live and the release checkpoint tag is `robot-camera-operations-v1-20260826`. The real RB5 derivation was published, reopened with LeRobot 0.4.3, shown in Admin Catalog and downloaded with an identical SHA-256. All 440 tests pass; browser, backup and no-actuation gates also pass.

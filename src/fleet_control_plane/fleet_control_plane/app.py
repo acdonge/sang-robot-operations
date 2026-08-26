@@ -33,6 +33,10 @@ from fleet_control_plane.capture_jobs import (
     CaptureJobStore,
 )
 from fleet_control_plane.models import AgentHeartbeatV1
+from fleet_control_plane.lerobot_derivation import (
+    DatasetDerivationCatalog,
+    DerivationNotFound,
+)
 from fleet_control_plane.recording_models import RecordingFinalize, RecordingManifest
 from fleet_control_plane.recording_playback import (
     PlaybackBusy,
@@ -170,6 +174,7 @@ def create_app(
     auth = AuthManager(store.path)
     capture_jobs = CaptureJobStore(store.path)
     recordings = RecordingCatalog(store.path)
+    derivations = DatasetDerivationCatalog(store.path)
     playback = (
         None
         if object_store is None
@@ -1428,6 +1433,56 @@ def create_app(
     @app.get("/api/v1/recording-sessions/{session_id}")
     async def get_recording_session(session_id: str) -> dict[str, Any]:
         return recordings.get_session(session_id)
+
+    @app.get("/api/v1/dataset-derivations")
+    async def list_dataset_derivations(
+        session_id: str | None = Query(default=None, min_length=1, max_length=128),
+        run_id: str | None = Query(default=None, min_length=1, max_length=64),
+        state: str | None = Query(default=None, pattern=r"^(RUNNING|COMPLETE|FAILED)$"),
+        limit: int = Query(default=100, ge=1, le=500),
+    ) -> list[dict[str, Any]]:
+        return derivations.list(
+            session_id=session_id,
+            run_id=run_id,
+            state=state,
+            limit=limit,
+        )
+
+    @app.get("/api/v1/dataset-derivations/{derivation_id}")
+    async def get_dataset_derivation(derivation_id: str) -> dict[str, Any]:
+        try:
+            return derivations.get(derivation_id)
+        except DerivationNotFound as exc:
+            raise FleetAPIError(404, str(exc)) from exc
+
+    @app.get("/api/v1/dataset-derivations/{derivation_id}/download")
+    async def download_dataset_derivation(derivation_id: str) -> FileResponse:
+        backend = require_object_store()
+        try:
+            derivation = derivations.get(derivation_id)
+        except DerivationNotFound as exc:
+            raise FleetAPIError(404, str(exc)) from exc
+        if derivation["state"] != "COMPLETE":
+            raise FleetAPIError(409, "dataset derivation is not complete")
+        try:
+            path = await asyncio.to_thread(
+                backend.open_path,
+                derivation["output_object_key"],
+                size_bytes=derivation["output_size_bytes"],
+                sha256=derivation["output_sha256"],
+            )
+        except ObjectStoreError as exc:
+            raise FleetAPIError(500, "derived dataset integrity check failed") from exc
+        return FileResponse(
+            path,
+            media_type="application/x-tar",
+            filename=f"{derivation_id}.tar",
+            headers={
+                "ETag": f'"sha256:{derivation["output_sha256"]}"',
+                "Cache-Control": "private, no-store",
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
 
     def require_quality() -> RecordingQualityService:
         if quality is None:

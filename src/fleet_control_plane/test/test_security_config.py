@@ -81,7 +81,7 @@ def test_phase3_migration_is_additive_and_preserves_existing_rows(tmp_path):
 
     migrated = FleetStore(path)
 
-    assert migrated.schema_versions() == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    assert migrated.schema_versions() == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
     with migrated._connect() as connection:
         assert connection.execute(
             "SELECT agent_name FROM agents WHERE agent_id = 'legacy-agent'"
@@ -112,7 +112,7 @@ def test_phase3_migration_resumes_after_partial_ddl(tmp_path):
 
     resumed = FleetStore(path)
 
-    assert resumed.schema_versions() == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    assert resumed.schema_versions() == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
     assert resumed.list_agent_registrations() == []
 
 
@@ -161,7 +161,7 @@ def test_phase4_pin_migration_preserves_profiles_and_observations(tmp_path):
 
     migrated = FleetStore(store.path)
 
-    assert migrated.schema_versions() == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    assert migrated.schema_versions() == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
     profile = migrated.get_agent_connection_profile("workcell-soarm-01", "opcua")
     assert profile["server_certificate_ref"] == "secret://opcua/pins/edge-cert.pem"
     assert migrated.list_connection_observations()[0]["profile_id"] == "soarm-opcua"
@@ -246,7 +246,7 @@ def test_agent_allowlist_credential_rotation_and_profile_revision(tmp_path):
     assert revoked.json()["status"] == "revoked"
 
     security = client.get("/api/v1/config/security").json()
-    assert security["schema_versions"] == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    assert security["schema_versions"] == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
     assert security["agent_registrations"][0]["enabled"] is True
     assert security["agent_credentials"][0]["status"] == "revoked"
     assert security["connection_profiles"][0]["revision"] == 2

@@ -568,7 +568,7 @@ def test_task_run_full_lifecycle_releases_reservations(tmp_path):
         },
     )
     assert second.status_code == 201, second.text
-    assert FleetStore(store.path).schema_versions() == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    assert FleetStore(store.path).schema_versions() == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 
 
 def test_failed_task_run_requires_reason_and_is_terminal(tmp_path):

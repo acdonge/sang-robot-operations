@@ -3,6 +3,7 @@
 const initialQuery = new URLSearchParams(location.search);
 const state = {
   sessions: [],
+  derivations: [],
   selectedId: null,
   configuration: null,
   requestedRunId: initialQuery.get("run_id"),
@@ -98,12 +99,68 @@ function renderSummary() {
   byId("total-size").textContent = formatBytes(
     state.sessions.reduce((total, item) => total + Number(item.total_size_bytes || 0), 0),
   );
+  byId("derivation-count").textContent = state.derivations.filter(
+    (item) => item.state === "COMPLETE",
+  ).length;
   byId("result-count").textContent = `${state.sessions.length} results`;
   const clock = state.timeStatus?.central;
   byId("clock-state").textContent = String(clock?.state || "unknown").toUpperCase();
   byId("clock-offset").textContent = Number.isFinite(Number(clock?.system_offset_ms))
     ? `${Number(clock.system_offset_ms).toFixed(3)} ms offset`
     : (clock?.error_code || "no measurement");
+}
+
+function renderDerivations() {
+  const list = byId("derivation-list");
+  list.replaceChildren();
+  byId("derivation-result-count").textContent = `${state.derivations.length} artifacts`;
+  if (!state.derivations.length) {
+    list.append(element("p", "catalog-empty", "아직 생성된 LeRobot 파생 데이터셋이 없습니다."));
+    return;
+  }
+  for (const derivation of state.derivations) {
+    const row = element("article", "derivation-row");
+    const identity = element("div", "derivation-identity");
+    identity.append(
+      element("strong", "", derivation.derivation_id),
+      element("small", "", derivation.session_id),
+      element(
+        "span",
+        `derivation-state is-${derivation.state.toLowerCase()}`,
+        derivation.state,
+      ),
+    );
+    const durationNs = BigInt(String(derivation.target_end_ns))
+      - BigInt(String(derivation.target_start_ns));
+    const duration = Math.max(0, Number(durationNs) / 1e9);
+    const segment = element("div", "derivation-segment");
+    segment.append(
+      element("strong", "", `${(derivation.requested_start_offset_ms / 1000).toFixed(1)}–${(derivation.requested_end_offset_ms / 1000).toFixed(1)} s`),
+      element("small", "", `${duration.toFixed(1)} s · ${derivation.fps} Hz · ${derivation.frame_count || 0} frames`),
+    );
+    const features = element("div", "derivation-features");
+    features.append(
+      element("strong", "", `state + ${derivation.camera_topic_keys.length} cameras`),
+      element("small", "", "observation only · no action"),
+    );
+    const output = element("div", "derivation-output");
+    if (derivation.state === "COMPLETE") {
+      output.append(
+        element("strong", "", formatBytes(derivation.output_size_bytes)),
+        element("code", "", derivation.output_sha256),
+      );
+      const download = element("a", "object-link", "LeRobot tar 받기");
+      download.href = derivation.download_url;
+      output.append(download);
+    } else {
+      output.append(
+        element("strong", "", derivation.state === "RUNNING" ? "변환 중" : "변환 실패"),
+        element("small", "", derivation.error || "출력 대기 중"),
+      );
+    }
+    row.append(identity, segment, features, output);
+    list.append(row);
+  }
 }
 
 function sessionRow(session) {
@@ -542,16 +599,25 @@ function filterUrl() {
   return `/api/v1/recording-sessions?${parameters}`;
 }
 
+function derivationUrl() {
+  const parameters = new URLSearchParams({ limit: "500" });
+  const runId = byId("run-filter").value || state.requestedRunId;
+  if (runId) parameters.set("run_id", runId);
+  return `/api/v1/dataset-derivations?${parameters}`;
+}
+
 async function load() {
   setConnection(true, "동기화 중");
   try {
-    const [configuration, sessions, timeStatus] = await Promise.all([
+    const [configuration, sessions, derivations, timeStatus] = await Promise.all([
       getJson("/api/v1/configuration"),
       getJson(filterUrl()),
+      getJson(derivationUrl()),
       getJson("/api/v1/time-status"),
     ]);
     state.configuration = configuration;
     state.sessions = sessions;
+    state.derivations = derivations;
     state.timeStatus = timeStatus;
     if (state.selectedId && !sessions.some((item) => item.session_id === state.selectedId)) {
       state.selectedId = null;
@@ -566,6 +632,7 @@ async function load() {
     }
     renderSummary();
     renderSessions();
+    renderDerivations();
     if (
       state.requestedSessionId
       && sessions.some((item) => item.session_id === state.requestedSessionId)

@@ -1,17 +1,19 @@
 # SANG Robot/Camera Operations v1
 
-Status: implementation complete; physical deployment acceptance remains site-specific.
+Status: implementation complete with an observation-only LeRobot derivation extension; physical
+deployment acceptance remains site-specific.
 
 ## Release boundary
 
 This release registers and observes heterogeneous robots, cameras, Processing Nodes, Workcells and
 Task Runs. It authenticates users and Edge services, relays one selected camera on demand, receives
 already-finalized observation sessions, catalogs immutable objects, and exposes a read-only Central
-OPC UA view.
+OPC UA view. A separate bounded worker can derive a LeRobot v3 dataset from a quality-passed MCAP
+session without changing the source recording.
 
 It does **not** send robot commands, publish ROS command topics, call vendor command channels, switch
-RB5 modes, operate an EEF, welder or feeder, expose writable OPC UA nodes, train policies, or convert
-recordings to LeRobot. Welding hardware remains a future asset/adapter addition.
+RB5 modes, operate an EEF, welder or feeder, expose writable OPC UA nodes, train policies, or invent
+robot actions from measured state. Welding hardware remains a future asset/adapter addition.
 
 ```mermaid
 flowchart LR
@@ -32,8 +34,8 @@ flowchart LR
 | Layer | Authoritative content | Not stored here |
 |---|---|---|
 | Versioned YAML/JSON manifests | Robot topic contracts, camera bindings, OPC UA mappings, capture profiles | Live values and media |
-| Central SQLite schema v8 | Registry identity and revisions, Workcells, Task definitions/runs, reservations, users/service-token hashes and Agent scopes, browser sessions, security/config audit, latest Agent snapshots, health events, recording catalog/topic metadata and object SHA-256 | Raw images, video, MCAP payloads, plaintext passwords or service tokens |
-| Central Object Store | Selected finalized `metadata.yaml`, `.mcap`, canonical session manifest, and later derived MP4/JPEG objects | Search indexes and mutable configuration |
+| Central SQLite schema v11 | Registry identity and revisions, Workcells, Task definitions/runs, reservations, users/service-token hashes and Agent scopes, browser sessions, security/config audit, latest Agent snapshots, health events, recording/quality/LeRobot derivation metadata and object SHA-256 | Raw images, video, MCAP payloads, plaintext passwords or service tokens |
+| Central Object Store | Selected finalized `metadata.yaml`, `.mcap`, canonical session and quality manifests, plus immutable LeRobot tar/derivation manifests | Search indexes and mutable configuration |
 | Future vector database | Derived image/text embeddings plus IDs pointing back to catalog objects | Original media, registry truth, safety state or live motor values |
 | Future AAS layer | Standards mapping of stable asset identity, capabilities, documentation and relationships | High-rate telemetry payloads and camera frames |
 
@@ -80,8 +82,8 @@ docker compose -f docker/compose.operations-v1.yaml --profile local up -d
 ```
 
 Open `http://127.0.0.1:18091/login.html`. `/config.html` manages registry objects and Task Run
-transitions. `/catalog.html` is read-only and lists centrally completed recording sessions. The
-Operator page remains read-only.
+transitions. `/catalog.html` is read-only and lists centrally completed recording sessions and
+LeRobot derivations. The Operator page remains read-only except for its bounded capture workflow.
 
 ## Edge upload identity and selected sessions
 
@@ -172,8 +174,9 @@ ros2 run fleet_control_plane fleet_backup verify \
 ```
 
 Backups contain identities and session hashes and must be access-controlled like the live database.
-The SQLite copy uses the online backup API; only catalog-referenced complete objects are copied and
-verified. Upgrade Central before Edge Agents because heartbeat fields are additive. Start the new
+The SQLite copy uses the online backup API; only catalog-referenced complete recording, quality and
+LeRobot derivation objects are copied and verified. Upgrade Central before Edge Agents because
+heartbeat fields are additive. Start the new
 Central against a copied staging database, verify login/config/catalog/OPC UA, then switch the live
 service.
 
@@ -198,8 +201,10 @@ ros2 run fleet_control_plane fleet_backup restore \
 5. Selecting one assigned camera opens one bounded relay; unassigned and arbitrary URLs are rejected.
 6. A finalized session survives upload, catalog lookup, download, backup verification and clean-path
    restore with identical SHA-256 values.
-7. OPC UA conformance reports zero Methods and zero writable application Variables.
-8. Full tests and `colcon build --symlink-install` pass before deployment.
+7. A quality-passed session can produce an idempotent observation-only LeRobot v3 tar whose source,
+   quality, robot-manifest and output hashes remain queryable; it contains no `action` feature.
+8. OPC UA conformance reports zero Methods and zero writable application Variables.
+9. Full tests and `colcon build --symlink-install` pass before deployment.
 
 Physical robot/camera validation, time synchronization acceptance and long soak reports remain tied
 to each site, manifest, ROS domain and hardware serial. Software completion does not replace those

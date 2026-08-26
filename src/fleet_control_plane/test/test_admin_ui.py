@@ -66,16 +66,19 @@ def test_data_catalog_is_read_only_and_served(tmp_path):
     index = (UI_ROOT / "catalog.html").read_text(encoding="utf-8")
     script = (UI_ROOT / "catalog.js").read_text(encoding="utf-8")
 
-    assert 'href="/catalog.css?v=20260824.5"' in index
-    assert 'src="/catalog.js?v=20260824.4"' in index
+    assert 'href="/catalog.css?v=20260826.1"' in index
+    assert 'src="/catalog.js?v=20260826.1"' in index
     assert 'id="playback-panel"' in index
     assert 'id="playback-camera-picker"' in index
     assert 'id="playback-timeline"' in index
     assert 'id="playback-toggle"' in index
+    assert 'id="derivation-list"' in index
     assert 'getJson("/api/v1/configuration")' in script
     assert "/api/v1/recording-sessions?" in script
     assert "/api/v1/recording-sessions/${encodeURIComponent(sessionId)}" in script
     assert "/playback/frame?${parameters}" in script
+    assert "/api/v1/dataset-derivations?${parameters}" in script
+    assert "observation only · no action" in script
     assert "Promise.allSettled" in script
     assert "state.playback.info.max_camera_views" in script
     assert "const offsetMs = Number(event.currentTarget.value);" in script

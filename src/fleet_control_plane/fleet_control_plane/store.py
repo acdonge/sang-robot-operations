@@ -31,6 +31,7 @@ from fleet_control_plane.operations_models import (
     WorkcellReplace,
 )
 from fleet_control_plane.capture_jobs import CAPTURE_JOB_MIGRATION
+from fleet_control_plane.lerobot_derivation import DERIVATION_MIGRATION
 from fleet_control_plane.status import isoformat_z, parse_datetime
 from fleet_control_plane.recording_storage import (
     RECORDING_MIGRATION,
@@ -39,7 +40,7 @@ from fleet_control_plane.recording_storage import (
 
 
 MAX_HEALTH_EVENTS = 10_000
-CURRENT_SCHEMA_VERSION = 10
+CURRENT_SCHEMA_VERSION = 11
 
 
 PHASE3_MIGRATION = (
@@ -908,6 +909,26 @@ class FleetStore:
                         VALUES (
                             10,
                             'recording_quality_reports',
+                            strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                        );
+                        COMMIT;
+                        """
+                    )
+                except BaseException:
+                    if connection.in_transaction:
+                        connection.rollback()
+                    raise
+                versions.append(10)
+            if 11 not in versions:
+                try:
+                    connection.executescript(
+                        "BEGIN IMMEDIATE;\n"
+                        + DERIVATION_MIGRATION
+                        + """
+                        INSERT INTO schema_migrations (version, name, applied_at)
+                        VALUES (
+                            11,
+                            'lerobot_dataset_derivations',
                             strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
                         );
                         COMMIT;

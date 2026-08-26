@@ -46,6 +46,7 @@ setup(
             "fleet_recording_quality = fleet_control_plane.recording_quality:main",
             "fleet_opcua_aggregate = fleet_control_plane.central_opcua:main",
             "fleet_backup = fleet_control_plane.backup:main",
+            "fleet_lerobot_derive = fleet_control_plane.lerobot_derivation:main",
         ],
     },
 )
