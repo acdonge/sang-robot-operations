@@ -127,7 +127,8 @@ Task Definition/Run 배정의 원장이다. OOP와 OPC UA ObjectType은 domain r
 - IP·port·ROS domain은 identity가 아니라 변경 가능한 ConnectionProfile이다. 향후
   `desired endpoint`와 실제 발견한 `observed endpoint`를 분리하며 secret과 인증서 private key는
   DB에 평문 저장하지 않고 reference만 둔다.
-- 제조사 serial과 ConnectionProfile은 계획된 schema이며 현재 SQLite에는 아직 없다.
+- 제조사 serial과 정적 기술 속성은 아직 계획 단계다. ConnectionProfile, desired/observed endpoint와
+  secret reference는 현재 SQLite schema에 구현돼 있다.
 - Asset 이동은 기존 identity를 유지한 registry binding 재배정으로 표현한다. 현재 구성 수정 API가
   없으므로 §10의 수정/폐기 설계와 함께 도입한다.
 
@@ -231,6 +232,16 @@ Central UI가 raw actuator command를 직접 publish하지 않는다. Central은
 orchestration 신호이며 안전 기능이 아니다. 인증된 채널(예: OPC UA Safety 계열)의 채택은 인증 근거와
 함께 별도 결정한다. 일반 OPC UA는 안전 상태를 보고할 수 있지만 안전 기능을 수행하지 않는다.
 
+RB5 용접 셀의 현재 장비는 CK Worldwide WF-5 cold-wire feeder와 Miller Dynasty 400이다. 계획된
+`wire_feed_enable`, `arc_enable`, `current_command_v`는 로봇 이동과 별개인 실제 공정 명령이므로
+read-only 범위에서는 desired/observed shadow와 audit만 구현하고 물리 출력은 금지한다. 사진에서 확인한
+구성, 제조사 전기 사양과 미확정 I/O 항목은
+[`docs/RB5_WELD_CELL_HARDWARE_CONTRACT.md`](docs/RB5_WELD_CELL_HARDWARE_CONTRACT.md)에 기록한다.
+이 장비들의 Asset 등록, seed data, adapter와 I/O mapping 구현은 운영자가 자산 모델을 확정할 때까지
+보류한다. 현재 schema의 `welder`/`feeder` 타입은 확장 호환성만 보존하며 실제 장비 등록을 의미하지 않는다.
+실제 출력 활성화는 승인된 배선도, 독립 safety chain, Control Mode Manager와 별도의 입회 시운전 gate를
+모두 통과한 뒤에만 다룬다.
+
 데이터 수집은 `run_id`, `task_definition_id@version`, `asset_id`, calibration/version과 함께 저장한다.
 카메라, JointState, EEF, 공정 I/O에는 sensor timestamp와 Central receive timestamp를 모두 보존하고,
 PTP 우선/NTP fallback clock 상태와 skew를 episode metadata에 기록한다. 이 timestamp/skew와 LeRobot
@@ -242,6 +253,14 @@ profile은 compressed image를 포함한 ROS 원본을 MCAP에 동기 기록한�
 MCAP 또는 session manifest에 frame timestamp와 URI를 남긴다. Live MJPEG preview는 저장하지 않는다.
 검색용 시계열은 MCAP에서 재생성할 수 있는 파생 인덱스로만 두며 DB 제품과 schema는 실제 질의·보존
 요구를 측정한 뒤 결정한다.
+
+녹화 단위는 무기한 전체 stream이 아니라 운영자가 선택한 bounded segment다. 현재 로컬 recorder는
+선택 topic의 시작 시점과 `duration_s` 또는 수동 종료로 한 세션을 만들 수 있다. v1 중앙 catalog는
+`segment_id/session_id`, Run/Asset/Camera, source start/end, 선택 사유와 trigger, Object URI, codec,
+크기, checksum, calibration, clock quality와 parent artifact를 SQL metadata로 보관하고 MCAP/MP4 bytes는
+Object Storage에 둔다. 사건 이후 직전 구간까지 선택하는 pre-roll/post-roll ring buffer와 기존 MCAP에서
+구간을 잘라내는 clip worker는 별도 구현이며, 잘라낸 결과도 parent를 가리키는 immutable derived
+artifact로 취급한다.
 
 ## 8. OPC UA Northbound Architecture
 
@@ -319,7 +338,8 @@ flowchart LR
   Central OPC UA Client는 shadow 비교만 수행하고 OPC UA 값을 이 원장에 쓰지 않는다. Native
   OPC UA 장비의 live 상태는 Phase 4까지 shadow report에만 남기며 snapshot/health 원장 편입은
   Phase 2 evidence 이후 heartbeat 대체 여부와 함께 결정한다.
-- 외부 MES 등 OPC UA 직접 소비자가 확정되기 전에는 중앙 aggregate Server를 구현하지 않는다.
+- Robot/Camera v1의 northbound OPC UA 소비 요구가 확정됐으므로 Phase 5에 중앙 read-only aggregate
+  Server를 포함한다. Admin/Operator 브라우저는 계속 HTTP/WS를 사용하고 OPC UA에 직접 접속하지 않는다.
 
 ### 8.3 장비 연결 3+1 분류
 
@@ -404,7 +424,9 @@ Native 장비의 vendor model을 SANG model로 다시 투영할지는 중앙 agg
 | 최신 source health와 host resource | Agent runtime -> heartbeat -> SQLite snapshot | OPC UA shadow, UI |
 | Health 전이 이벤트 | SQLite `health_events` | 향후 OPC UA event 1:1 mirror |
 | Local dataset/recording inventory와 진행 상태 | Agent local disk/session metadata | heartbeat summary, UI |
-| Raw session observation | immutable MCAP artifact | object storage에 보관 |
+| 선택 구간/session catalog | local atomic manifest -> 중앙 SQL catalog | Object URI와 provenance 검색 |
+| 선택 구간 raw observation | immutable MCAP artifact | object storage에 보관 |
+| 영상 재생본·thumbnail | versioned MP4/WebM/JPEG artifact | object storage에 보관 |
 | LeRobot dataset와 영상 파생물 | versioned derived artifact + provenance | object storage에 보관 |
 | 검색용 시계열 | MCAP에서 재생성 가능한 파생 index | 향후 PostgreSQL/Timescale 후보 |
 | Live MJPEG preview | 저장하지 않음 | Agent RAM의 최신 frame과 on-demand stream |
@@ -575,13 +597,14 @@ critical 3건을 수정한 뒤 focused Opus 재검토가 `PASS`를 반환했다.
 통과 기준: 5개 profile의 동시 final gate, 중앙 observed binding join 충돌 0, real/sim identity 혼동 0,
 원격 DDS 혼입 0, Edge 하나의 장애가 다른 4개 Edge와 Central UI 상태를 손상시키지 않는다.
 
-#### Phase 5 - 소비자 요구 기반 선택 기능
+#### Phase 5 - Robot/Camera 중앙 OPC UA aggregate
 
-- 외부 MES/DT 소비자가 확정된 경우에만 중앙 aggregate Server 검토
+- 등록된 robot/camera Asset과 Workcell/TaskRun reference를 중앙 read-only address space로 투영
+- Edge identity를 Registry의 stable `asset_id`와 join하고 source server provenance를 보존
+- SANG writable application node와 control Method는 계속 0개로 유지
 - 실제 query/retention 요구가 확인된 경우에만 historian/시계열 파생 index 검토
-- 필요 시 read-only Workcell/TaskRun/Dataset reference projection 추가
 
-통과 기준: aggregate view를 구현한다면 Operator run-scope와 동일한 자산 범위를 노출하고,
+통과 기준: aggregate view가 요청한 Workcell/TaskRun scope와 동일한 자산 범위를 노출하고,
 TaskRun 예약 상태가 SQLite `assignments`와 일치하며 원장 DB에 역방향 write하지 않는다.
 
 #### Phase 6 - Control Mode Manager 이후의 제어
@@ -593,7 +616,6 @@ safety-rated stop 경로에 포함되지 않음이 시험으로 입증된다.
 
 ### 8.11 보류 결정
 
-- 중앙 aggregate OPC UA Server 구축 여부와 중앙 `asset_id` 기반 NodeId 세부
 - ExpandedNodeId/ServerUri 의미론에 의존하는 cross-server reference
 - Client/Server subscription과 PubSub(UDP/MQTT) 선택
 - heartbeat v1을 OPC UA 구독으로 대체할지 여부
@@ -620,6 +642,38 @@ safety gate를 대체하지 않는다. 따라서 runtime 내부 모델을 먼저
 adapter를 추가한다.
 
 ## 10. 구현 상태와 다음 단계
+
+### Robot/Camera v1 완료 범위
+
+현재 제품 완성의 우선 범위는 등록된 로봇과 카메라다. 특정 랩 장비를 소스 코드나 seed data에 모두
+미리 넣는 것이 아니라, 운영자가 UI/API에서 자산을 등록하고 manifest/adapter를 연결할 수 있는 제품을
+완성한다.
+
+- 로봇·카메라 discovery, Registry CRUD, Workcell/Task/Run 배정과 상태 전이
+- 사용자/서비스 identity, RBAC와 Run 범위 데이터 격리
+- 인증된 on-demand 카메라 preview와 로컬 원본 데이터 수집
+- MCAP 무결성, 중앙 Object Storage 업로드와 session catalog
+- physical/simulation 다중 Edge의 동시 관측, 시간 품질과 장애 격리
+- versioned manifest, adapter interface와 OPC UA mapping을 통한 새 로봇·카메라 확장
+- 실제 actuator command, 용접 자산 등록/adapter, AAS 내용과 LeRobot/VLA 파생 변환은 현재 v1에서 제외
+
+따라서 `welder`, `feeder`, `eef`, `sensor`, `other` 같은 확장 타입은 schema 호환성을 위해 남기되,
+v1 완료 판정에는 해당 장비의 등록이나 동작을 요구하지 않는다.
+
+### Robot/Camera v1 완료 우선순위
+
+1. 다중 physical/simulation Edge의 bounded parallel observation, latest snapshot과 장애 격리를 완성한다.
+2. Registry 구성 수정/폐기와 `DRAFT -> READY -> ACTIVE -> COMPLETE/FAILED` Run lifecycle을 완성한다.
+3. 사람/서비스 identity, RBAC와 Task Run 범위 authorization을 Admin/Operator API에 적용한다.
+4. 원격 Edge의 카메라를 선택했을 때만 연결되는 인증 preview relay를 완성한다.
+5. Processing Edge의 immutable MCAP을 중앙 Object Storage로 업로드하고 session catalog, checksum,
+   provenance, retry와 retention 경계를 완성한다. LeRobot/VLA 파생 변환은 포함하지 않는다.
+6. 새 로봇·카메라 추가 절차를 manifest + adapter interface + OPC UA mapping으로 고정하고 conformance
+   test kit를 제공한다. 중앙 read-only OPC UA aggregate view는 외부 client가 사용할 수 있게 완성한다.
+7. migration/backup/restore, 설치·업그레이드·rollback, 감사 로그와 end-to-end release gate를 통과한다.
+
+Control Mode Manager는 mode/lease/deadman/audit의 disabled contract까지만 고정한다. 실제 command sink,
+로봇 이동, 공정 I/O와 policy execution을 연결하지 않으며 이는 별도 control release다.
 
 ### 이번 구현 완료
 

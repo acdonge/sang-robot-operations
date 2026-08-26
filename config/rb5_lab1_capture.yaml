@@ -1,5 +1,5 @@
 schema_version: "1.0"
-profile_id: rb5-lab1-observation-v1
+profile_id: rb5-lab1-observation-v2
 agent_id: processing-lab1
 robot_id: rb5_lab1_eval_01
 qos_overrides_path: rb5_lab1_capture_qos.yaml
@@ -13,21 +13,28 @@ topics:
   - key: rb5_joint
     name: /rbpodo/joint_states
     type: sensor_msgs/msg/JointState
-    asset_id: rb5-850e-lab1
+    asset_id: rb5-lab1
     calibration_ref: vendor-controller-measured-state
     timestamp_provenance: Host CLOCK_REALTIME immediately after the vendor CobotData read.
     require_header_timestamp: true
   - key: d455_color
     name: /rb5_lab1_eval_01/camera/d455_color/image_raw/compressed
     type: sensor_msgs/msg/CompressedImage
-    asset_id: d455-camera-lab1
+    asset_id: rb5-lab1-d455
     calibration_ref: pending-camera-calibration
     timestamp_provenance: Host CLOCK_REALTIME when OpenCV capture returned; not hardware exposure time.
     require_header_timestamp: true
   - key: d405_color
     name: /rb5_lab1_eval_01/camera/d405_color/image_raw/compressed
     type: sensor_msgs/msg/CompressedImage
-    asset_id: d405-camera-lab1
+    asset_id: rb5-lab1-d405
     calibration_ref: pending-camera-calibration
     timestamp_provenance: Host CLOCK_REALTIME when OpenCV capture returned; not hardware exposure time.
+    require_header_timestamp: true
+  - key: welding_view
+    name: /rb5_lab1_eval_01/camera/welding_view/image_raw/compressed
+    type: sensor_msgs/msg/CompressedImage
+    asset_id: rb5-lab1-otos-wgc200
+    calibration_ref: pending-camera-calibration
+    timestamp_provenance: Host CLOCK_REALTIME when the MJPG frame was received; not hardware exposure time.
     require_header_timestamp: true

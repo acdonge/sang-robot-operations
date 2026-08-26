@@ -11,26 +11,35 @@ RB5 data port 5001 ──> rb5_readonly_adapter ──> ROS 2 joint state
 RB5 D405 Robot Agent PC ──> compressed ROS 2 image ──> on-demand preview
 Robot ROS 2 topics ──> robot_agent ──heartbeat v1(loopback) / v2(mTLS)──> fleet_control_plane ──> ui-admin
           ├─local health snapshot─> sang_opcua_gateway ──OPC UA read-only──> Central shadow Client
-          ├─allowlisted observations─> sang_mcap_recorder ──> local immutable MCAP
+          ├─allowlisted observations─> sang_mcap_recorder ──> local immutable MCAP ──verified upload─> Central Object Store
+          ├─fixed capture worker <──mTLS pull── Task Run Capture Job <── ui-operator
           └────────raw values────> sang_opcua_gateway
-                                                        └─run scope──────> ui-operator
+                                                        ├─run scope──────> ui-operator
+                                                        └─SQLite snapshot/catalog─> Central read-only OPC UA
 Galaxy XR ──> xr_teleop_bridge ──> xr_teleop_retarget (개발 중, 입력/preview 전용)
 ```
 
-- `src/fleet_control_plane`: 중앙 Agent registry, 운영 구성/TaskRun API, SQLite snapshot과 감사 이력
+- `src/fleet_control_plane`: 중앙 Agent/자산/TaskRun registry, 인증·감사, 영속 Capture Job,
+  녹화 catalog/Object Store, backup/restore와 read-only OPC UA aggregate
 - `src/robot_agent`: manifest 기반 ROS 2 관절/action/camera topic freshness 감시
 - `src/so101_readonly_adapter`: SO-101 4개 bus 읽기와 Innomaker 카메라 MJPG publish
 - `src/sang_opcua_gateway`: Phase 0 계약을 사용하는 loopback read-only OPC UA Edge sidecar
 - `src/rb5_readonly_adapter`: RB5 제어박스 데이터 포트의 6축 실측 관절 읽기
 - `src/sang_mcap_recorder`: 허용된 관측 토픽만 로컬 MCAP 원본 세션으로 기록
 - `ui-admin`: 전체 Fleet 진단과 loopback 운영 구성 Console
-- `ui-operator`: 선택한 Task Run만 표시하는 Processing/Operator 화면
+- `ui-operator`: 선택한 Task Run의 관측과 고정 프로필 MCAP 녹화만 수행하는 Processing/Operator 화면
 - `src/xr_teleop_*`: Galaxy XR 입력과 SO-ARM target preview 개발 코드
 - `manifests`: 로봇별 ROS 2 topic과 상태 감시 계약
 
 `robot_agent`, MCAP recorder와 XR는 actuator 명령을 publish하지 않습니다. LeRobot writer와
 VLA 학습은 이 저장소에 포함되어 있지 않으며, 로컬 MCAP 원본 뒤의 별도 파생 worker로 연결할
 예정입니다.
+
+Robot/Camera Operations v1의 저장소 구분, 최초 설치, Edge 업로드, 원격 TLS/OPC UA,
+backup·upgrade·rollback 절차는 [`docs/ROBOT_CAMERA_OPERATIONS_V1.md`](docs/ROBOT_CAMERA_OPERATIONS_V1.md)를
+기준으로 합니다. 최신 소프트웨어 게이트 결과는
+[`docs/ROBOT_CAMERA_OPERATIONS_V1_VALIDATION_2026-08-21.md`](docs/ROBOT_CAMERA_OPERATIONS_V1_VALIDATION_2026-08-21.md)에
+기록했습니다. AAS와 벡터 DB는 이 계약을 대체하지 않는 후속 계층으로만 추가합니다.
 
 ### 로컬 MCAP 녹화 Inventory
 
@@ -40,10 +49,26 @@ Fleet 요약과 Agent/Robot 상세에서 완료·실패·partial·invalid 수, �
 ROS 전송 손실과 Task Run 참조를 확인할 수 있습니다. 최근 20개만 전송하며 최대 1,000개를
 집계합니다.
 
-MCAP 원본, 이미지·영상, SHA-256 체크섬, recorder log와 로컬 경로는 heartbeat나 SQLite로
-전송하지 않습니다. `.partial`은 실행 중인 recorder와 비정상 종료 잔여물을 구별할 수 없으므로
-Admin도 `ACTIVE`가 아닌 `PARTIAL`로 표시합니다. 이 화면에는 녹화 시작·중지·삭제 기능이 없습니다.
+Heartbeat는 MCAP 원본, 이미지·영상, SHA-256 체크섬, recorder log와 로컬 경로를 전송하지
+않습니다. 완료 세션은 독립된 `fleet_recording_upload` 경로로만 SHA-256과 함께 중앙 Object
+Store에 전송되고, SQLite에는 검색용 metadata만 저장됩니다. Operator는 ACTIVE Task Run에서
+ONLINE Capture Worker의 고정된 읽기 전용 프로필만 시작·중지할 수 있습니다. Job과 이벤트는
+Central SQLite에 먼저 저장되므로 UI 새로고침과 Robot Agent 재시작 후에도 상태를 복구하며,
+동일 client request ID는 새 녹화를 만들지 않습니다. `.partial`은 보존되고 실패로 명시됩니다.
+Admin Catalog는 녹화 명령을 만들지 않고 완료된 MCAP, 객체별 SHA-256과 provenance만 조회합니다.
+완료 세션의 `sensor_msgs/msg/CompressedImage` JPEG는 Catalog에서 별도 도구 없이 재생할 수
+있습니다. 세션을 고른 뒤 최대 네 카메라를 선택하면 하나의 MCAP(Message Capture) 기록 시간축으로
+재생·탐색하며, 각 화면은 요청 시점과 실제 프레임의 차이를 표시합니다. 브라우저는 전체 MCAP을
+받지 않고 선택한 프레임만 요청하며 Central은 원본 JPEG를 재인코딩하지 않습니다.
 분산 배포에서는 additive 필드를 인식하는 Central을 먼저 갱신한 뒤 Edge Agent를 갱신합니다.
+
+Task Run UI 녹화의 구현·운용 계약과 Lab1 실측 결과는
+[`PLAN_TASK_RUN_CAPTURE_JOBS.md`](PLAN_TASK_RUN_CAPTURE_JOBS.md)와
+[`docs/TASK_RUN_UI_CAPTURE_ACCEPTANCE_2026-08-24.md`](docs/TASK_RUN_UI_CAPTURE_ACCEPTANCE_2026-08-24.md)를
+참조합니다.
+웹 재생기의 범위와 실측 결과는 [`PLAN_MCAP_WEB_PLAYBACK.md`](PLAN_MCAP_WEB_PLAYBACK.md)와
+[`docs/MCAP_WEB_PLAYBACK_ACCEPTANCE_2026-08-24.md`](docs/MCAP_WEB_PLAYBACK_ACCEPTANCE_2026-08-24.md)를
+참조합니다.
 
 ## Docker 환경
 
@@ -64,13 +89,15 @@ source install/setup.bash
 
 ## 관리자 앱 실행
 
-중앙 서버:
+인증된 중앙 서버를 처음 실행하기 전에 관리자 계정을 bootstrap해야 합니다. 전체 명령은
+`docs/ROBOT_CAMERA_OPERATIONS_V1.md`를 따릅니다. 중앙 서버:
 
 ```bash
 ros2 run fleet_control_plane fleet_control_plane \
   --db-path /tmp/sang-fleet.db \
   --ui-dir /ws/ui-admin \
   --operator-ui-dir /ws/ui-operator \
+  --object-store-root /tmp/sang-objects \
   --host 127.0.0.1 \
   --port 18091
 ```
@@ -92,6 +119,36 @@ ros2 run robot_agent robot_agent \
 Processing Node, Asset, Workcell, Task Definition과 Task Run을 순서대로 구성하고, 생성된 Run의
 `OPERATOR 열기`를 누르면 `/operator/#run/<run_id>`에서 배정된 자산만 볼 수 있습니다. 센서 topic이 아직
 발행되지 않으면 로봇은 `DEGRADED`로 보이는 것이 정상입니다.
+
+랩 네트워크의 다른 PC에서는 로컬 개발용 HTTP를 노출하지 않고 별도 HTTPS Manager를 사용합니다.
+관리자 계정을 먼저 `fleet_identity bootstrap-admin`으로 한 번만 생성한 뒤 다음 서비스를 띄웁니다.
+
+```bash
+docker compose \
+  --env-file runtime/phase3-lab1/config/central.env \
+  -f docker/compose.phase3-central.yaml \
+  -f docker/compose.phase3-lab1-preview.yaml \
+  -f docker/compose.manager-secure.yaml \
+  --profile recording up -d manager
+```
+
+기본 주소는 `https://10.0.0.8:18443/`이며 인증과 HTTPS를 끌 수 없습니다. 인증 없는 기존
+`http://127.0.0.1:18091/`은 같은 PC의 개발 확인에만 남겨 둡니다.
+
+원격 브라우저에는 공개 Root 인증서
+`runtime/phase3-lab1/pki-processing-lab1/root/ca-cert.pem`만 안전한 경로로 전달해 신뢰 저장소에
+설치합니다. `root/ca-key.pem`은 어떤 PC에도 복사하지 않습니다. Ubuntu 계열 클라이언트에서는 전달받은
+인증서만 다음처럼 설치한 뒤 브라우저를 다시 시작합니다.
+
+```bash
+sudo install -m 0644 sang-lab-root-ca.pem \
+  /usr/local/share/ca-certificates/sang-lab-root-ca.crt
+sudo update-ca-certificates
+```
+
+현재 Lab 배포의 초기 로그인 ID는 `manager-admin`이고 비밀번호는 서버의
+`runtime/phase3-lab1/pki-processing-lab1/roles/central/manager/auth/admin-password.txt`에만
+권한 `0600`으로 보관됩니다. 비밀번호 내용을 로그나 문서에 기록하지 않습니다.
 
 OMY와 RB5-850E도 동일한 Agent backend를 사용합니다. 현재 loopback 전용 단계에서는 Central과
 Agent를 같은 PC에서 띄우고, 해당 드라이버가 ROS 2 topic을 발행한 뒤 manifest를 선택해 실행합니다.
@@ -138,8 +195,9 @@ Robot Agent PC가 소유해야 합니다.
 `--preview-port`를 지정한 Agent는 최신 `CompressedImage` JPEG 한 장만 RAM에 보관합니다. Admin의
 Robot Detail에서 사용자가 `미리보기 시작`을 누를 때 선택한 카메라 한 대만 MJPEG로 전송하며,
 영상 bytes는 heartbeat나 SQLite에 저장하지 않습니다. 이번 loopback MVP에서는 Agent마다 서로
-다른 포트를 사용합니다. 분산 Phase 3 Agent는 Edge의 `127.0.0.1` URL을 중앙에 잘못 광고하지
-않도록 preview URL을 숨기며, 중앙 원격 preview relay는 Phase 4 이후 별도 보안 경계로 다룹니다.
+다른 포트를 사용합니다. 분산 Agent는 외부에서 접근 가능한 HTTPS preview URL만 광고합니다.
+Central은 Task Run에 배정된 카메라를 사용자가 선택했을 때만 relay하며, Edge는 공유 CA뿐 아니라
+Central preview-client certificate의 정확한 SHA-256 pin을 확인합니다.
 
 Central은 Agent online/stale/offline, topic stale/recovered, rate low/recovered 전이만 SQLite에
 저장합니다. 동일 heartbeat는 이벤트를 중복 생성하지 않으며 최신 10,000건을 유지합니다.

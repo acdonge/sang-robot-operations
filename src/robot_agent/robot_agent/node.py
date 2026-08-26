@@ -7,10 +7,12 @@ from concurrent.futures import Future, ThreadPoolExecutor
 import math
 from pathlib import Path
 import socket
+import ssl
 import sys
 import time
 from typing import Mapping
 from uuid import uuid4
+from urllib.parse import urlsplit
 
 import rclpy
 from rclpy.executors import ExternalShutdownException
@@ -22,6 +24,7 @@ from trajectory_msgs.msg import JointTrajectory
 
 from sang_security.refs import SecretReferenceError, SecretResolver
 from robot_agent.health import camera_format_is_valid, joint_sample_is_valid
+from robot_agent.clock_sync import ClockSyncSampler
 from robot_agent.heartbeat import (
     AgentTLSConfig,
     SystemMetrics,
@@ -48,6 +51,25 @@ MESSAGE_CLASSES = {
     "sensor_msgs/msg/JointState": JointState,
     "trajectory_msgs/msg/JointTrajectory": JointTrajectory,
 }
+
+
+def build_preview_tls_server_context(
+    certificate_chain: Path,
+    private_key: Path,
+    client_ca_crl_bundle: Path,
+) -> ssl.SSLContext:
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    context.verify_mode = ssl.CERT_REQUIRED
+    context.load_cert_chain(
+        certfile=str(certificate_chain),
+        keyfile=str(private_key),
+    )
+    context.load_verify_locations(cafile=str(client_ca_crl_bundle))
+    context.verify_flags |= (
+        ssl.VERIFY_CRL_CHECK_LEAF | ssl.VERIFY_X509_PARTIAL_CHAIN
+    )
+    return context
 
 
 def sample_is_valid(source, topic: str, message) -> bool:
@@ -96,12 +118,15 @@ class RobotAgentNode(Node):
         preview_host: str,
         preview_port: int,
         preview_public_base_url: str | None,
+        preview_tls_context: ssl.SSLContext | None = None,
+        preview_authorized_client_sha256: frozenset[str] | None = None,
         advertise_preview: bool = True,
         heartbeat_tls: AgentTLSConfig | None = None,
         heartbeat_schema_version: int | None = None,
         local_health_signing_key: bytes | None = None,
         local_health_key_id: str | None = None,
         mapping_digests: Mapping[str, str] | None = None,
+        clock_sync: ClockSyncSampler | None = None,
     ) -> None:
         super().__init__("robot_agent")
         self._agent_id = agent_id
@@ -124,6 +149,7 @@ class RobotAgentNode(Node):
             capture_root,
             agent_id=agent_id,
         )
+        self._clock_sync = clock_sync
         self._heartbeat_enabled_at = time.monotonic() + startup_grace_s
         self._monitors = [RobotMonitor(manifest) for manifest in manifests]
         self._boot_id = str(uuid4())
@@ -139,6 +165,8 @@ class RobotAgentNode(Node):
                 preview_host,
                 preview_port,
                 public_base_url=preview_public_base_url,
+                tls_context=preview_tls_context,
+                authorized_client_sha256=preview_authorized_client_sha256,
             )
             self._preview.start()
 
@@ -219,6 +247,7 @@ class RobotAgentNode(Node):
             robots=self._robot_snapshots(now),
             storage=self._metrics.sample(),
             recordings=self._recording_inventory.sample(now_monotonic=now),
+            sync=None if self._clock_sync is None else self._clock_sync.sample(),
             boot_id=(self._boot_id if self._heartbeat_tls is not None else None),
             sequence=(
                 self._heartbeat_sequence if self._heartbeat_tls is not None else None
@@ -286,6 +315,19 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--preview-public-base-url")
     parser.add_argument("--suppress-preview-advertisement", action="store_true")
     parser.add_argument(
+        "--preview-security-mode",
+        choices=("loopback", "mtls"),
+        default="loopback",
+    )
+    parser.add_argument("--preview-tls-server-certificate-ref")
+    parser.add_argument("--preview-tls-server-private-key-ref")
+    parser.add_argument("--preview-tls-client-ca-crl-bundle-ref")
+    parser.add_argument(
+        "--preview-tls-authorized-client-sha256",
+        action="append",
+        default=[],
+    )
+    parser.add_argument(
         "--heartbeat-security-mode",
         choices=("loopback", "mtls"),
         default="loopback",
@@ -302,6 +344,8 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--tls-client-private-key-ref")
     parser.add_argument("--local-health-key-ref")
     parser.add_argument("--local-health-key-id")
+    parser.add_argument("--clock-sync-host")
+    parser.add_argument("--clock-sync-timeout-s", type=float, default=1.0)
     options = parser.parse_args(args)
     if any(
         not math.isfinite(value) or value <= 0.0
@@ -310,17 +354,65 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
         parser.error("interval-s and timeout-s must be positive")
     if not math.isfinite(options.startup_grace_s) or options.startup_grace_s < 0.0:
         parser.error("startup-grace-s must be non-negative")
-    if options.preview_host not in {"127.0.0.1", "localhost"}:
-        parser.error("preview-host must be loopback in this release")
+    if not math.isfinite(options.clock_sync_timeout_s) or options.clock_sync_timeout_s <= 0.0:
+        parser.error("clock-sync-timeout-s must be positive")
+    if options.clock_sync_host is not None and (
+        not options.clock_sync_host
+        or len(options.clock_sync_host) > 253
+        or "/" in options.clock_sync_host
+        or "://" in options.clock_sync_host
+    ):
+        parser.error("clock-sync-host must be a host name or IP address")
     if options.preview_port < 0 or options.preview_port > 65535:
         parser.error("preview-port must be between 0 and 65535")
-    if options.preview_public_base_url is not None:
-        try:
-            require_loopback_http(options.preview_public_base_url)
-        except ValueError:
-            parser.error("preview-public-base-url must use loopback HTTP in this release")
-    tls_values = (
-        options.secret_root,
+    preview_tls_refs = (
+        options.preview_tls_server_certificate_ref,
+        options.preview_tls_server_private_key_ref,
+        options.preview_tls_client_ca_crl_bundle_ref,
+    )
+    if options.preview_security_mode == "loopback":
+        if options.preview_host not in {"127.0.0.1", "localhost"}:
+            parser.error("loopback preview must bind to loopback")
+        if any(value is not None for value in preview_tls_refs):
+            parser.error("preview TLS references require --preview-security-mode mtls")
+        if options.preview_tls_authorized_client_sha256:
+            parser.error("preview client pins require --preview-security-mode mtls")
+        if options.preview_public_base_url is not None:
+            try:
+                require_loopback_http(options.preview_public_base_url)
+            except ValueError:
+                parser.error("loopback preview-public-base-url must use loopback HTTP")
+    else:
+        if options.preview_port <= 0:
+            parser.error("mTLS preview requires a non-zero preview port")
+        if options.preview_public_base_url is None:
+            parser.error("mTLS preview requires preview-public-base-url")
+        parsed_preview = urlsplit(options.preview_public_base_url)
+        if (
+            parsed_preview.scheme != "https"
+            or parsed_preview.hostname is None
+            or parsed_preview.port is None
+            or parsed_preview.username is not None
+            or parsed_preview.password is not None
+            or parsed_preview.path not in {"", "/"}
+            or parsed_preview.query
+            or parsed_preview.fragment
+        ):
+            parser.error("mTLS preview-public-base-url must be a canonical HTTPS origin")
+        if any(value is None for value in preview_tls_refs):
+            parser.error("mTLS preview requires server certificate, key and client CA/CRL")
+        if not options.preview_tls_authorized_client_sha256:
+            parser.error("mTLS preview requires an authorized Central client fingerprint")
+        if any(
+            len(value) != 64
+            or value != value.lower()
+            or any(character not in "0123456789abcdef" for character in value)
+            for value in options.preview_tls_authorized_client_sha256
+        ):
+            parser.error("preview client fingerprints must be lowercase SHA-256 hex")
+        if options.secret_root is None:
+            parser.error("mTLS preview requires secret-root")
+    heartbeat_tls_values = (
         options.tls_ca_bundle_ref,
         options.tls_client_certificate_ref,
         options.tls_client_private_key_ref,
@@ -332,7 +424,7 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
             options.heartbeat_schema_version = 1
         if options.heartbeat_schema_version != 1:
             parser.error("loopback heartbeat ingress only supports schema v1")
-        if any(value is not None for value in tls_values):
+        if any(value is not None for value in heartbeat_tls_values):
             parser.error("TLS material requires --heartbeat-security-mode mtls")
         try:
             require_control_plane_transport(options.control_plane_url, None)
@@ -343,8 +435,8 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
             options.heartbeat_schema_version = 2
         if options.heartbeat_schema_version not in {2, 3}:
             parser.error("mTLS heartbeat ingress requires schema v2 or v3")
-        required_tls = tls_values[:4]
-        if any(value is None for value in required_tls):
+        required_tls = heartbeat_tls_values[:3]
+        if options.secret_root is None or any(value is None for value in required_tls):
             parser.error("mTLS heartbeat requires secret root, CA, certificate and key")
         if (options.local_health_key_ref is None) != (
             options.local_health_key_id is None
@@ -366,9 +458,15 @@ def main(args: list[str] | None = None) -> None:
     options = parse_args(clean_args)
     heartbeat_tls = None
     local_health_signing_key = None
-    if options.heartbeat_security_mode == "mtls":
+    preview_tls_context = None
+    resolver = None
+    if options.secret_root is not None:
         try:
             resolver = SecretResolver(options.secret_root)
+        except (SecretReferenceError, OSError, ValueError) as exc:
+            raise SystemExit(f"invalid secret root: {exc}") from exc
+    if options.heartbeat_security_mode == "mtls":
+        try:
             heartbeat_tls = AgentTLSConfig(
                 ca_bundle=resolver.resolve(options.tls_ca_bundle_ref),
                 client_certificate_chain=resolver.resolve(
@@ -389,6 +487,18 @@ def main(args: list[str] | None = None) -> None:
                 )
         except (SecretReferenceError, LocalHealthError, OSError, ValueError) as exc:
             raise SystemExit(f"invalid heartbeat mTLS material: {exc}") from exc
+    if options.preview_security_mode == "mtls":
+        try:
+            preview_tls_context = build_preview_tls_server_context(
+                resolver.resolve(options.preview_tls_server_certificate_ref),
+                resolver.resolve(
+                    options.preview_tls_server_private_key_ref,
+                    private=True,
+                ),
+                resolver.resolve(options.preview_tls_client_ca_crl_bundle_ref),
+            )
+        except (SecretReferenceError, OSError, ssl.SSLError, ValueError) as exc:
+            raise SystemExit(f"invalid preview mTLS material: {exc}") from exc
     manifests = [load_manifest(path) for path in options.manifest]
     if options.mapping and len(options.mapping) != len(manifests):
         raise SystemExit("--mapping must be supplied once per --manifest in the same order")
@@ -422,12 +532,26 @@ def main(args: list[str] | None = None) -> None:
         preview_host=options.preview_host,
         preview_port=options.preview_port,
         preview_public_base_url=options.preview_public_base_url,
+        preview_tls_context=preview_tls_context,
+        preview_authorized_client_sha256=(
+            None
+            if options.preview_security_mode == "loopback"
+            else frozenset(options.preview_tls_authorized_client_sha256)
+        ),
         advertise_preview=not options.suppress_preview_advertisement,
         heartbeat_tls=heartbeat_tls,
         heartbeat_schema_version=options.heartbeat_schema_version,
         local_health_signing_key=local_health_signing_key,
         local_health_key_id=options.local_health_key_id,
         mapping_digests=mapping_digests,
+        clock_sync=(
+            None
+            if options.clock_sync_host is None
+            else ClockSyncSampler(
+                options.clock_sync_host,
+                timeout_s=options.clock_sync_timeout_s,
+            )
+        ),
     )
     try:
         rclpy.spin(node)

@@ -101,6 +101,7 @@ def make_client(tmp_path, clock=None):
         now=clock,
         ttls=FleetTTLs(online_s=12, offline_s=30),
         websocket_interval_s=0.02,
+        auth_enabled=False,
     )
     return TestClient(app), store, clock
 
@@ -137,6 +138,18 @@ def test_heartbeat_agents_and_summary(tmp_path):
     assert summary["recordings"]["complete"] == 1
 
 
+def test_legacy_heartbeat_rejects_non_loopback_clients(tmp_path):
+    store = FleetStore(tmp_path / "fleet.db")
+    app = create_app(store, auth_enabled=False)
+    client = TestClient(app, client=("198.51.100.20", 51000))
+
+    response = client.post("/api/v1/agents/heartbeat", json=heartbeat())
+
+    assert response.status_code == 403
+    assert "mTLS ingress" in response.json()["error"]
+    assert store.list_snapshots() == []
+
+
 def test_shadow_agents_endpoint_does_not_reconcile_or_write_events(
     tmp_path,
     monkeypatch,
@@ -158,7 +171,7 @@ def test_shadow_agents_endpoint_does_not_reconcile_or_write_events(
     assert store.list_events() == events_before
 
 
-def test_camera_preview_url_round_trips_without_storing_image_bytes(tmp_path):
+def test_unregistered_camera_preview_upstream_is_not_exposed(tmp_path):
     client, _, _ = make_client(tmp_path)
     payload = heartbeat()
     source = payload["robots"][0]["sources"][0]
@@ -170,7 +183,8 @@ def test_camera_preview_url_round_trips_without_storing_image_bytes(tmp_path):
 
     assert client.post("/api/v1/agents/heartbeat", json=payload).status_code == 202
     stored_source = client.get("/api/v1/agents").json()[0]["robots"][0]["sources"][0]
-    assert stored_source["preview_url"].endswith("/cameras/top.mjpg")
+    assert stored_source["preview_url"] is None
+    assert stored_source["upstream_preview_available"] is True
     assert "image" not in stored_source
 
 
@@ -227,6 +241,20 @@ def test_admin_api_rejects_non_loopback_host_header(tmp_path):
     assert response.status_code == 421
 
 
+def test_browser_security_headers_cover_ui_and_api(tmp_path):
+    client, _, _ = make_client(tmp_path)
+
+    page = client.get("/")
+    assert page.headers["x-frame-options"] == "DENY"
+    assert "frame-ancestors 'none'" in page.headers["content-security-policy"]
+    assert page.headers["x-content-type-options"] == "nosniff"
+    assert page.headers["referrer-policy"] == "no-referrer"
+    assert "strict-transport-security" not in page.headers
+
+    api = client.get("/api/v1/healthz")
+    assert api.headers["cache-control"] == "no-store"
+
+
 def test_summary_distinguishes_stale_fault_and_offline(tmp_path):
     client, store, clock = make_client(tmp_path)
     store.upsert(
@@ -263,6 +291,37 @@ def test_summary_distinguishes_stale_fault_and_offline(tmp_path):
     assert summary["storage"]["disk_free_gb_min"] == 50.0
 
 
+def test_multiple_agents_isolate_malformed_and_offline_updates(tmp_path):
+    client, store, clock = make_client(tmp_path)
+    assert client.post(
+        "/api/v1/agents/heartbeat", json=heartbeat("agent-a")
+    ).status_code == 202
+    assert client.post(
+        "/api/v1/agents/heartbeat", json=heartbeat("agent-b")
+    ).status_code == 202
+
+    clock.advance(FleetTTLs().offline_s + 1)
+    assert client.post(
+        "/api/v1/agents/heartbeat", json=heartbeat("agent-a")
+    ).status_code == 202
+    malformed = heartbeat("agent-b")
+    malformed["robots"][0]["sources"][0]["topics"][0]["rate_ok"] = False
+    assert client.post(
+        "/api/v1/agents/heartbeat", json=malformed
+    ).status_code == 422
+
+    agents = {
+        item["agent_id"]: item for item in client.get("/api/v1/agents").json()
+    }
+    assert agents["agent-a"]["status"] == "online"
+    assert agents["agent-a"]["robots"][0]["sources_fresh"] is True
+    assert agents["agent-b"]["status"] == "offline"
+    assert store.get_snapshot("agent-b")["robots"][0]["rates_ok"] is True
+    summary = client.get("/api/v1/summary").json()
+    assert summary["agents"]["online"] == 1
+    assert summary["agents"]["offline"] == 1
+
+
 def test_route_surface_contains_no_robot_command_writer(tmp_path):
     client, _, _ = make_client(tmp_path)
     routes = {
@@ -272,6 +331,12 @@ def test_route_surface_contains_no_robot_command_writer(tmp_path):
     }
     writers = {(method, path) for method, path in routes if method in {"POST", "PUT", "PATCH", "DELETE"}}
     assert writers == {
+        ("POST", "/api/v1/auth/login"),
+        ("POST", "/api/v1/auth/logout"),
+        ("POST", "/api/v1/auth/users"),
+        ("POST", "/api/v1/auth/service-identities"),
+        ("PUT", "/api/v1/auth/principals/{principal_id}"),
+        ("POST", "/api/v1/auth/service-tokens/{token_id}/revoke"),
         ("POST", "/api/v1/agents/heartbeat"),
         ("POST", "/api/v1/config/agent-registrations"),
         ("PUT", "/api/v1/config/agent-registrations/{agent_id}"),
@@ -279,17 +344,45 @@ def test_route_surface_contains_no_robot_command_writer(tmp_path):
         ("POST", "/api/v1/config/agent-credentials/{credential_id}/revoke"),
         ("POST", "/api/v1/config/connection-profiles"),
         ("PUT", "/api/v1/config/connection-profiles/{profile_id}"),
-            ("POST", "/api/v1/config/processing-nodes"),
-            ("POST", "/api/v1/config/assets"),
-            ("PATCH", "/api/v1/config/assets/{asset_id}/runtime-kind"),
-            ("POST", "/api/v1/config/workcells"),
+        ("POST", "/api/v1/config/processing-nodes"),
+        ("PUT", "/api/v1/config/processing-nodes/{node_id}"),
+        ("POST", "/api/v1/config/processing-nodes/{node_id}/decommission"),
+        ("POST", "/api/v1/config/assets"),
+        ("PUT", "/api/v1/config/assets/{asset_id}"),
+        ("POST", "/api/v1/config/assets/{asset_id}/decommission"),
+        ("PATCH", "/api/v1/config/assets/{asset_id}/runtime-kind"),
+        ("POST", "/api/v1/config/workcells"),
+        ("PUT", "/api/v1/config/workcells/{workcell_id}"),
+        ("POST", "/api/v1/config/workcells/{workcell_id}/decommission"),
         ("POST", "/api/v1/config/task-definitions"),
         ("POST", "/api/v1/config/task-runs"),
-    }
+        ("PUT", "/api/v1/config/task-runs/{run_id}"),
+        ("POST", "/api/v1/config/task-runs/{run_id}/transition"),
+        ("POST", "/api/v1/task-runs/{run_id}/complete-after-capture"),
+        ("POST", "/api/v1/task-runs/{run_id}/capture-jobs"),
+        ("POST", "/api/v1/capture-jobs/{job_id}/stop"),
+        ("POST", "/api/v1/recording-sessions"),
+        (
+            "PUT",
+            "/api/v1/recording-sessions/{session_id}/artifacts/{artifact_path:path}",
+        ),
+            ("POST", "/api/v1/recording-sessions/{session_id}/finalize"),
+            (
+                "POST",
+                "/api/v1/recording-sessions/{session_id}/quality/analyze",
+            ),
+        }
     assert all(
         token not in path
         for _, path in routes
-        for token in ("record", "inference", "train", "upload", "command", "policy/start")
+        for token in (
+            "inference",
+            "train",
+            "robot-command",
+            "policy/start",
+            "weld/start",
+            "feeder/start",
+        )
     )
 
 

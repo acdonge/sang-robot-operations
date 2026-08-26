@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#18211d">
   <title>SANG Operator Station</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="./operator.css?v=20260803.1">
-  <script type="module" src="./operator.js?v=20260803.1"></script>
+  <link rel="stylesheet" href="./operator.css?v=20260826.1">
+  <script type="module" src="./operator.js?v=20260826.1"></script>
 </head>
 <body>
   <div class="operator-shell">
@@ -41,6 +41,58 @@
         <div><span>HEALTHY</span><strong id="healthy-count">0</strong><small>live bindings</small></div>
         <div><span>ATTENTION</span><strong id="attention-count">0</strong><small>review before work</small></div>
         <div><span>CAMERAS</span><strong id="camera-count">0</strong><small>on demand</small></div>
+      </section>
+
+      <section class="station-panel capture-panel" aria-labelledby="capture-title">
+        <div class="panel-title capture-title-row">
+          <div><p class="kicker">DATA CAPTURE / TASK RUN</p><h2 id="capture-title">관측 녹화</h2></div>
+          <span id="capture-state" class="capture-state is-idle">IDLE</span>
+        </div>
+        <div class="capture-layout">
+          <form id="capture-form" class="capture-controls">
+            <label>
+              <span>EDGE WORKER</span>
+              <select id="capture-worker-selector" required>
+                <option value="">사용 가능한 작업자 없음</option>
+              </select>
+            </label>
+            <label>
+              <span>DURATION / SECONDS</span>
+              <input id="capture-duration" type="number" min="5" max="28800" step="5" value="600" required>
+            </label>
+            <div class="capture-actions">
+              <button id="capture-start" class="capture-start" type="submit" disabled>녹화 시작</button>
+              <button id="capture-stop" class="capture-stop" type="button" disabled>녹화 중지</button>
+            </div>
+            <p id="capture-message" class="capture-message">ACTIVE Task Run과 온라인 Edge 작업자가 필요합니다.</p>
+          </form>
+
+          <div class="capture-progress" aria-live="polite">
+            <div class="capture-progress-head">
+              <div><span>PIPELINE STATE</span><strong id="capture-state-note">대기 중</strong></div>
+              <b id="capture-progress-value">0%</b>
+            </div>
+            <div class="capture-progress-track" aria-hidden="true"><span id="capture-progress-bar"></span></div>
+            <dl class="capture-facts">
+              <div><dt>JOB</dt><dd id="capture-job">--</dd></div>
+              <div><dt>SESSION</dt><dd id="capture-session">--</dd></div>
+              <div><dt>STARTED</dt><dd id="capture-created">--</dd></div>
+            </dl>
+          </div>
+
+          <div class="capture-integrity">
+            <div class="integrity-heading"><span>CENTRAL OBJECT STORE</span><strong id="capture-integrity-state">AWAITING SESSION</strong></div>
+            <div class="integrity-metrics">
+              <div><span>MCAP</span><strong id="capture-mcap-size">--</strong></div>
+              <div><span>FILES</span><strong id="capture-files">-- / --</strong></div>
+            </div>
+            <div class="integrity-hash"><span>MANIFEST SHA-256</span><code id="capture-hash">--</code></div>
+            <div class="capture-quality"><span>QUALITY GATE</span><strong id="capture-quality-state">AWAITING PASS</strong></div>
+            <a id="capture-catalog-link" class="capture-catalog-link" href="/catalog.html" aria-disabled="true">Catalog에서 무결성 상세 보기</a>
+            <button id="run-complete" class="run-complete" type="button" disabled>Task Run 완료</button>
+            <p id="run-complete-message" class="run-complete-message">품질 PASS 세션이 필요합니다.</p>
+          </div>
+        </div>
       </section>
 
       <section class="workspace-grid">
@@ -79,7 +131,7 @@
 
       <section class="boundary-note">
         <strong>MONITORING BOUNDARY</strong>
-        <span>현재 Operator 앱은 관측 전용입니다. 로봇 제어, 정책 실행, 녹화 시작은 명시적인 Safety/Control Mode 계약 이후 별도 기능으로 추가됩니다.</span>
+        <span>현재 Operator 앱은 관측과 Task Run 녹화만 수행합니다. 녹화는 고정된 읽기 전용 프로필만 사용하며 로봇 제어, 정책 실행, 용접기·와이어 피더 명령은 전송하지 않습니다.</span>
       </section>
     </main>
   </div>

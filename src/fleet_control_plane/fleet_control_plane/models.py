@@ -143,9 +143,62 @@ class RecordingInventorySnapshot(FleetModel):
 
 
 class SyncSnapshot(FleetModel):
-    supported: Literal[False] = False
-    state: Literal["unsupported"] = "unsupported"
+    supported: bool = False
+    state: Literal[
+        "unsupported",
+        "unknown",
+        "locked",
+        "degraded",
+        "unsynchronized",
+    ] = "unsupported"
     pending: None = None
+    source: ShortText | None = None
+    sampled_at: AwareDatetime | None = None
+    reference_id: ShortText | None = None
+    reference_name: ShortText | None = None
+    stratum: int | None = Field(default=None, ge=1, le=16)
+    system_offset_ms: float | None = None
+    last_offset_ms: float | None = None
+    rms_offset_ms: float | None = Field(default=None, ge=0.0)
+    root_delay_ms: float | None = Field(default=None, ge=0.0)
+    root_dispersion_ms: float | None = Field(default=None, ge=0.0)
+    update_interval_s: float | None = Field(default=None, ge=0.0)
+    leap_status: ShortText | None = None
+    error_code: Literal[
+        "timeout",
+        "command_unavailable",
+        "query_failed",
+        "invalid_response",
+    ] | None = None
+
+    @model_validator(mode="after")
+    def support_matches_state(self) -> "SyncSnapshot":
+        details = (
+            self.source,
+            self.sampled_at,
+            self.reference_id,
+            self.reference_name,
+            self.stratum,
+            self.system_offset_ms,
+            self.last_offset_ms,
+            self.rms_offset_ms,
+            self.root_delay_ms,
+            self.root_dispersion_ms,
+            self.update_interval_s,
+            self.leap_status,
+            self.error_code,
+        )
+        if not self.supported:
+            if self.state != "unsupported" or any(item is not None for item in details):
+                raise ValueError("unsupported sync status cannot contain measurements")
+            return self
+        if self.state == "unsupported" or self.source is None or self.sampled_at is None:
+            raise ValueError("supported sync status requires a source and sample time")
+        if self.state == "unknown" and self.error_code is None:
+            raise ValueError("unknown sync status requires an error code")
+        if self.state != "unknown" and self.error_code is not None:
+            raise ValueError("measured sync status cannot contain an error code")
+        return self
 
 
 class RecordingSnapshot(FleetModel):

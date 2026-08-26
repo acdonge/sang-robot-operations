@@ -43,6 +43,14 @@ interfaces:
       minimum_rate_hz: 20
   action: []
   cameras:
+    - key: welding_view
+      topic: /rb5_lab1_eval_01/camera/welding_view/image_raw/compressed
+      message_type: sensor_msgs/msg/CompressedImage
+      encoding: jpeg
+      width: 1920
+      height: 1080
+      freshness_ms: 1000
+      minimum_rate_hz: 25
     - key: d455_color
       topic: /rb5_lab1_eval_01/camera/d455_color/image_raw/compressed
       message_type: sensor_msgs/msg/CompressedImage
@@ -74,4 +82,4 @@ ui:
   display_name: RB5-850E Lab1 Evaluation
   order: 31
   panels: [health]
-  camera_order: [d455_color, d405_color]
+  camera_order: [welding_view, d455_color, d405_color]

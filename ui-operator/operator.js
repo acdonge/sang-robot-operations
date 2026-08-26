@@ -8,6 +8,17 @@ const state = {
   reconnectTimer: null,
   selectedCamera: null,
   preview: { active: false, controller: null, frameUrl: null, status: "idle" },
+  capture: {
+    workerId: null,
+    busy: false,
+    integrity: null,
+    integritySessionId: null,
+    integrityLoading: false,
+    integrityFetchedAt: 0,
+    pendingRequest: null,
+    actionError: null,
+    completionError: null,
+  },
 };
 
 const byId = (id) => document.getElementById(id);
@@ -32,10 +43,54 @@ function formatClock(value) {
   }).format(new Date(value));
 }
 
+function formatDateTime(value) {
+  if (!value) return "--";
+  return new Intl.DateTimeFormat("ko-KR", {
+    year: "2-digit", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+  }).format(new Date(value));
+}
+
+function formatBytes(value) {
+  const bytes = Number(value || 0);
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KiB`;
+  if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MiB`;
+  return `${(bytes / 1024 ** 3).toFixed(2)} GiB`;
+}
+
 async function getJson(path) {
   const response = await fetch(path, { headers: { Accept: "application/json" } });
+  if (response.status === 401) {
+    location.assign(`/login.html?next=${encodeURIComponent(location.href)}`);
+    throw new Error("authentication required");
+  }
   if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`);
   return response.json();
+}
+
+async function requestJson(method, path, body = {}) {
+  const csrf = document.cookie
+    .split(";")
+    .map((item) => item.trim())
+    .find((item) => item.startsWith("sang_csrf="))
+    ?.split("=", 2)[1];
+  const response = await fetch(path, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...(csrf ? { "X-CSRF-Token": decodeURIComponent(csrf) } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  if (response.status === 401) {
+    location.assign(`/login.html?next=${encodeURIComponent(location.href)}`);
+    throw new Error("authentication required");
+  }
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || `${path}: HTTP ${response.status}`);
+  return payload;
 }
 
 function setConnection(mode, label) {
@@ -190,6 +245,366 @@ function renderSummary() {
   byId("updated-at").textContent = formatClock(payload?.generated_at);
 }
 
+const ACTIVE_CAPTURE_STATES = new Set([
+  "PENDING", "CLAIMED", "RECORDING", "FINALIZING", "UPLOADING",
+]);
+const STOPPABLE_CAPTURE_STATES = new Set([
+  "PENDING", "CLAIMED", "RECORDING", "FINALIZING",
+]);
+
+function captureJobs() {
+  return state.payload?.capture_jobs || [];
+}
+
+function currentCaptureJob() {
+  const jobs = captureJobs();
+  return jobs.find((job) => ACTIVE_CAPTURE_STATES.has(job.state)) || jobs[0] || null;
+}
+
+function captureWorkers() {
+  return state.payload?.capture_workers || [];
+}
+
+function selectedCaptureWorker() {
+  return captureWorkers().find((worker) => worker.worker_id === state.capture.workerId) || null;
+}
+
+function renderCaptureWorkerOptions() {
+  const selector = byId("capture-worker-selector");
+  const workers = captureWorkers();
+  const signature = workers
+    .map((worker) => `${worker.worker_id}:${worker.available}:${worker.profile_id}`)
+    .join("|");
+  if (selector.dataset.signature !== signature) {
+    selector.replaceChildren();
+    if (!workers.length) {
+      const empty = element("option", "", "사용 가능한 작업자 없음");
+      empty.value = "";
+      selector.append(empty);
+    }
+    for (const worker of workers) {
+      const option = element(
+        "option",
+        "",
+        `${worker.worker_id} · ${worker.available ? "ONLINE" : "STALE"} · ${worker.profile_id}`,
+      );
+      option.value = worker.worker_id;
+      selector.append(option);
+    }
+    selector.dataset.signature = signature;
+  }
+  if (!workers.some((worker) => worker.worker_id === state.capture.workerId)) {
+    state.capture.workerId = workers.find((worker) => worker.available)?.worker_id
+      || workers[0]?.worker_id
+      || null;
+  }
+  selector.value = state.capture.workerId || "";
+}
+
+function captureProgress(job) {
+  if (!job) return 0;
+  if (["COMPLETE", "FAILED", "CANCELLED"].includes(job.state)) return 100;
+  if (job.state === "PENDING") return 4;
+  if (job.state === "CLAIMED") return 8;
+  if (job.state === "FINALIZING") return 90;
+  if (job.state === "UPLOADING") {
+    const expected = Number(job.recording?.expected_file_count || 0);
+    const completed = Number(job.recording?.completed_file_count || 0);
+    return expected ? 92 + Math.round(7 * completed / expected) : 92;
+  }
+  const started = Date.parse(job.started_at || "");
+  if (!Number.isFinite(started)) return 12;
+  const elapsed = Math.max(0, Date.now() - started) / 1000;
+  return Math.min(88, Math.max(12, Math.round(88 * elapsed / job.duration_s)));
+}
+
+function captureStateNote(job) {
+  if (!job) return "Task Run 녹화 대기 중";
+  const labels = {
+    PENDING: "Edge 작업자 할당 대기",
+    CLAIMED: "Edge 작업자가 세션 준비 중",
+    RECORDING: "고정 프로필로 ROS2 관측 기록 중",
+    FINALIZING: "MCAP 인덱스와 Manifest 생성 중",
+    UPLOADING: "Central Object Store 업로드·검증 중",
+    COMPLETE: "중앙 무결성 검증 완료",
+    FAILED: "녹화 실패 · 원본 증거 보존",
+    CANCELLED: "녹화 시작 전 취소됨",
+  };
+  return labels[job.state] || job.state;
+}
+
+function renderCaptureIntegrity(job) {
+  const detail = state.capture.integritySessionId === job?.session_id
+    ? state.capture.integrity
+    : null;
+  const summary = detail || job?.recording || null;
+  const artifacts = detail?.artifacts || [];
+  const mcapBytes = artifacts
+    .filter((artifact) => artifact.path.endsWith(".mcap"))
+    .reduce((total, artifact) => total + Number(artifact.size_bytes || 0), 0);
+  const expected = Number(summary?.expected_file_count || artifacts.length || 0);
+  const completed = Number(
+    summary?.completed_file_count
+    || artifacts.filter((artifact) => artifact.state === "COMPLETE").length,
+  );
+  const verified = summary?.state === "COMPLETE"
+    && expected > 0
+    && completed === expected
+    && artifacts.length === expected
+    && artifacts.every((artifact) => /^[0-9a-f]{64}$/.test(artifact.sha256));
+
+  byId("capture-integrity-state").textContent = verified
+    ? "VERIFIED / SHA-256"
+    : summary ? `${summary.state} / ${completed} OF ${expected}` : "AWAITING SESSION";
+  byId("capture-integrity-state").className = verified ? "is-verified" : "";
+  byId("capture-mcap-size").textContent = mcapBytes
+    ? formatBytes(mcapBytes)
+    : summary?.total_size_bytes ? formatBytes(summary.total_size_bytes) : "--";
+  byId("capture-files").textContent = summary ? `${completed} / ${expected}` : "-- / --";
+  const hash = summary?.manifest_sha256 || "--";
+  byId("capture-hash").textContent = hash;
+  byId("capture-hash").title = hash === "--" ? "" : hash;
+  const link = byId("capture-catalog-link");
+  if (job) {
+    const query = new URLSearchParams({ run_id: job.run_id, session_id: job.session_id });
+    link.href = `/catalog.html?${query}`;
+    link.removeAttribute("aria-disabled");
+  } else {
+    link.href = "/catalog.html";
+    link.setAttribute("aria-disabled", "true");
+  }
+}
+
+function captureSession(job) {
+  if (!job) return null;
+  return (state.payload?.recording_sessions || [])
+    .find((session) => session.session_id === job.session_id) || null;
+}
+
+function runCompletionGate(run, job) {
+  const activeJob = captureJobs().find((item) => ACTIVE_CAPTURE_STATES.has(item.state)) || null;
+  const completedJob = !activeJob && job?.state === "COMPLETE" ? job : null;
+  const session = captureSession(completedJob);
+  const qualityState = session?.quality?.state || "PENDING";
+  let message = "최신 완료 세션의 품질 PASS가 필요합니다.";
+  if (!run) message = "Task Run을 선택하세요.";
+  else if (run.state !== "ACTIVE") message = `${run.state} Run은 더 이상 종료할 수 없습니다.`;
+  else if (activeJob) message = `${activeJob.state} Capture Job이 끝날 때까지 기다리세요.`;
+  else if (!completedJob) message = "완료된 Capture Job이 필요합니다.";
+  else if (session?.state !== "COMPLETE") message = "Central Object Store 검증을 기다리고 있습니다.";
+  else if (qualityState !== "PASS") message = `품질 상태 ${qualityState} · PASS 후 종료할 수 있습니다.`;
+  else message = "품질 PASS 확인 완료 · Run 종료 시 모든 자산 예약이 해제됩니다.";
+  if (state.capture.completionError) message = state.capture.completionError;
+  return {
+    enabled: run?.state === "ACTIVE"
+      && !activeJob
+      && completedJob !== null
+      && session?.state === "COMPLETE"
+      && qualityState === "PASS"
+      && !state.capture.busy,
+    qualityState,
+    message,
+  };
+}
+
+function renderRunCompletion(run, job) {
+  const gate = runCompletionGate(run, job);
+  const quality = byId("capture-quality-state");
+  quality.textContent = gate.qualityState;
+  quality.className = `is-${gate.qualityState.toLowerCase()}`;
+  byId("run-complete").disabled = !gate.enabled;
+  byId("run-complete-message").textContent = gate.message;
+}
+
+function renderCapture() {
+  renderCaptureWorkerOptions();
+  const run = state.payload?.task_run || null;
+  const worker = selectedCaptureWorker();
+  const job = currentCaptureJob();
+  const activeJob = job && ACTIVE_CAPTURE_STATES.has(job.state) ? job : null;
+  const progress = captureProgress(job);
+  const duration = byId("capture-duration");
+  const start = byId("capture-start");
+  const stop = byId("capture-stop");
+
+  byId("capture-state").textContent = job?.state || "IDLE";
+  byId("capture-state").className = `capture-state is-${(job?.state || "idle").toLowerCase()}`;
+  byId("capture-state-note").textContent = captureStateNote(job);
+  byId("capture-progress-value").textContent = `${progress}%`;
+  byId("capture-progress-bar").style.width = `${progress}%`;
+  byId("capture-progress-bar").className = ["FAILED", "CANCELLED"].includes(job?.state)
+    ? "is-error"
+    : job?.state === "COMPLETE" ? "is-complete" : "";
+  byId("capture-job").textContent = job?.job_id || "--";
+  byId("capture-session").textContent = job?.session_id || "--";
+  byId("capture-created").textContent = formatDateTime(job?.started_at || job?.created_at);
+
+  const canStart = run?.state === "ACTIVE"
+    && worker?.available === true
+    && !activeJob
+    && !state.capture.busy;
+  start.disabled = !canStart;
+  stop.disabled = state.capture.busy || !job || !STOPPABLE_CAPTURE_STATES.has(job.state);
+  duration.disabled = Boolean(activeJob) || state.capture.busy;
+  byId("capture-worker-selector").disabled = Boolean(activeJob) || state.capture.busy;
+
+  let message = "ACTIVE Task Run과 온라인 Edge 작업자가 필요합니다.";
+  if (state.capture.actionError) message = state.capture.actionError;
+  else if (state.capture.busy) message = "중앙에서 녹화 요청을 처리하고 있습니다.";
+  else if (!run) message = "Task Run을 선택하세요.";
+  else if (run.state !== "ACTIVE") message = "녹화는 ACTIVE Task Run에서만 시작할 수 있습니다.";
+  else if (!worker) message = "이 Task Run의 자산을 모두 포함한 Edge 작업자가 없습니다.";
+  else if (!worker.available) message = "Edge 작업자의 heartbeat가 오래되어 시작할 수 없습니다.";
+  else if (activeJob) message = `${job.state} · 동일 작업자에는 녹화 세션 하나만 허용됩니다.`;
+  else if (job?.state === "COMPLETE") message = "이전 세션 검증 완료 · 새 녹화를 시작할 수 있습니다.";
+  else if (job?.error) message = job.error;
+  else message = "읽기 전용 프로필로 로봇 관절과 카메라 토픽을 함께 기록합니다.";
+  byId("capture-message").textContent = message;
+  renderCaptureIntegrity(job);
+  renderRunCompletion(run, job);
+}
+
+function captureRequestStorageKey(runId, workerId) {
+  return `sang.capture.request.${runId}.${workerId}`;
+}
+
+function newRequestId() {
+  if (crypto.randomUUID) return `ui-${crypto.randomUUID()}`;
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return `ui-${[...bytes].map((value) => value.toString(16).padStart(2, "0")).join("")}`;
+}
+
+function pendingCaptureRequest(workerId, durationS) {
+  const key = captureRequestStorageKey(state.runId, workerId);
+  let stored = state.capture.pendingRequest;
+  try { stored = JSON.parse(sessionStorage.getItem(key)) || stored; } catch (_error) { /* ignored */ }
+  if (stored && captureJobs().some((job) => job.request_id === stored.requestId)) {
+    try { sessionStorage.removeItem(key); } catch (_error) { /* ignored */ }
+    stored = null;
+    state.capture.pendingRequest = null;
+  }
+  if (stored?.workerId === workerId && stored?.durationS === durationS) return stored;
+  stored = { workerId, durationS, requestId: newRequestId() };
+  state.capture.pendingRequest = stored;
+  try { sessionStorage.setItem(key, JSON.stringify(stored)); } catch (_error) { /* ignored */ }
+  return stored;
+}
+
+function reconcileCaptureRequest() {
+  if (!state.runId) return;
+  for (const worker of captureWorkers()) {
+    const key = captureRequestStorageKey(state.runId, worker.worker_id);
+    let pending = state.capture.pendingRequest?.workerId === worker.worker_id
+      ? state.capture.pendingRequest
+      : null;
+    try { pending = JSON.parse(sessionStorage.getItem(key)) || pending; } catch (_error) { /* ignored */ }
+    if (!pending || !captureJobs().some((job) => job.request_id === pending.requestId)) continue;
+    try { sessionStorage.removeItem(key); } catch (_error) { /* ignored */ }
+    if (state.capture.pendingRequest?.requestId === pending.requestId) {
+      state.capture.pendingRequest = null;
+    }
+    state.capture.actionError = null;
+  }
+}
+
+async function refreshCaptureIntegrity() {
+  const job = currentCaptureJob();
+  if (!job?.recording) return;
+  const now = Date.now();
+  const changedSession = state.capture.integritySessionId !== job.session_id;
+  if (state.capture.integrityLoading) return;
+  if (!changedSession && now - state.capture.integrityFetchedAt < 3000) return;
+  state.capture.integrityLoading = true;
+  if (changedSession) {
+    state.capture.integrity = null;
+    state.capture.integritySessionId = job.session_id;
+  }
+  try {
+    state.capture.integrity = await getJson(
+      `/api/v1/recording-sessions/${encodeURIComponent(job.session_id)}`,
+    );
+    state.capture.integrityFetchedAt = Date.now();
+    renderCapture();
+  } catch (_error) {
+    state.capture.integrityFetchedAt = Date.now();
+  } finally {
+    state.capture.integrityLoading = false;
+  }
+}
+
+async function startCapture(event) {
+  event.preventDefault();
+  if (state.capture.busy || !state.runId) return;
+  const worker = selectedCaptureWorker();
+  const durationS = Number.parseInt(byId("capture-duration").value, 10);
+  if (!worker || !Number.isInteger(durationS) || durationS < 5 || durationS > 28800) return;
+  const pending = pendingCaptureRequest(worker.worker_id, durationS);
+  state.capture.busy = true;
+  state.capture.actionError = null;
+  renderCapture();
+  try {
+    await requestJson(
+      "POST",
+      `/api/v1/task-runs/${encodeURIComponent(state.runId)}/capture-jobs`,
+      {
+        request_id: pending.requestId,
+        worker_id: worker.worker_id,
+        duration_s: durationS,
+      },
+    );
+    applyPayload(await getJson(`/api/v1/task-runs/${encodeURIComponent(state.runId)}/fleet`));
+  } catch (error) {
+    state.capture.actionError = error.message;
+  } finally {
+    state.capture.busy = false;
+    renderCapture();
+  }
+}
+
+async function stopCapture() {
+  const job = currentCaptureJob();
+  if (state.capture.busy || !job || !STOPPABLE_CAPTURE_STATES.has(job.state)) return;
+  state.capture.busy = true;
+  state.capture.actionError = null;
+  renderCapture();
+  try {
+    await requestJson("POST", `/api/v1/capture-jobs/${encodeURIComponent(job.job_id)}/stop`);
+    applyPayload(await getJson(`/api/v1/task-runs/${encodeURIComponent(state.runId)}/fleet`));
+  } catch (error) {
+    state.capture.actionError = error.message;
+  } finally {
+    state.capture.busy = false;
+    renderCapture();
+  }
+}
+
+async function completeRunAfterCapture() {
+  const run = state.payload?.task_run || null;
+  const job = currentCaptureJob();
+  if (!runCompletionGate(run, job).enabled) return;
+  if (!window.confirm(`${run.display_name}을 완료하고 배정 자산을 해제할까요?`)) return;
+  state.capture.busy = true;
+  state.capture.completionError = null;
+  renderCapture();
+  try {
+    const completed = await requestJson(
+      "POST",
+      `/api/v1/task-runs/${encodeURIComponent(run.run_id)}/complete-after-capture`,
+      { expected_revision: run.revision, state: "COMPLETE" },
+    );
+    state.runs = state.runs.map((item) => item.run_id === completed.run_id ? completed : item);
+    const option = [...byId("run-selector").options]
+      .find((item) => item.value === completed.run_id);
+    if (option) option.textContent = `${completed.display_name} · ${completed.state}`;
+    applyPayload(await getJson(`/api/v1/task-runs/${encodeURIComponent(completed.run_id)}/fleet`));
+  } catch (error) {
+    state.capture.completionError = error.message;
+  } finally {
+    state.capture.busy = false;
+    renderCapture();
+  }
+}
+
 function applyPayload(payload) {
   if (payload.task_run?.run_id !== state.runId) return;
   state.payload = payload;
@@ -197,6 +612,9 @@ function applyPayload(payload) {
   renderAssets();
   renderTelemetry();
   renderCameras();
+  reconcileCaptureRequest();
+  renderCapture();
+  void refreshCaptureIntegrity();
   setConnection("live", "Run live");
 }
 
@@ -217,11 +635,21 @@ function disconnectSocket() {
 async function connectRun(runId) {
   disconnectSocket();
   stopPreview();
+  if (state.runId !== runId) {
+    state.capture.workerId = null;
+    state.capture.integrity = null;
+    state.capture.integritySessionId = null;
+    state.capture.integrityFetchedAt = 0;
+    state.capture.pendingRequest = null;
+    state.capture.actionError = null;
+    state.capture.completionError = null;
+  }
   state.runId = runId;
   state.payload = null;
   state.selectedCamera = null;
   if (!runId) {
     renderSummary(); renderAssets(); renderTelemetry(); renderCameras();
+    renderCapture();
     setConnection("idle", "Run not selected");
     return;
   }
@@ -348,6 +776,17 @@ byId("run-selector").addEventListener("change", (event) => {
   const nextHash = runId ? `#run/${encodeURIComponent(runId)}` : "";
   if (location.hash === nextHash) void connectRun(runId);
   else location.hash = nextHash;
+});
+byId("capture-form").addEventListener("submit", startCapture);
+byId("capture-stop").addEventListener("click", stopCapture);
+byId("run-complete").addEventListener("click", completeRunAfterCapture);
+byId("capture-worker-selector").addEventListener("change", (event) => {
+  state.capture.workerId = event.target.value || null;
+  state.capture.actionError = null;
+  renderCapture();
+});
+byId("capture-duration").addEventListener("input", () => {
+  state.capture.actionError = null;
 });
 byId("preview-toggle").addEventListener("click", togglePreview);
 window.addEventListener("hashchange", () => {

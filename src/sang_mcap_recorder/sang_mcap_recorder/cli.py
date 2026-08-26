@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import replace
 from datetime import datetime, timezone
 import json
+import math
 import signal
 import sys
 import threading
@@ -13,6 +15,7 @@ from uuid import uuid4
 from .profile import ProfileError, load_profile
 from .recorder import run_capture
 from .session import CaptureContext, SessionError
+from robot_agent.clock_sync import ClockSyncSampler, recording_clock
 
 
 def parse_args(args: list[str] | None = None) -> argparse.Namespace:
@@ -27,7 +30,22 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--run-id")
     parser.add_argument("--task-definition-id")
     parser.add_argument("--task-definition-version", type=int)
-    return parser.parse_args(args)
+    parser.add_argument("--clock-sync-host")
+    parser.add_argument("--clock-sync-timeout-s", type=float, default=1.0)
+    options = parser.parse_args(args)
+    if (
+        not math.isfinite(options.clock_sync_timeout_s)
+        or options.clock_sync_timeout_s <= 0.0
+    ):
+        parser.error("clock-sync-timeout-s must be positive")
+    if options.clock_sync_host is not None and (
+        not options.clock_sync_host
+        or len(options.clock_sync_host) > 253
+        or "/" in options.clock_sync_host
+        or "://" in options.clock_sync_host
+    ):
+        parser.error("clock-sync-host must be a host name or IP address")
+    return options
 
 
 def default_session_id(profile_id: str) -> str:
@@ -46,6 +64,12 @@ def main(args: list[str] | None = None) -> None:
     previous_sigterm = signal.signal(signal.SIGTERM, request_stop)
     try:
         profile = load_profile(options.profile)
+        if options.clock_sync_host is not None:
+            snapshot = ClockSyncSampler(
+                options.clock_sync_host,
+                timeout_s=options.clock_sync_timeout_s,
+            ).sample(force=True)
+            profile = replace(profile, clock=recording_clock(snapshot))
         context = CaptureContext(
             session_id=options.session_id or default_session_id(profile.profile_id),
             run_id=options.run_id,

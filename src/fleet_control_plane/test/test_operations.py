@@ -96,7 +96,12 @@ def runtime_heartbeat(runtime_kind, sequence):
 
 def make_client(tmp_path):
     store = FleetStore(tmp_path / "fleet.db")
-    app = create_app(store, now=lambda: NOW, websocket_interval_s=0.01)
+    app = create_app(
+        store,
+        now=lambda: NOW,
+        websocket_interval_s=0.01,
+        auth_enabled=False,
+    )
     client = TestClient(app)
     assert client.post(
         "/api/v1/agents/heartbeat", json=observed_heartbeat()
@@ -348,7 +353,9 @@ def test_run_scoped_fleet_returns_only_assigned_camera_source(tmp_path):
     assert [agent["agent_id"] for agent in payload["agents"]] == ["agent-a"]
     sources = payload["agents"][0]["robots"][0]["sources"]
     assert [source["key"] for source in sources] == ["cam_a"]
-    assert sources[0]["preview_url"].endswith("cam_a.mjpg")
+    assert sources[0]["preview_url"] == (
+        "/api/v1/task-runs/camera-check-001/cameras/camera-a/preview.mjpg"
+    )
     assert payload["assets"][0]["state"] == "HEALTHY"
     assert all(event["source_key"] != "cam_b" for event in payload["events"])
     assert payload["agents"][0]["event_counts"] == {"agent_online": 1}
@@ -421,18 +428,18 @@ def test_asset_runtime_kind_rejects_mismatch_and_detects_later_drift(tmp_path):
 
     correction_mismatch = client.patch(
         "/api/v1/config/assets/arm-a/runtime-kind",
-        json={"runtime_kind": "simulation"},
+        json={"expected_revision": 1, "runtime_kind": "simulation"},
     )
     assert correction_mismatch.status_code == 422
     cleared = client.patch(
         "/api/v1/config/assets/arm-a/runtime-kind",
-        json={"runtime_kind": None},
+        json={"expected_revision": 1, "runtime_kind": None},
     )
     assert cleared.status_code == 200
     assert cleared.json()["runtime_kind"] is None
     restored = client.patch(
         "/api/v1/config/assets/arm-a/runtime-kind",
-        json={"runtime_kind": "physical"},
+        json={"expected_revision": 2, "runtime_kind": "physical"},
     )
     assert restored.status_code == 200
 
@@ -457,3 +464,292 @@ def test_asset_runtime_kind_rejects_mismatch_and_detects_later_drift(tmp_path):
         received_at=NOW + timedelta(seconds=2),
     )
     assert store.list_events()[0]["event_type"] == "runtime_kind_recovered"
+
+
+def test_task_run_full_lifecycle_releases_reservations(tmp_path):
+    client, store = make_client(tmp_path)
+    create_node(client)
+    create_bound_asset(client, "camera-a", "camera", "cam_a")
+    assert client.post(
+        "/api/v1/config/task-definitions",
+        json={
+            "task_definition_id": "observe",
+            "version": 1,
+            "display_name": "Observe",
+            "roles": [
+                {
+                    "role": "vision",
+                    "asset_type": "camera",
+                    "access_mode": "shared_read",
+                }
+            ],
+        },
+    ).status_code == 201
+    assert client.post(
+        "/api/v1/config/task-runs",
+        json={
+            "run_id": "observe-001",
+            "task_definition_id": "observe",
+            "task_version": 1,
+            "display_name": "Observe 001",
+            "state": "DRAFT",
+            "assignments": [],
+        },
+    ).status_code == 201
+
+    edited = client.put(
+        "/api/v1/config/task-runs/observe-001",
+        json={
+            "expected_revision": 1,
+            "display_name": "Observe 001",
+            "assignments": [
+                {
+                    "role": "vision",
+                    "asset_id": "camera-a",
+                    "access_mode": "shared_read",
+                }
+            ],
+        },
+    )
+    assert edited.status_code == 200, edited.text
+    assert edited.json()["revision"] == 2
+    assert edited.json()["assignments"][0]["reserved"] is False
+
+    ready = client.post(
+        "/api/v1/config/task-runs/observe-001/transition",
+        json={"expected_revision": 2, "state": "READY"},
+    )
+    assert ready.status_code == 200, ready.text
+    assert ready.json()["revision"] == 3
+    assert ready.json()["assignments"][0]["reserved"] is True
+    assert client.post(
+        "/api/v1/config/task-runs/observe-001/transition",
+        json={"expected_revision": 2, "state": "ACTIVE"},
+    ).status_code == 409
+
+    active = client.post(
+        "/api/v1/config/task-runs/observe-001/transition",
+        json={"expected_revision": 3, "state": "ACTIVE"},
+    )
+    assert active.status_code == 200, active.text
+    assert active.json()["started_at"] == "2026-08-03T12:00:00.000Z"
+    complete = client.post(
+        "/api/v1/config/task-runs/observe-001/transition",
+        json={
+            "expected_revision": 4,
+            "state": "COMPLETE",
+            "reason": "operator accepted capture",
+        },
+    )
+    assert complete.status_code == 200, complete.text
+    assert complete.json()["state"] == "COMPLETE"
+    assert complete.json()["assignments"][0]["reserved"] is False
+    assert complete.json()["terminal_reason"] == "operator accepted capture"
+    assert client.post(
+        "/api/v1/config/task-runs/observe-001/transition",
+        json={"expected_revision": 5, "state": "ACTIVE"},
+    ).status_code == 422
+
+    second = client.post(
+        "/api/v1/config/task-runs",
+        json={
+            "run_id": "observe-002",
+            "task_definition_id": "observe",
+            "task_version": 1,
+            "display_name": "Observe 002",
+            "state": "READY",
+            "assignments": [
+                {
+                    "role": "vision",
+                    "asset_id": "camera-a",
+                    "access_mode": "shared_read",
+                }
+            ],
+        },
+    )
+    assert second.status_code == 201, second.text
+    assert FleetStore(store.path).schema_versions() == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+
+def test_failed_task_run_requires_reason_and_is_terminal(tmp_path):
+    client, _ = make_client(tmp_path)
+    create_node(client)
+    create_bound_asset(client, "camera-a", "camera", "cam_a")
+    assert client.post(
+        "/api/v1/config/task-definitions",
+        json={
+            "task_definition_id": "observe",
+            "version": 1,
+            "display_name": "Observe",
+            "roles": [
+                {
+                    "role": "vision",
+                    "asset_type": "camera",
+                    "access_mode": "shared_read",
+                }
+            ],
+        },
+    ).status_code == 201
+    assert client.post(
+        "/api/v1/config/task-runs",
+        json={
+            "run_id": "observe-fail",
+            "task_definition_id": "observe",
+            "task_version": 1,
+            "display_name": "Observe Fail",
+            "state": "READY",
+            "assignments": [
+                {
+                    "role": "vision",
+                    "asset_id": "camera-a",
+                    "access_mode": "shared_read",
+                }
+            ],
+        },
+    ).status_code == 201
+    assert client.post(
+        "/api/v1/config/task-runs/observe-fail/transition",
+        json={"expected_revision": 1, "state": "ACTIVE"},
+    ).status_code == 200
+    assert client.post(
+        "/api/v1/config/task-runs/observe-fail/transition",
+        json={"expected_revision": 2, "state": "FAILED"},
+    ).status_code == 422
+    failed = client.post(
+        "/api/v1/config/task-runs/observe-fail/transition",
+        json={
+            "expected_revision": 2,
+            "state": "FAILED",
+            "reason": "camera source lost",
+        },
+    )
+    assert failed.status_code == 200, failed.text
+    assert failed.json()["terminal_reason"] == "camera source lost"
+
+
+def test_registry_replace_and_safe_decommission(tmp_path):
+    client, _ = make_client(tmp_path)
+    create_node(client)
+    node = client.put(
+        "/api/v1/config/processing-nodes/node-a",
+        json={
+            "expected_revision": 1,
+            "display_name": "Processing Node A Updated",
+            "agent_ids": ["agent-a"],
+        },
+    )
+    assert node.status_code == 200, node.text
+    assert node.json()["revision"] == 2
+
+    create_bound_asset(client, "camera-a", "camera", "cam_a")
+    asset = client.put(
+        "/api/v1/config/assets/camera-a",
+        json={
+            "expected_revision": 1,
+            "display_name": "Camera A Updated",
+            "node_id": "node-a",
+            "binding": {
+                "agent_id": "agent-a",
+                "robot_id": "robot-a",
+                "source_key": "cam_a",
+            },
+            "capabilities": ["telemetry", "preview"],
+        },
+    )
+    assert asset.status_code == 200, asset.text
+    assert asset.json()["revision"] == 2
+
+    assert client.post(
+        "/api/v1/config/workcells",
+        json={
+            "workcell_id": "cell-a",
+            "display_name": "Cell A",
+            "asset_ids": ["camera-a"],
+        },
+    ).status_code == 201
+    workcell = client.put(
+        "/api/v1/config/workcells/cell-a",
+        json={
+            "expected_revision": 1,
+            "display_name": "Cell A Updated",
+            "description": "Robot and camera observation cell",
+            "asset_ids": ["camera-a"],
+        },
+    )
+    assert workcell.status_code == 200, workcell.text
+    assert workcell.json()["revision"] == 2
+
+    assert client.post(
+        "/api/v1/config/task-definitions",
+        json={
+            "task_definition_id": "observe",
+            "version": 1,
+            "display_name": "Observe",
+            "roles": [
+                {
+                    "role": "vision",
+                    "asset_type": "camera",
+                    "access_mode": "shared_read",
+                }
+            ],
+        },
+    ).status_code == 201
+    assert client.post(
+        "/api/v1/config/task-runs",
+        json={
+            "run_id": "observe-registry",
+            "task_definition_id": "observe",
+            "task_version": 1,
+            "workcell_id": "cell-a",
+            "display_name": "Observe Registry",
+            "state": "READY",
+            "assignments": [
+                {
+                    "role": "vision",
+                    "asset_id": "camera-a",
+                    "access_mode": "shared_read",
+                }
+            ],
+        },
+    ).status_code == 201
+    assert client.post(
+        "/api/v1/config/assets/camera-a/decommission",
+        json={"expected_revision": 2, "reason": "replace camera"},
+    ).status_code == 409
+    assert client.post(
+        "/api/v1/config/workcells/cell-a/decommission",
+        json={"expected_revision": 2, "reason": "retire cell"},
+    ).status_code == 409
+
+    assert client.post(
+        "/api/v1/config/task-runs/observe-registry/transition",
+        json={"expected_revision": 1, "state": "ACTIVE"},
+    ).status_code == 200
+    assert client.post(
+        "/api/v1/config/task-runs/observe-registry/transition",
+        json={"expected_revision": 2, "state": "COMPLETE"},
+    ).status_code == 200
+    retired_workcell = client.post(
+        "/api/v1/config/workcells/cell-a/decommission",
+        json={"expected_revision": 2, "reason": "retire cell"},
+    )
+    assert retired_workcell.status_code == 200, retired_workcell.text
+    assert retired_workcell.json()["lifecycle_state"] == "decommissioned"
+    retired_asset = client.post(
+        "/api/v1/config/assets/camera-a/decommission",
+        json={"expected_revision": 2, "reason": "replace camera"},
+    )
+    assert retired_asset.status_code == 200, retired_asset.text
+    assert retired_asset.json()["lifecycle_state"] == "decommissioned"
+    retired_node = client.post(
+        "/api/v1/config/processing-nodes/node-a/decommission",
+        json={"expected_revision": 2, "reason": "replace PC"},
+    )
+    assert retired_node.status_code == 200, retired_node.text
+    assert retired_node.json()["lifecycle_state"] == "decommissioned"
+
+    discovery = client.get("/api/v1/config/discovery").json()
+    assert [item["source_key"] for item in discovery["cameras"]] == [
+        "cam_a",
+        "cam_b",
+    ]

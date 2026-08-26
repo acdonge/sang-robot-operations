@@ -208,6 +208,10 @@ function resolveRouteRobot(route = currentRoute()) {
 
 async function getJson(path) {
   const response = await fetch(path, { headers: { Accept: "application/json" } });
+  if (response.status === 401) {
+    location.assign(`/login.html?next=${encodeURIComponent(location.href)}`);
+    throw new Error("authentication required");
+  }
   if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`);
   return response.json();
 }

@@ -28,6 +28,7 @@ RUN python3 -m pip install --no-cache-dir --break-system-packages --ignore-insta
     "fastapi==0.140.0" \
     "feetech-servo-sdk==1.0.0" \
     httpx \
+    "mcap==1.4.0" \
     "opencv-python-headless==4.10.0.84" \
     "pydantic==2.13.4" \
     "pyOpenSSL==26.4.0" \

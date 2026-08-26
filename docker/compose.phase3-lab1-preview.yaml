@@ -1,0 +1,30 @@
+services:
+  admin:
+    volumes:
+      - ${SANG_CENTRAL_SECRETS:?set SANG_CENTRAL_SECRETS}:/run/secrets/sang:ro
+      - ${SANG_OBJECT_STORE:?set SANG_OBJECT_STORE}:/var/lib/sang-objects
+    command:
+      - python3
+      - -m
+      - fleet_control_plane.serve
+      - --db-path
+      - /var/lib/sang/fleet.db
+      - --host
+      - 127.0.0.1
+      - --port
+      - ${CENTRAL_ADMIN_PORT:-18091}
+      - --auth-disabled
+      - --object-store-root
+      - /var/lib/sang-objects
+      - --quality-policy-root
+      - /ws/manifests
+      - --clock-sync-host
+      - 127.0.0.1
+      - --preview-secret-root
+      - /run/secrets/sang
+      - --preview-ca-bundle-ref
+      - secret://https/trust/ca-crl.pem
+      - --preview-client-certificate-ref
+      - secret://https/central/preview-client-chain.pem
+      - --preview-client-private-key-ref
+      - secret://https/central/preview-client-key.pem

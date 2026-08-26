@@ -7,8 +7,8 @@
   <title>SANG Operations Configuration</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="/styles.css?v=20260725.2">
-  <link rel="stylesheet" href="/config.css?v=20260803.1">
-  <script type="module" src="/config.js?v=20260803.1"></script>
+  <link rel="stylesheet" href="/config.css?v=20260821.1">
+    <script type="module" src="/config.js?v=20260821.2"></script>
 </head>
 <body>
   <div class="shell">
@@ -21,7 +21,7 @@
         <a class="nav-item" href="/#fleet">Fleet overview</a>
         <a class="nav-item" href="/#robot">로봇 상세</a>
         <a class="nav-item is-active" href="/config.html" aria-current="page">운영 구성</a>
-        <span class="nav-item is-disabled">Data catalog <small>next</small></span>
+        <a class="nav-item" href="/catalog.html">Data catalog</a>
         <span class="nav-item is-disabled">Policy releases <small>next</small></span>
       </nav>
       <div class="scope-note">
@@ -73,7 +73,7 @@
             <label>Node ID<input name="node_id" required pattern="[A-Za-z0-9][A-Za-z0-9._-]*" placeholder="node-omy-01"></label>
             <label>표시 이름<input name="display_name" required placeholder="OMY Robot PC"></label>
             <fieldset><legend>이 PC에서 실행되는 Agent</legend><div id="agent-options" class="check-options"></div></fieldset>
-            <button class="config-button" type="submit">Node 등록</button>
+            <div class="form-actions"><button id="node-submit" class="config-button" type="submit">Node 등록</button><button id="node-cancel-edit" class="text-button" type="button" hidden>수정 취소</button></div>
           </form>
           <div id="node-registry" class="mini-registry"></div>
         </section>
@@ -92,7 +92,7 @@
               <label>Processing Node<select name="node_id"><option value="">미지정</option></select></label>
             </div>
             <label>Capabilities <small>쉼표로 구분</small><input name="capabilities" placeholder="telemetry, dual_arm"></label>
-            <div class="form-actions"><button class="config-button" type="submit">Asset 등록</button><button id="clear-binding" class="text-button" type="button">관측 연결 해제</button></div>
+            <div class="form-actions"><button id="asset-submit" class="config-button" type="submit">Asset 등록</button><button id="asset-cancel-edit" class="text-button" type="button" hidden>수정 취소</button><button id="clear-binding" class="text-button" type="button">관측 연결 해제</button></div>
           </form>
           <div id="asset-registry" class="mini-registry"></div>
         </section>
@@ -104,7 +104,7 @@
             <label>표시 이름<input name="display_name" required placeholder="Cold-wire Welding Cell"></label>
             <label>설명<textarea name="description" rows="2" placeholder="공간 또는 안전 경계를 공유하는 장비 그룹"></textarea></label>
             <fieldset><legend>포함할 Asset</legend><div id="workcell-asset-options" class="check-options asset-options"></div></fieldset>
-            <button class="config-button" type="submit">Workcell 생성</button>
+            <div class="form-actions"><button id="workcell-submit" class="config-button" type="submit">Workcell 생성</button><button id="workcell-cancel-edit" class="text-button" type="button" hidden>수정 취소</button></div>
           </form>
           <div id="workcell-registry" class="mini-registry"></div>
         </section>

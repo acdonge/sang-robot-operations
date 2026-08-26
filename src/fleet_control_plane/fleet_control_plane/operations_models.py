@@ -21,7 +21,9 @@ AssetType = Literal[
     "other",
 ]
 AccessMode = Literal["exclusive", "shared_read"]
-RunState = Literal["DRAFT", "READY"]
+RunState = Literal["DRAFT", "READY", "ACTIVE", "COMPLETE", "FAILED"]
+InitialRunState = Literal["DRAFT", "READY"]
+LifecycleState = Literal["active", "decommissioned"]
 CertificateFingerprint = Annotated[
     str,
     StringConstraints(pattern=r"^[0-9a-f]{64}$", strip_whitespace=True),
@@ -192,6 +194,18 @@ class ProcessingNodeCreate(FleetModel):
         return self
 
 
+class ProcessingNodeReplace(FleetModel):
+    expected_revision: int = Field(ge=1)
+    display_name: ShortText
+    agent_ids: list[SafeId] = Field(default_factory=list, max_length=64)
+
+    @model_validator(mode="after")
+    def agent_ids_are_unique(self) -> "ProcessingNodeReplace":
+        if len(self.agent_ids) != len(set(self.agent_ids)):
+            raise ValueError("agent_ids must be unique")
+        return self
+
+
 class ObservedBinding(FleetModel):
     agent_id: SafeId
     robot_id: SafeId
@@ -225,7 +239,25 @@ class AssetCreate(FleetModel):
 
 
 class AssetRuntimeKindUpdate(FleetModel):
+    expected_revision: int = Field(ge=1)
     runtime_kind: RuntimeKind | None
+
+
+class AssetReplace(FleetModel):
+    expected_revision: int = Field(ge=1)
+    display_name: ShortText
+    runtime_kind: RuntimeKind | None = None
+    node_id: SafeId | None = None
+    binding: ObservedBinding | None = None
+    capabilities: list[SafeId] = Field(default_factory=list, max_length=64)
+
+    @model_validator(mode="after")
+    def binding_is_coherent(self) -> "AssetReplace":
+        if len(self.capabilities) != len(set(self.capabilities)):
+            raise ValueError("capabilities must be unique")
+        if self.binding is not None and self.node_id is None:
+            raise ValueError("observed bindings require node_id")
+        return self
 
 
 class WorkcellCreate(FleetModel):
@@ -239,6 +271,27 @@ class WorkcellCreate(FleetModel):
         if len(self.asset_ids) != len(set(self.asset_ids)):
             raise ValueError("asset_ids must be unique")
         return self
+
+
+class WorkcellReplace(FleetModel):
+    expected_revision: int = Field(ge=1)
+    display_name: ShortText
+    description: str | None = Field(default=None, max_length=2048)
+    asset_ids: list[SafeId] = Field(default_factory=list, max_length=256)
+
+    @model_validator(mode="after")
+    def asset_ids_are_unique(self) -> "WorkcellReplace":
+        if len(self.asset_ids) != len(set(self.asset_ids)):
+            raise ValueError("asset_ids must be unique")
+        return self
+
+
+class DecommissionRequest(FleetModel):
+    expected_revision: int = Field(ge=1)
+    reason: Annotated[
+        str,
+        StringConstraints(min_length=1, max_length=512, strip_whitespace=True),
+    ]
 
 
 class TaskRoleCreate(FleetModel):
@@ -274,7 +327,7 @@ class TaskRunCreate(FleetModel):
     task_version: int = Field(ge=1)
     workcell_id: SafeId | None = None
     display_name: ShortText
-    state: RunState = "DRAFT"
+    state: InitialRunState = "DRAFT"
     assignments: list[AssignmentCreate] = Field(default_factory=list, max_length=64)
 
     @model_validator(mode="after")
@@ -285,4 +338,38 @@ class TaskRunCreate(FleetModel):
             raise ValueError("assignment roles must be unique")
         if len(assets) != len(set(assets)):
             raise ValueError("an asset may only fill one role in a task run")
+        return self
+
+
+class TaskRunReplace(FleetModel):
+    expected_revision: int = Field(ge=1)
+    workcell_id: SafeId | None = None
+    display_name: ShortText
+    assignments: list[AssignmentCreate] = Field(default_factory=list, max_length=64)
+
+    @model_validator(mode="after")
+    def assignments_are_unique(self) -> "TaskRunReplace":
+        roles = [assignment.role for assignment in self.assignments]
+        assets = [assignment.asset_id for assignment in self.assignments]
+        if len(roles) != len(set(roles)):
+            raise ValueError("assignment roles must be unique")
+        if len(assets) != len(set(assets)):
+            raise ValueError("an asset may only fill one role in a task run")
+        return self
+
+
+class TaskRunTransition(FleetModel):
+    expected_revision: int = Field(ge=1)
+    state: Literal["READY", "ACTIVE", "COMPLETE", "FAILED"]
+    reason: Annotated[
+        str,
+        StringConstraints(min_length=1, max_length=1024, strip_whitespace=True),
+    ] | None = None
+
+    @model_validator(mode="after")
+    def failed_transition_has_reason(self) -> "TaskRunTransition":
+        if self.state == "FAILED" and self.reason is None:
+            raise ValueError("FAILED transitions require a reason")
+        if self.state not in {"COMPLETE", "FAILED"} and self.reason is not None:
+            raise ValueError("reason is only accepted for terminal transitions")
         return self

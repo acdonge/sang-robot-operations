@@ -1,0 +1,50 @@
+services:
+  manager:
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    user: "${SANG_UID:-1000}:${SANG_GID:-1000}"
+    init: true
+    network_mode: host
+    restart: unless-stopped
+    working_dir: /ws
+    environment:
+      HOME: /var/lib/sang
+      PYTHONPATH: /ws/src/sang_security:/ws/src/fleet_control_plane:/ws/src/robot_agent
+    volumes:
+      - ${SANG_WORKSPACE:?set SANG_WORKSPACE}:/ws:ro
+      - ${SANG_CENTRAL_DATA:?set SANG_CENTRAL_DATA}:/var/lib/sang
+      - ${SANG_OBJECT_STORE:?set SANG_OBJECT_STORE}:/var/lib/sang-objects
+      - ${SANG_CENTRAL_SECRETS:?set SANG_CENTRAL_SECRETS}:/run/secrets/sang:ro
+    command:
+      - python3
+      - -m
+      - fleet_control_plane.serve
+      - --db-path
+      - /var/lib/sang/fleet.db
+      - --host
+      - 0.0.0.0
+      - --port
+      - ${MANAGER_HTTPS_PORT:-18443}
+      - --https-secret-root
+      - /run/secrets/sang
+      - --https-server-certificate-ref
+      - secret://https/server/chain.pem
+      - --https-server-private-key-ref
+      - secret://https/server/key.pem
+      - --allowed-host
+      - ${MANAGER_PUBLIC_HOST:-10.0.0.8}
+      - --allowed-host
+      - central.sang.local
+      - --object-store-root
+      - /var/lib/sang-objects
+      - --quality-policy-root
+      - /ws/manifests
+      - --clock-sync-host
+      - 127.0.0.1
+      - --preview-secret-root
+      - /run/secrets/sang
+      - --preview-ca-bundle-ref
+      - secret://https/trust/ca-crl.pem
+      - --preview-client-certificate-ref
+      - secret://https/central/preview-client-chain.pem
+      - --preview-client-private-key-ref
+      - secret://https/central/preview-client-key.pem

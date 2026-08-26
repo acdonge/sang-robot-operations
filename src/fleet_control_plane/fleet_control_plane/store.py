@@ -13,21 +13,33 @@ from fleet_control_plane.operations_models import (
     AgentCredentialCreate,
     AgentRegistrationCreate,
     AgentRegistrationUpdate,
+    AssignmentCreate,
     AssetCreate,
+    AssetReplace,
     AssetRuntimeKindUpdate,
     ConnectionProfileCreate,
     ConnectionProfileReplace,
     CredentialRevoke,
+    DecommissionRequest,
     ProcessingNodeCreate,
+    ProcessingNodeReplace,
     TaskDefinitionCreate,
     TaskRunCreate,
+    TaskRunReplace,
+    TaskRunTransition,
     WorkcellCreate,
+    WorkcellReplace,
 )
+from fleet_control_plane.capture_jobs import CAPTURE_JOB_MIGRATION
 from fleet_control_plane.status import isoformat_z, parse_datetime
+from fleet_control_plane.recording_storage import (
+    RECORDING_MIGRATION,
+    RECORDING_QUALITY_MIGRATION,
+)
 
 
 MAX_HEALTH_EVENTS = 10_000
-CURRENT_SCHEMA_VERSION = 4
+CURRENT_SCHEMA_VERSION = 10
 
 
 PHASE3_MIGRATION = (
@@ -583,6 +595,328 @@ class FleetStore:
                     connection.commit()
                 finally:
                     connection.execute("PRAGMA foreign_keys = ON")
+                versions.append(4)
+            if 5 not in versions:
+                connection.execute("PRAGMA foreign_keys = OFF")
+                connection.execute("BEGIN IMMEDIATE")
+                try:
+                    for table in ("processing_nodes", "assets", "workcells"):
+                        columns = {
+                            row["name"]
+                            for row in connection.execute(
+                                f"PRAGMA table_info({table})"
+                            ).fetchall()
+                        }
+                        additions = (
+                            ("revision", "INTEGER NOT NULL DEFAULT 1 CHECK (revision >= 1)"),
+                            (
+                                "lifecycle_state",
+                                "TEXT NOT NULL DEFAULT 'active' "
+                                "CHECK (lifecycle_state IN ('active', 'decommissioned'))",
+                            ),
+                            ("updated_at", "TEXT NOT NULL DEFAULT ''"),
+                            ("decommissioned_at", "TEXT"),
+                            ("decommission_reason", "TEXT"),
+                        )
+                        for column, declaration in additions:
+                            if column not in columns:
+                                connection.execute(
+                                    f"ALTER TABLE {table} ADD COLUMN {column} {declaration}"
+                                )
+                        connection.execute(
+                            f"UPDATE {table} SET updated_at = created_at "
+                            "WHERE updated_at = ''"
+                        )
+
+                    run_columns = {
+                        row["name"]
+                        for row in connection.execute(
+                            "PRAGMA table_info(task_runs)"
+                        ).fetchall()
+                    }
+                    run_sql_row = connection.execute(
+                        "SELECT sql FROM sqlite_master "
+                        "WHERE type = 'table' AND name = 'task_runs'"
+                    ).fetchone()
+                    run_sql = "" if run_sql_row is None else run_sql_row["sql"]
+                    if (
+                        "'ACTIVE'" not in run_sql
+                        or "revision" not in run_columns
+                        or "updated_at" not in run_columns
+                    ):
+                        connection.execute(
+                            """
+                            CREATE TABLE task_runs_v5 (
+                                run_id TEXT PRIMARY KEY,
+                                task_definition_id TEXT NOT NULL,
+                                task_version INTEGER NOT NULL,
+                                workcell_id TEXT REFERENCES workcells(workcell_id)
+                                    ON DELETE RESTRICT,
+                                display_name TEXT NOT NULL,
+                                state TEXT NOT NULL CHECK (
+                                    state IN (
+                                        'DRAFT', 'READY', 'ACTIVE', 'COMPLETE', 'FAILED'
+                                    )
+                                ),
+                                revision INTEGER NOT NULL CHECK (revision >= 1),
+                                created_at TEXT NOT NULL,
+                                updated_at TEXT NOT NULL,
+                                started_at TEXT,
+                                finished_at TEXT,
+                                terminal_reason TEXT,
+                                FOREIGN KEY (task_definition_id, task_version)
+                                    REFERENCES task_definitions(task_definition_id, version)
+                                    ON DELETE RESTRICT,
+                                CHECK (
+                                    (state = 'ACTIVE' AND started_at IS NOT NULL
+                                        AND finished_at IS NULL)
+                                    OR
+                                    (state IN ('COMPLETE', 'FAILED')
+                                        AND started_at IS NOT NULL
+                                        AND finished_at IS NOT NULL)
+                                    OR
+                                    (state IN ('DRAFT', 'READY')
+                                        AND started_at IS NULL
+                                        AND finished_at IS NULL)
+                                ),
+                                CHECK (
+                                    (state = 'FAILED' AND terminal_reason IS NOT NULL)
+                                    OR state != 'FAILED'
+                                )
+                            )
+                            """
+                        )
+                        connection.execute(
+                            """
+                            INSERT INTO task_runs_v5 (
+                                run_id, task_definition_id, task_version, workcell_id,
+                                display_name, state, revision, created_at, updated_at,
+                                started_at, finished_at, terminal_reason
+                            )
+                            SELECT
+                                run_id, task_definition_id, task_version, workcell_id,
+                                display_name, state, 1, created_at, created_at,
+                                NULL, NULL, NULL
+                            FROM task_runs
+                            """
+                        )
+                        connection.execute("DROP TABLE task_runs")
+                        connection.execute(
+                            "ALTER TABLE task_runs_v5 RENAME TO task_runs"
+                        )
+                    connection.execute(
+                        """
+                        INSERT INTO schema_migrations (version, name, applied_at)
+                        VALUES (
+                            5,
+                            'robot_camera_registry_lifecycle',
+                            strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                        )
+                        """
+                    )
+                    violations = connection.execute(
+                        "PRAGMA foreign_key_check"
+                    ).fetchall()
+                    if violations:
+                        raise RuntimeError(
+                            "robot/camera registry lifecycle migration violates foreign keys"
+                        )
+                except BaseException:
+                    connection.rollback()
+                    raise
+                else:
+                    connection.commit()
+                finally:
+                    connection.execute("PRAGMA foreign_keys = ON")
+                versions.append(5)
+            if 6 not in versions:
+                try:
+                    connection.executescript(
+                        """
+                        BEGIN IMMEDIATE;
+
+                        CREATE TABLE IF NOT EXISTS principals (
+                            principal_id TEXT PRIMARY KEY,
+                            principal_kind TEXT NOT NULL CHECK (
+                                principal_kind IN ('user', 'service')
+                            ),
+                            display_name TEXT NOT NULL,
+                            role TEXT NOT NULL CHECK (
+                                role IN ('viewer', 'operator', 'admin')
+                            ),
+                            secret_hash TEXT,
+                            enabled INTEGER NOT NULL CHECK (enabled IN (0, 1)),
+                            revision INTEGER NOT NULL CHECK (revision >= 1),
+                            created_at TEXT NOT NULL,
+                            updated_at TEXT NOT NULL,
+                            CHECK (
+                                (principal_kind = 'user' AND secret_hash IS NOT NULL)
+                                OR
+                                (principal_kind = 'service' AND secret_hash IS NULL)
+                            )
+                        );
+
+                        CREATE TABLE IF NOT EXISTS service_tokens (
+                            token_id TEXT PRIMARY KEY,
+                            principal_id TEXT NOT NULL REFERENCES principals(principal_id)
+                                ON DELETE RESTRICT,
+                            token_sha256 TEXT NOT NULL UNIQUE CHECK (
+                                length(token_sha256) = 64
+                            ),
+                            expires_at TEXT,
+                            created_at TEXT NOT NULL,
+                            revoked_at TEXT,
+                            revocation_reason TEXT,
+                            CHECK (
+                                (revoked_at IS NULL AND revocation_reason IS NULL)
+                                OR
+                                (revoked_at IS NOT NULL AND revocation_reason IS NOT NULL)
+                            )
+                        );
+
+                        CREATE INDEX IF NOT EXISTS service_tokens_principal
+                            ON service_tokens (principal_id, revoked_at);
+
+                        CREATE TABLE IF NOT EXISTS browser_sessions (
+                            session_id TEXT PRIMARY KEY,
+                            principal_id TEXT NOT NULL REFERENCES principals(principal_id)
+                                ON DELETE RESTRICT,
+                            session_sha256 TEXT NOT NULL UNIQUE CHECK (
+                                length(session_sha256) = 64
+                            ),
+                            csrf_sha256 TEXT NOT NULL CHECK (length(csrf_sha256) = 64),
+                            expires_at TEXT NOT NULL,
+                            created_at TEXT NOT NULL,
+                            last_seen_at TEXT NOT NULL,
+                            revoked_at TEXT
+                        );
+
+                        CREATE INDEX IF NOT EXISTS browser_sessions_principal
+                            ON browser_sessions (principal_id, expires_at);
+
+                        CREATE TABLE IF NOT EXISTS security_audit (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            occurred_at TEXT NOT NULL,
+                            principal_id TEXT,
+                            action TEXT NOT NULL,
+                            target_type TEXT NOT NULL,
+                            target_id TEXT,
+                            outcome TEXT NOT NULL CHECK (
+                                outcome IN ('success', 'denied', 'failed')
+                            ),
+                            details_json TEXT NOT NULL
+                        );
+
+                        CREATE INDEX IF NOT EXISTS security_audit_principal_id
+                            ON security_audit (principal_id, id DESC);
+                        CREATE INDEX IF NOT EXISTS security_audit_target
+                            ON security_audit (target_type, target_id, id DESC);
+
+                        INSERT INTO schema_migrations (version, name, applied_at)
+                        VALUES (
+                            6,
+                            'human_service_identity_rbac',
+                            strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                        );
+
+                        COMMIT;
+                        """
+                    )
+                except BaseException:
+                    if connection.in_transaction:
+                        connection.rollback()
+                    raise
+                versions.append(6)
+            if 7 not in versions:
+                try:
+                    connection.executescript(
+                        "BEGIN IMMEDIATE;\n"
+                        + RECORDING_MIGRATION
+                        + """
+                        INSERT INTO schema_migrations (version, name, applied_at)
+                        VALUES (
+                            7,
+                            'immutable_recording_catalog',
+                            strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                        );
+                        COMMIT;
+                        """
+                    )
+                except BaseException:
+                    if connection.in_transaction:
+                        connection.rollback()
+                    raise
+                versions.append(7)
+            if 8 not in versions:
+                try:
+                    connection.executescript(
+                        """
+                        BEGIN IMMEDIATE;
+
+                        CREATE TABLE IF NOT EXISTS principal_agent_scopes (
+                            principal_id TEXT NOT NULL REFERENCES principals(principal_id)
+                                ON DELETE RESTRICT,
+                            agent_id TEXT NOT NULL REFERENCES agent_registrations(agent_id)
+                                ON DELETE RESTRICT,
+                            PRIMARY KEY (principal_id, agent_id)
+                        );
+
+                        CREATE INDEX IF NOT EXISTS principal_agent_scopes_agent
+                            ON principal_agent_scopes (agent_id, principal_id);
+
+                        INSERT INTO schema_migrations (version, name, applied_at)
+                        VALUES (
+                            8,
+                            'service_identity_agent_scope',
+                            strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                        );
+
+                        COMMIT;
+                        """
+                    )
+                except BaseException:
+                    if connection.in_transaction:
+                        connection.rollback()
+                    raise
+            if 9 not in versions:
+                try:
+                    connection.executescript(
+                        "BEGIN IMMEDIATE;\n"
+                        + CAPTURE_JOB_MIGRATION
+                        + """
+                        INSERT INTO schema_migrations (version, name, applied_at)
+                        VALUES (
+                            9,
+                            'task_run_capture_jobs',
+                            strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                        );
+                        COMMIT;
+                        """
+                    )
+                except BaseException:
+                    if connection.in_transaction:
+                        connection.rollback()
+                    raise
+                versions.append(9)
+            if 10 not in versions:
+                try:
+                    connection.executescript(
+                        "BEGIN IMMEDIATE;\n"
+                        + RECORDING_QUALITY_MIGRATION
+                        + """
+                        INSERT INTO schema_migrations (version, name, applied_at)
+                        VALUES (
+                            10,
+                            'recording_quality_reports',
+                            strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                        );
+                        COMMIT;
+                        """
+                    )
+                except BaseException:
+                    if connection.in_transaction:
+                        connection.rollback()
+                    raise
 
     @staticmethod
     def _insert_event(
@@ -876,6 +1210,76 @@ class FleetStore:
         with self._connect() as connection:
             return self._upsert_connection(connection, heartbeat, received_at)
 
+    @staticmethod
+    def _authenticate_agent_certificate_connection(
+        connection: sqlite3.Connection,
+        *,
+        agent_id: str,
+        certificate_sha256: str,
+        certificate_identity_uri: str,
+        occurred_at: datetime,
+    ) -> dict[str, Any]:
+        registration = connection.execute(
+            "SELECT * FROM agent_registrations WHERE agent_id = ?",
+            (agent_id,),
+        ).fetchone()
+        if registration is None or not bool(registration["enabled"]):
+            raise AgentAuthenticationError("Agent is not enabled in the registry allowlist")
+        if registration["identity_uri"] != certificate_identity_uri:
+            raise AgentAuthenticationError("certificate identity URI differs from Agent registry")
+        profile = connection.execute(
+            """
+            SELECT profile_id FROM connection_profiles
+            WHERE owner_kind = 'agent' AND agent_id = ?
+                AND protocol = 'https_agent' AND enabled = 1
+            """,
+            (agent_id,),
+        ).fetchone()
+        if profile is None:
+            raise AgentAuthenticationError(
+                "Agent has no enabled HTTPS connection profile"
+            )
+        credential = connection.execute(
+            """
+            SELECT * FROM agent_credentials
+            WHERE agent_id = ? AND certificate_sha256 = ? AND status = 'active'
+            """,
+            (agent_id, certificate_sha256),
+        ).fetchone()
+        if credential is None:
+            raise AgentAuthenticationError("Agent certificate is not active in the registry")
+        if not (
+            parse_datetime(credential["not_before"])
+            <= occurred_at
+            <= parse_datetime(credential["not_after"])
+        ):
+            raise AgentAuthenticationError(
+                "Agent certificate is outside its enrolled validity window"
+            )
+        return {
+            "agent_id": agent_id,
+            "profile_id": profile["profile_id"],
+            "credential_id": credential["credential_id"],
+        }
+
+    def authenticate_agent_certificate(
+        self,
+        *,
+        agent_id: str,
+        certificate_sha256: str,
+        certificate_identity_uri: str,
+        occurred_at: datetime,
+    ) -> dict[str, Any]:
+        """Authorize one enrolled Agent certificate outside heartbeat replay checks."""
+        with self._connect() as connection:
+            return self._authenticate_agent_certificate_connection(
+                connection,
+                agent_id=agent_id,
+                certificate_sha256=certificate_sha256,
+                certificate_identity_uri=certificate_identity_uri,
+                occurred_at=occurred_at,
+            )
+
     def secure_upsert(
         self,
         heartbeat: AgentHeartbeatV1,
@@ -900,41 +1304,13 @@ class FleetStore:
         updated_at = isoformat_z(received_at)
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
-            registration = connection.execute(
-                "SELECT * FROM agent_registrations WHERE agent_id = ?",
-                (heartbeat.agent_id,),
-            ).fetchone()
-            if registration is None or not bool(registration["enabled"]):
-                raise AgentAuthenticationError("Agent is not enabled in the registry allowlist")
-            if registration["identity_uri"] != certificate_identity_uri:
-                raise AgentAuthenticationError("certificate identity URI differs from Agent registry")
-            profile = connection.execute(
-                """
-                SELECT profile_id FROM connection_profiles
-                WHERE owner_kind = 'agent' AND agent_id = ?
-                    AND protocol = 'https_agent' AND enabled = 1
-                """,
-                (heartbeat.agent_id,),
-            ).fetchone()
-            if profile is None:
-                raise AgentAuthenticationError(
-                    "Agent has no enabled HTTPS connection profile"
-                )
-            credential = connection.execute(
-                """
-                SELECT * FROM agent_credentials
-                WHERE agent_id = ? AND certificate_sha256 = ? AND status = 'active'
-                """,
-                (heartbeat.agent_id, certificate_sha256),
-            ).fetchone()
-            if credential is None:
-                raise AgentAuthenticationError("Agent certificate is not active in the registry")
-            if not (
-                parse_datetime(credential["not_before"])
-                <= received_at
-                <= parse_datetime(credential["not_after"])
-            ):
-                raise AgentAuthenticationError("Agent certificate is outside its enrolled validity window")
+            authentication = self._authenticate_agent_certificate_connection(
+                connection,
+                agent_id=heartbeat.agent_id,
+                certificate_sha256=certificate_sha256,
+                certificate_identity_uri=certificate_identity_uri,
+                occurred_at=received_at,
+            )
 
             state = connection.execute(
                 "SELECT * FROM agent_replay_state WHERE agent_id = ?",
@@ -1035,7 +1411,7 @@ class FleetStore:
             transitions = self._upsert_connection(connection, heartbeat, received_at)
         return {
             "transitions": transitions,
-            "credential_id": credential["credential_id"],
+            "credential_id": authentication["credential_id"],
             "boot_id": boot_id,
             "sequence": heartbeat.sequence,
         }
@@ -1810,8 +2186,171 @@ class FleetStore:
             "node_id": body.node_id,
             "display_name": body.display_name,
             "agent_ids": body.agent_ids,
+            "revision": 1,
+            "lifecycle_state": "active",
             "created_at": created_at,
+            "updated_at": created_at,
+            "decommissioned_at": None,
+            "decommission_reason": None,
         }
+
+    @staticmethod
+    def _validate_observed_agents(
+        connection: sqlite3.Connection,
+        agent_ids: list[str],
+    ) -> None:
+        if not agent_ids:
+            return
+        placeholders = ",".join("?" for _ in agent_ids)
+        rows = connection.execute(
+            f"SELECT agent_id FROM agents WHERE agent_id IN ({placeholders})",
+            agent_ids,
+        ).fetchall()
+        found = {row["agent_id"] for row in rows}
+        missing = sorted(set(agent_ids) - found)
+        if missing:
+            raise ConfigurationNotFound(
+                f"unknown observed agent_ids: {', '.join(missing)}"
+            )
+
+    def replace_processing_node(
+        self,
+        node_id: str,
+        body: ProcessingNodeReplace,
+        *,
+        occurred_at: datetime,
+    ) -> dict[str, Any]:
+        try:
+            with self._connect() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                row = connection.execute(
+                    "SELECT * FROM processing_nodes WHERE node_id = ?",
+                    (node_id,),
+                ).fetchone()
+                if row is None:
+                    raise ConfigurationNotFound(f"unknown processing node: {node_id}")
+                if row["revision"] != body.expected_revision:
+                    raise ConfigurationConflict(
+                        f"processing node revision is {row['revision']}, "
+                        f"not {body.expected_revision}"
+                    )
+                if row["lifecycle_state"] != "active":
+                    raise ConfigurationInvalid(
+                        f"processing node {node_id} is decommissioned"
+                    )
+                self._validate_observed_agents(connection, body.agent_ids)
+                bound_rows = connection.execute(
+                    """
+                    SELECT DISTINCT agent_id FROM assets
+                    WHERE node_id = ? AND lifecycle_state = 'active'
+                        AND agent_id IS NOT NULL
+                    """,
+                    (node_id,),
+                ).fetchall()
+                required_agents = {item["agent_id"] for item in bound_rows}
+                missing_agents = sorted(required_agents - set(body.agent_ids))
+                if missing_agents:
+                    raise ConfigurationInvalid(
+                        "processing node still has active assets bound to agents: "
+                        + ", ".join(missing_agents)
+                    )
+                updated_at = isoformat_z(occurred_at)
+                connection.execute(
+                    """
+                    UPDATE processing_nodes
+                    SET display_name = ?, revision = revision + 1, updated_at = ?
+                    WHERE node_id = ?
+                    """,
+                    (body.display_name, updated_at, node_id),
+                )
+                connection.execute(
+                    "DELETE FROM node_agents WHERE node_id = ?",
+                    (node_id,),
+                )
+                connection.executemany(
+                    "INSERT INTO node_agents (node_id, agent_id) VALUES (?, ?)",
+                    [(node_id, agent_id) for agent_id in body.agent_ids],
+                )
+                self._insert_configuration_audit(
+                    connection,
+                    occurred_at=occurred_at,
+                    action="replace",
+                    entity_type="processing_node",
+                    entity_id=node_id,
+                    details={
+                        "previous_revision": body.expected_revision,
+                        "agent_ids": body.agent_ids,
+                    },
+                )
+        except sqlite3.IntegrityError as error:
+            self._conflict_from_integrity(error)
+        return next(
+            item for item in self.list_processing_nodes()
+            if item["node_id"] == node_id
+        )
+
+    def decommission_processing_node(
+        self,
+        node_id: str,
+        body: DecommissionRequest,
+        *,
+        occurred_at: datetime,
+    ) -> dict[str, Any]:
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT * FROM processing_nodes WHERE node_id = ?",
+                (node_id,),
+            ).fetchone()
+            if row is None:
+                raise ConfigurationNotFound(f"unknown processing node: {node_id}")
+            if row["revision"] != body.expected_revision:
+                raise ConfigurationConflict(
+                    f"processing node revision is {row['revision']}, "
+                    f"not {body.expected_revision}"
+                )
+            if row["lifecycle_state"] != "active":
+                raise ConfigurationInvalid(
+                    f"processing node {node_id} is already decommissioned"
+                )
+            active_assets = connection.execute(
+                """
+                SELECT asset_id FROM assets
+                WHERE node_id = ? AND lifecycle_state = 'active'
+                ORDER BY asset_id
+                """,
+                (node_id,),
+            ).fetchall()
+            if active_assets:
+                raise ConfigurationConflict(
+                    "processing node has active assets: "
+                    + ", ".join(item["asset_id"] for item in active_assets)
+                )
+            timestamp = isoformat_z(occurred_at)
+            connection.execute(
+                """
+                UPDATE processing_nodes
+                SET lifecycle_state = 'decommissioned', revision = revision + 1,
+                    updated_at = ?, decommissioned_at = ?, decommission_reason = ?
+                WHERE node_id = ?
+                """,
+                (timestamp, timestamp, body.reason, node_id),
+            )
+            self._insert_configuration_audit(
+                connection,
+                occurred_at=occurred_at,
+                action="decommission",
+                entity_type="processing_node",
+                entity_id=node_id,
+                details={
+                    "reason": body.reason,
+                    "previous_revision": body.expected_revision,
+                },
+            )
+        return next(
+            item for item in self.list_processing_nodes()
+            if item["node_id"] == node_id
+        )
 
     @staticmethod
     def _find_observed_robot(
@@ -1834,6 +2373,87 @@ class FleetStore:
             f"agent {agent_id} does not currently observe robot {robot_id}"
         )
 
+    @classmethod
+    def _validate_asset_spec(
+        cls,
+        connection: sqlite3.Connection,
+        *,
+        asset_type: str,
+        node_id: str | None,
+        binding: Any,
+        runtime_kind: str | None,
+    ) -> None:
+        if node_id is not None:
+            node = connection.execute(
+                "SELECT * FROM processing_nodes WHERE node_id = ?",
+                (node_id,),
+            ).fetchone()
+            if node is None:
+                raise ConfigurationNotFound(
+                    f"unknown processing node: {node_id}"
+                )
+            if node["lifecycle_state"] != "active":
+                raise ConfigurationInvalid(
+                    f"processing node {node_id} is decommissioned"
+                )
+        if binding is None:
+            return
+        if node_id is None:
+            raise ConfigurationInvalid("observed bindings require node_id")
+        if asset_type not in {"robot", "camera"}:
+            raise ConfigurationInvalid(
+                "only robot and camera assets may use observed bindings"
+            )
+        if asset_type == "camera" and binding.source_key is None:
+            raise ConfigurationInvalid("camera bindings require source_key")
+        if asset_type == "robot" and binding.source_key is not None:
+            raise ConfigurationInvalid("robot bindings must not include source_key")
+        membership = connection.execute(
+            """
+            SELECT 1 FROM node_agents
+            WHERE node_id = ? AND agent_id = ?
+            """,
+            (node_id, binding.agent_id),
+        ).fetchone()
+        if membership is None:
+            raise ConfigurationInvalid(
+                f"agent {binding.agent_id} is not assigned to node {node_id}"
+            )
+        robot = cls._find_observed_robot(
+            connection,
+            agent_id=binding.agent_id,
+            robot_id=binding.robot_id,
+        )
+        observed_runtime_kind = robot.get("runtime_kind")
+        if (
+            runtime_kind is not None
+            and observed_runtime_kind is not None
+            and runtime_kind != observed_runtime_kind
+        ):
+            raise ConfigurationInvalid(
+                f"asset runtime_kind {runtime_kind!r} differs from "
+                f"observed runtime_kind {observed_runtime_kind!r}"
+            )
+        if binding.source_key is None:
+            return
+        source = next(
+            (
+                item
+                for item in robot.get("sources", [])
+                if item["key"] == binding.source_key
+            ),
+            None,
+        )
+        if source is None:
+            raise ConfigurationNotFound(
+                f"robot {binding.robot_id} does not currently expose "
+                f"source {binding.source_key}"
+            )
+        if source["kind"] != "camera":
+            raise ConfigurationInvalid(
+                f"source {binding.source_key} is not a camera"
+            )
+
     def create_asset(
         self,
         body: AssetCreate,
@@ -1844,60 +2464,13 @@ class FleetStore:
         try:
             with self._connect() as connection:
                 connection.execute("BEGIN IMMEDIATE")
-                if body.node_id is not None:
-                    node = connection.execute(
-                        "SELECT 1 FROM processing_nodes WHERE node_id = ?",
-                        (body.node_id,),
-                    ).fetchone()
-                    if node is None:
-                        raise ConfigurationNotFound(
-                            f"unknown processing node: {body.node_id}"
-                        )
-                if binding is not None:
-                    membership = connection.execute(
-                        """
-                        SELECT 1 FROM node_agents
-                        WHERE node_id = ? AND agent_id = ?
-                        """,
-                        (body.node_id, binding.agent_id),
-                    ).fetchone()
-                    if membership is None:
-                        raise ConfigurationInvalid(
-                            f"agent {binding.agent_id} is not assigned to node {body.node_id}"
-                        )
-                    robot = self._find_observed_robot(
-                        connection,
-                        agent_id=binding.agent_id,
-                        robot_id=binding.robot_id,
-                    )
-                    observed_runtime_kind = robot.get("runtime_kind")
-                    if (
-                        body.runtime_kind is not None
-                        and observed_runtime_kind is not None
-                        and body.runtime_kind != observed_runtime_kind
-                    ):
-                        raise ConfigurationInvalid(
-                            f"asset runtime_kind {body.runtime_kind!r} differs from "
-                            f"observed runtime_kind {observed_runtime_kind!r}"
-                        )
-                    if binding.source_key is not None:
-                        source = next(
-                            (
-                                item
-                                for item in robot.get("sources", [])
-                                if item["key"] == binding.source_key
-                            ),
-                            None,
-                        )
-                        if source is None:
-                            raise ConfigurationNotFound(
-                                f"robot {binding.robot_id} does not currently expose "
-                                f"source {binding.source_key}"
-                            )
-                        if source["kind"] != "camera":
-                            raise ConfigurationInvalid(
-                                f"source {binding.source_key} is not a camera"
-                            )
+                self._validate_asset_spec(
+                    connection,
+                    asset_type=body.asset_type,
+                    node_id=body.node_id,
+                    binding=binding,
+                    runtime_kind=body.runtime_kind,
+                )
                 created_at = isoformat_z(occurred_at)
                 connection.execute(
                     """
@@ -1937,7 +2510,12 @@ class FleetStore:
             self._conflict_from_integrity(error)
         return {
             **body.model_dump(),
+            "revision": 1,
+            "lifecycle_state": "active",
             "created_at": created_at,
+            "updated_at": created_at,
+            "decommissioned_at": None,
+            "decommission_reason": None,
         }
 
     def set_asset_runtime_kind(
@@ -1955,6 +2533,12 @@ class FleetStore:
             ).fetchone()
             if row is None:
                 raise ConfigurationNotFound(f"unknown asset: {asset_id}")
+            if row["revision"] != body.expected_revision:
+                raise ConfigurationConflict(
+                    f"asset revision is {row['revision']}, not {body.expected_revision}"
+                )
+            if row["lifecycle_state"] != "active":
+                raise ConfigurationInvalid(f"asset {asset_id} is decommissioned")
             if body.runtime_kind is not None and row["agent_id"] is not None:
                 robot = self._find_observed_robot(
                     connection,
@@ -1970,9 +2554,14 @@ class FleetStore:
                         f"asset runtime_kind {body.runtime_kind!r} differs from "
                         f"observed runtime_kind {observed_runtime_kind!r}"
                     )
+            updated_at = isoformat_z(occurred_at)
             connection.execute(
-                "UPDATE assets SET runtime_kind = ? WHERE asset_id = ?",
-                (body.runtime_kind, asset_id),
+                """
+                UPDATE assets
+                SET runtime_kind = ?, revision = revision + 1, updated_at = ?
+                WHERE asset_id = ?
+                """,
+                (body.runtime_kind, updated_at, asset_id),
             )
             self._insert_configuration_audit(
                 connection,
@@ -1983,6 +2572,7 @@ class FleetStore:
                 details={
                     "previous_runtime_kind": row["runtime_kind"],
                     "runtime_kind": body.runtime_kind,
+                    "previous_revision": body.expected_revision,
                 },
             )
             updated = connection.execute(
@@ -1990,6 +2580,150 @@ class FleetStore:
                 (asset_id,),
             ).fetchone()
         return self._asset_from_row(updated)
+
+    def replace_asset(
+        self,
+        asset_id: str,
+        body: AssetReplace,
+        *,
+        occurred_at: datetime,
+    ) -> dict[str, Any]:
+        binding = body.binding
+        try:
+            with self._connect() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                row = connection.execute(
+                    "SELECT * FROM assets WHERE asset_id = ?",
+                    (asset_id,),
+                ).fetchone()
+                if row is None:
+                    raise ConfigurationNotFound(f"unknown asset: {asset_id}")
+                if row["revision"] != body.expected_revision:
+                    raise ConfigurationConflict(
+                        f"asset revision is {row['revision']}, "
+                        f"not {body.expected_revision}"
+                    )
+                if row["lifecycle_state"] != "active":
+                    raise ConfigurationInvalid(f"asset {asset_id} is decommissioned")
+                reservation = connection.execute(
+                    """
+                    SELECT run_id FROM assignments
+                    WHERE asset_id = ? AND reserved = 1
+                    """,
+                    (asset_id,),
+                ).fetchone()
+                if reservation is not None:
+                    raise ConfigurationConflict(
+                        f"asset {asset_id} is reserved by task run "
+                        f"{reservation['run_id']}"
+                    )
+                self._validate_asset_spec(
+                    connection,
+                    asset_type=row["asset_type"],
+                    node_id=body.node_id,
+                    binding=binding,
+                    runtime_kind=body.runtime_kind,
+                )
+                timestamp = isoformat_z(occurred_at)
+                connection.execute(
+                    """
+                    UPDATE assets
+                    SET display_name = ?, node_id = ?, agent_id = ?, robot_id = ?,
+                        source_key = ?, capabilities_json = ?, runtime_kind = ?,
+                        revision = revision + 1, updated_at = ?
+                    WHERE asset_id = ?
+                    """,
+                    (
+                        body.display_name,
+                        body.node_id,
+                        None if binding is None else binding.agent_id,
+                        None if binding is None else binding.robot_id,
+                        None if binding is None else binding.source_key,
+                        self._encoded_json(body.capabilities),
+                        body.runtime_kind,
+                        timestamp,
+                        asset_id,
+                    ),
+                )
+                self._insert_configuration_audit(
+                    connection,
+                    occurred_at=occurred_at,
+                    action="replace",
+                    entity_type="asset",
+                    entity_id=asset_id,
+                    details={
+                        "previous_revision": body.expected_revision,
+                        "node_id": body.node_id,
+                        "binding": None if binding is None else binding.model_dump(),
+                        "runtime_kind": body.runtime_kind,
+                    },
+                )
+                updated = connection.execute(
+                    "SELECT * FROM assets WHERE asset_id = ?",
+                    (asset_id,),
+                ).fetchone()
+                return self._asset_from_row(updated)
+        except sqlite3.IntegrityError as error:
+            self._conflict_from_integrity(error)
+
+    def decommission_asset(
+        self,
+        asset_id: str,
+        body: DecommissionRequest,
+        *,
+        occurred_at: datetime,
+    ) -> dict[str, Any]:
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT * FROM assets WHERE asset_id = ?",
+                (asset_id,),
+            ).fetchone()
+            if row is None:
+                raise ConfigurationNotFound(f"unknown asset: {asset_id}")
+            if row["revision"] != body.expected_revision:
+                raise ConfigurationConflict(
+                    f"asset revision is {row['revision']}, not {body.expected_revision}"
+                )
+            if row["lifecycle_state"] != "active":
+                raise ConfigurationInvalid(f"asset {asset_id} is already decommissioned")
+            reservation = connection.execute(
+                """
+                SELECT run_id FROM assignments
+                WHERE asset_id = ? AND reserved = 1
+                """,
+                (asset_id,),
+            ).fetchone()
+            if reservation is not None:
+                raise ConfigurationConflict(
+                    f"asset {asset_id} is reserved by task run {reservation['run_id']}"
+                )
+            timestamp = isoformat_z(occurred_at)
+            connection.execute(
+                """
+                UPDATE assets
+                SET lifecycle_state = 'decommissioned', revision = revision + 1,
+                    updated_at = ?, decommissioned_at = ?, decommission_reason = ?
+                WHERE asset_id = ?
+                """,
+                (timestamp, timestamp, body.reason, asset_id),
+            )
+            self._insert_configuration_audit(
+                connection,
+                occurred_at=occurred_at,
+                action="decommission",
+                entity_type="asset",
+                entity_id=asset_id,
+                details={
+                    "reason": body.reason,
+                    "previous_revision": body.expected_revision,
+                },
+            )
+            updated = connection.execute(
+                "SELECT * FROM assets WHERE asset_id = ?",
+                (asset_id,),
+            ).fetchone()
+            return self._asset_from_row(updated)
 
     def create_workcell(
         self,
@@ -2000,18 +2734,7 @@ class FleetStore:
         try:
             with self._connect() as connection:
                 connection.execute("BEGIN IMMEDIATE")
-                if body.asset_ids:
-                    placeholders = ",".join("?" for _ in body.asset_ids)
-                    rows = connection.execute(
-                        f"SELECT asset_id FROM assets WHERE asset_id IN ({placeholders})",
-                        body.asset_ids,
-                    ).fetchall()
-                    found = {row["asset_id"] for row in rows}
-                    missing = sorted(set(body.asset_ids) - found)
-                    if missing:
-                        raise ConfigurationNotFound(
-                            f"unknown asset_ids: {', '.join(missing)}"
-                        )
+                self._validate_workcell_assets(connection, body.asset_ids)
                 created_at = isoformat_z(occurred_at)
                 connection.execute(
                     """
@@ -2046,7 +2769,183 @@ class FleetStore:
                 )
         except sqlite3.IntegrityError as error:
             self._conflict_from_integrity(error)
-        return {**body.model_dump(), "created_at": created_at}
+        return {
+            **body.model_dump(),
+            "revision": 1,
+            "lifecycle_state": "active",
+            "created_at": created_at,
+            "updated_at": created_at,
+            "decommissioned_at": None,
+            "decommission_reason": None,
+        }
+
+    @staticmethod
+    def _validate_workcell_assets(
+        connection: sqlite3.Connection,
+        asset_ids: list[str],
+    ) -> None:
+        if not asset_ids:
+            return
+        placeholders = ",".join("?" for _ in asset_ids)
+        rows = connection.execute(
+            f"SELECT asset_id, lifecycle_state FROM assets "
+            f"WHERE asset_id IN ({placeholders})",
+            asset_ids,
+        ).fetchall()
+        found = {row["asset_id"] for row in rows}
+        missing = sorted(set(asset_ids) - found)
+        if missing:
+            raise ConfigurationNotFound(
+                f"unknown asset_ids: {', '.join(missing)}"
+            )
+        decommissioned = sorted(
+            row["asset_id"]
+            for row in rows
+            if row["lifecycle_state"] != "active"
+        )
+        if decommissioned:
+            raise ConfigurationInvalid(
+                "decommissioned assets cannot join a workcell: "
+                + ", ".join(decommissioned)
+            )
+
+    def replace_workcell(
+        self,
+        workcell_id: str,
+        body: WorkcellReplace,
+        *,
+        occurred_at: datetime,
+    ) -> dict[str, Any]:
+        try:
+            with self._connect() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                row = connection.execute(
+                    "SELECT * FROM workcells WHERE workcell_id = ?",
+                    (workcell_id,),
+                ).fetchone()
+                if row is None:
+                    raise ConfigurationNotFound(f"unknown workcell: {workcell_id}")
+                if row["revision"] != body.expected_revision:
+                    raise ConfigurationConflict(
+                        f"workcell revision is {row['revision']}, "
+                        f"not {body.expected_revision}"
+                    )
+                if row["lifecycle_state"] != "active":
+                    raise ConfigurationInvalid(
+                        f"workcell {workcell_id} is decommissioned"
+                    )
+                active_run = connection.execute(
+                    """
+                    SELECT run_id FROM task_runs
+                    WHERE workcell_id = ? AND state IN ('DRAFT', 'READY', 'ACTIVE')
+                    ORDER BY created_at LIMIT 1
+                    """,
+                    (workcell_id,),
+                ).fetchone()
+                if active_run is not None:
+                    raise ConfigurationConflict(
+                        f"workcell {workcell_id} is used by non-terminal task run "
+                        f"{active_run['run_id']}"
+                    )
+                self._validate_workcell_assets(connection, body.asset_ids)
+                timestamp = isoformat_z(occurred_at)
+                connection.execute(
+                    """
+                    UPDATE workcells
+                    SET display_name = ?, description = ?, revision = revision + 1,
+                        updated_at = ?
+                    WHERE workcell_id = ?
+                    """,
+                    (body.display_name, body.description, timestamp, workcell_id),
+                )
+                connection.execute(
+                    "DELETE FROM workcell_assets WHERE workcell_id = ?",
+                    (workcell_id,),
+                )
+                connection.executemany(
+                    "INSERT INTO workcell_assets (workcell_id, asset_id) VALUES (?, ?)",
+                    [(workcell_id, asset_id) for asset_id in body.asset_ids],
+                )
+                self._insert_configuration_audit(
+                    connection,
+                    occurred_at=occurred_at,
+                    action="replace",
+                    entity_type="workcell",
+                    entity_id=workcell_id,
+                    details={
+                        "previous_revision": body.expected_revision,
+                        "asset_ids": body.asset_ids,
+                    },
+                )
+        except sqlite3.IntegrityError as error:
+            self._conflict_from_integrity(error)
+        return next(
+            item for item in self.list_workcells()
+            if item["workcell_id"] == workcell_id
+        )
+
+    def decommission_workcell(
+        self,
+        workcell_id: str,
+        body: DecommissionRequest,
+        *,
+        occurred_at: datetime,
+    ) -> dict[str, Any]:
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT * FROM workcells WHERE workcell_id = ?",
+                (workcell_id,),
+            ).fetchone()
+            if row is None:
+                raise ConfigurationNotFound(f"unknown workcell: {workcell_id}")
+            if row["revision"] != body.expected_revision:
+                raise ConfigurationConflict(
+                    f"workcell revision is {row['revision']}, "
+                    f"not {body.expected_revision}"
+                )
+            if row["lifecycle_state"] != "active":
+                raise ConfigurationInvalid(
+                    f"workcell {workcell_id} is already decommissioned"
+                )
+            active_run = connection.execute(
+                """
+                SELECT run_id FROM task_runs
+                WHERE workcell_id = ? AND state IN ('DRAFT', 'READY', 'ACTIVE')
+                ORDER BY created_at LIMIT 1
+                """,
+                (workcell_id,),
+            ).fetchone()
+            if active_run is not None:
+                raise ConfigurationConflict(
+                    f"workcell {workcell_id} is used by non-terminal task run "
+                    f"{active_run['run_id']}"
+                )
+            timestamp = isoformat_z(occurred_at)
+            connection.execute(
+                """
+                UPDATE workcells
+                SET lifecycle_state = 'decommissioned', revision = revision + 1,
+                    updated_at = ?, decommissioned_at = ?, decommission_reason = ?
+                WHERE workcell_id = ?
+                """,
+                (timestamp, timestamp, body.reason, workcell_id),
+            )
+            self._insert_configuration_audit(
+                connection,
+                occurred_at=occurred_at,
+                action="decommission",
+                entity_type="workcell",
+                entity_id=workcell_id,
+                details={
+                    "reason": body.reason,
+                    "previous_revision": body.expected_revision,
+                },
+            )
+        return next(
+            item for item in self.list_workcells()
+            if item["workcell_id"] == workcell_id
+        )
 
     def create_task_definition(
         self,
@@ -2123,6 +3022,88 @@ class FleetStore:
             )
         return row
 
+    @classmethod
+    def _resolve_task_assignments(
+        cls,
+        connection: sqlite3.Connection,
+        *,
+        definition: sqlite3.Row,
+        assignments: list[AssignmentCreate],
+        workcell_id: str | None,
+        require_complete: bool,
+    ) -> list[dict[str, Any]]:
+        roles = {
+            role["role"]: role
+            for role in json.loads(definition["roles_json"])
+        }
+        by_role = {item.role: item for item in assignments}
+        unknown_roles = sorted(set(by_role) - set(roles))
+        if unknown_roles:
+            raise ConfigurationInvalid(
+                f"unknown task roles: {', '.join(unknown_roles)}"
+            )
+        missing_roles = sorted(set(roles) - set(by_role))
+        if require_complete and missing_roles:
+            raise ConfigurationInvalid(
+                f"READY task run is missing roles: {', '.join(missing_roles)}"
+            )
+
+        if workcell_id is not None:
+            workcell = connection.execute(
+                "SELECT * FROM workcells WHERE workcell_id = ?",
+                (workcell_id,),
+            ).fetchone()
+            if workcell is None:
+                raise ConfigurationNotFound(f"unknown workcell: {workcell_id}")
+            if workcell["lifecycle_state"] != "active":
+                raise ConfigurationInvalid(
+                    f"workcell {workcell_id} is decommissioned"
+                )
+
+        resolved = []
+        for assignment in assignments:
+            asset = connection.execute(
+                "SELECT * FROM assets WHERE asset_id = ?",
+                (assignment.asset_id,),
+            ).fetchone()
+            if asset is None:
+                raise ConfigurationNotFound(f"unknown asset: {assignment.asset_id}")
+            if asset["lifecycle_state"] != "active":
+                raise ConfigurationInvalid(
+                    f"asset {assignment.asset_id} is decommissioned"
+                )
+            role = roles[assignment.role]
+            if asset["asset_type"] != role["asset_type"]:
+                raise ConfigurationInvalid(
+                    f"role {assignment.role} requires {role['asset_type']}, "
+                    f"not {asset['asset_type']}"
+                )
+            if assignment.access_mode != role["access_mode"]:
+                raise ConfigurationInvalid(
+                    f"role {assignment.role} requires access mode "
+                    f"{role['access_mode']}"
+                )
+            if workcell_id is not None:
+                membership = connection.execute(
+                    """
+                    SELECT 1 FROM workcell_assets
+                    WHERE workcell_id = ? AND asset_id = ?
+                    """,
+                    (workcell_id, assignment.asset_id),
+                ).fetchone()
+                if membership is None:
+                    raise ConfigurationInvalid(
+                        f"asset {assignment.asset_id} is not in workcell {workcell_id}"
+                    )
+            resolved.append(
+                {
+                    "role": assignment.role,
+                    "asset_id": assignment.asset_id,
+                    "access_mode": assignment.access_mode,
+                }
+            )
+        return resolved
+
     def create_task_run(
         self,
         body: TaskRunCreate,
@@ -2137,78 +3118,21 @@ class FleetStore:
                     body.task_definition_id,
                     body.task_version,
                 )
-                roles = {
-                    role["role"]: role
-                    for role in json.loads(definition["roles_json"])
-                }
-                assignments = {item.role: item for item in body.assignments}
-                unknown_roles = sorted(set(assignments) - set(roles))
-                if unknown_roles:
-                    raise ConfigurationInvalid(
-                        f"unknown task roles: {', '.join(unknown_roles)}"
-                    )
-                missing_roles = sorted(set(roles) - set(assignments))
-                if body.state == "READY" and missing_roles:
-                    raise ConfigurationInvalid(
-                        f"READY task run is missing roles: {', '.join(missing_roles)}"
-                    )
-                if body.workcell_id is not None:
-                    workcell = connection.execute(
-                        "SELECT 1 FROM workcells WHERE workcell_id = ?",
-                        (body.workcell_id,),
-                    ).fetchone()
-                    if workcell is None:
-                        raise ConfigurationNotFound(
-                            f"unknown workcell: {body.workcell_id}"
-                        )
-                resolved_assignments = []
-                for assignment in body.assignments:
-                    asset = connection.execute(
-                        "SELECT * FROM assets WHERE asset_id = ?",
-                        (assignment.asset_id,),
-                    ).fetchone()
-                    if asset is None:
-                        raise ConfigurationNotFound(
-                            f"unknown asset: {assignment.asset_id}"
-                        )
-                    role = roles[assignment.role]
-                    if asset["asset_type"] != role["asset_type"]:
-                        raise ConfigurationInvalid(
-                            f"role {assignment.role} requires {role['asset_type']}, "
-                            f"not {asset['asset_type']}"
-                        )
-                    if assignment.access_mode != role["access_mode"]:
-                        raise ConfigurationInvalid(
-                            f"role {assignment.role} requires access mode "
-                            f"{role['access_mode']}"
-                        )
-                    if body.workcell_id is not None:
-                        membership = connection.execute(
-                            """
-                            SELECT 1 FROM workcell_assets
-                            WHERE workcell_id = ? AND asset_id = ?
-                            """,
-                            (body.workcell_id, assignment.asset_id),
-                        ).fetchone()
-                        if membership is None:
-                            raise ConfigurationInvalid(
-                                f"asset {assignment.asset_id} is not in workcell "
-                                f"{body.workcell_id}"
-                            )
-                    resolved_assignments.append(
-                        {
-                            "role": assignment.role,
-                            "asset_id": assignment.asset_id,
-                            "access_mode": assignment.access_mode,
-                        }
-                    )
+                resolved_assignments = self._resolve_task_assignments(
+                    connection,
+                    definition=definition,
+                    assignments=body.assignments,
+                    workcell_id=body.workcell_id,
+                    require_complete=body.state == "READY",
+                )
                 created_at = isoformat_z(occurred_at)
                 connection.execute(
                     """
                     INSERT INTO task_runs (
                         run_id, task_definition_id, task_version,
-                        workcell_id, display_name, state, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                        workcell_id, display_name, state, revision,
+                        created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
                     """,
                     (
                         body.run_id,
@@ -2217,6 +3141,7 @@ class FleetStore:
                         body.workcell_id,
                         body.display_name,
                         body.state,
+                        created_at,
                         created_at,
                     ),
                 )
@@ -2255,8 +3180,211 @@ class FleetStore:
             self._conflict_from_integrity(error)
         return {
             **body.model_dump(),
+            "revision": 1,
             "created_at": created_at,
+            "updated_at": created_at,
+            "started_at": None,
+            "finished_at": None,
+            "terminal_reason": None,
         }
+
+    def replace_task_run(
+        self,
+        run_id: str,
+        body: TaskRunReplace,
+        *,
+        occurred_at: datetime,
+    ) -> dict[str, Any]:
+        try:
+            with self._connect() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                row = connection.execute(
+                    "SELECT * FROM task_runs WHERE run_id = ?",
+                    (run_id,),
+                ).fetchone()
+                if row is None:
+                    raise ConfigurationNotFound(f"unknown task run: {run_id}")
+                if row["revision"] != body.expected_revision:
+                    raise ConfigurationConflict(
+                        f"task run revision is {row['revision']}, "
+                        f"not {body.expected_revision}"
+                    )
+                if row["state"] != "DRAFT":
+                    raise ConfigurationInvalid(
+                        "only DRAFT task runs may be edited"
+                    )
+                definition = self._task_definition_row(
+                    connection,
+                    row["task_definition_id"],
+                    row["task_version"],
+                )
+                assignments = self._resolve_task_assignments(
+                    connection,
+                    definition=definition,
+                    assignments=body.assignments,
+                    workcell_id=body.workcell_id,
+                    require_complete=False,
+                )
+                updated_at = isoformat_z(occurred_at)
+                connection.execute(
+                    """
+                    UPDATE task_runs
+                    SET workcell_id = ?, display_name = ?, revision = revision + 1,
+                        updated_at = ?
+                    WHERE run_id = ?
+                    """,
+                    (body.workcell_id, body.display_name, updated_at, run_id),
+                )
+                connection.execute(
+                    "DELETE FROM assignments WHERE run_id = ?",
+                    (run_id,),
+                )
+                connection.executemany(
+                    """
+                    INSERT INTO assignments (
+                        run_id, role, asset_id, access_mode, reserved
+                    ) VALUES (?, ?, ?, ?, 0)
+                    """,
+                    [
+                        (
+                            run_id,
+                            assignment["role"],
+                            assignment["asset_id"],
+                            assignment["access_mode"],
+                        )
+                        for assignment in assignments
+                    ],
+                )
+                self._insert_configuration_audit(
+                    connection,
+                    occurred_at=occurred_at,
+                    action="replace",
+                    entity_type="task_run",
+                    entity_id=run_id,
+                    details={
+                        "previous_revision": body.expected_revision,
+                        "workcell_id": body.workcell_id,
+                        "assignments": assignments,
+                    },
+                )
+                updated = connection.execute(
+                    "SELECT * FROM task_runs WHERE run_id = ?",
+                    (run_id,),
+                ).fetchone()
+                return self._task_run_from_row(connection, updated)
+        except sqlite3.IntegrityError as error:
+            self._conflict_from_integrity(error)
+
+    def transition_task_run(
+        self,
+        run_id: str,
+        body: TaskRunTransition,
+        *,
+        occurred_at: datetime,
+    ) -> dict[str, Any]:
+        allowed = {
+            "DRAFT": {"READY"},
+            "READY": {"ACTIVE"},
+            "ACTIVE": {"COMPLETE", "FAILED"},
+            "COMPLETE": set(),
+            "FAILED": set(),
+        }
+        try:
+            with self._connect() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                row = connection.execute(
+                    "SELECT * FROM task_runs WHERE run_id = ?",
+                    (run_id,),
+                ).fetchone()
+                if row is None:
+                    raise ConfigurationNotFound(f"unknown task run: {run_id}")
+                if row["revision"] != body.expected_revision:
+                    raise ConfigurationConflict(
+                        f"task run revision is {row['revision']}, "
+                        f"not {body.expected_revision}"
+                    )
+                previous_state = row["state"]
+                if body.state not in allowed[previous_state]:
+                    raise ConfigurationInvalid(
+                        f"invalid task run transition: {previous_state} -> {body.state}"
+                    )
+
+                if body.state == "READY":
+                    definition = self._task_definition_row(
+                        connection,
+                        row["task_definition_id"],
+                        row["task_version"],
+                    )
+                    assignment_rows = connection.execute(
+                        """
+                        SELECT role, asset_id, access_mode
+                        FROM assignments WHERE run_id = ? ORDER BY role
+                        """,
+                        (run_id,),
+                    ).fetchall()
+                    self._resolve_task_assignments(
+                        connection,
+                        definition=definition,
+                        assignments=[
+                            AssignmentCreate.model_validate(dict(item))
+                            for item in assignment_rows
+                        ],
+                        workcell_id=row["workcell_id"],
+                        require_complete=True,
+                    )
+                    connection.execute(
+                        "UPDATE assignments SET reserved = 1 WHERE run_id = ?",
+                        (run_id,),
+                    )
+                elif body.state in {"COMPLETE", "FAILED"}:
+                    connection.execute(
+                        "UPDATE assignments SET reserved = 0 WHERE run_id = ?",
+                        (run_id,),
+                    )
+
+                timestamp = isoformat_z(occurred_at)
+                started_at = timestamp if body.state == "ACTIVE" else row["started_at"]
+                finished_at = (
+                    timestamp
+                    if body.state in {"COMPLETE", "FAILED"}
+                    else row["finished_at"]
+                )
+                connection.execute(
+                    """
+                    UPDATE task_runs
+                    SET state = ?, revision = revision + 1, updated_at = ?,
+                        started_at = ?, finished_at = ?, terminal_reason = ?
+                    WHERE run_id = ?
+                    """,
+                    (
+                        body.state,
+                        timestamp,
+                        started_at,
+                        finished_at,
+                        body.reason,
+                        run_id,
+                    ),
+                )
+                self._insert_configuration_audit(
+                    connection,
+                    occurred_at=occurred_at,
+                    action="transition",
+                    entity_type="task_run",
+                    entity_id=run_id,
+                    details={
+                        "from": previous_state,
+                        "to": body.state,
+                        "reason": body.reason,
+                        "previous_revision": body.expected_revision,
+                    },
+                )
+                updated = connection.execute(
+                    "SELECT * FROM task_runs WHERE run_id = ?",
+                    (run_id,),
+                ).fetchone()
+                return self._task_run_from_row(connection, updated)
+        except sqlite3.IntegrityError as error:
+            self._conflict_from_integrity(error)
 
     @staticmethod
     def _asset_from_row(row: sqlite3.Row) -> dict[str, Any]:
@@ -2275,7 +3403,12 @@ class FleetStore:
             "node_id": row["node_id"],
             "binding": binding,
             "capabilities": json.loads(row["capabilities_json"]),
+            "revision": row["revision"],
+            "lifecycle_state": row["lifecycle_state"],
             "created_at": row["created_at"],
+            "updated_at": row["updated_at"],
+            "decommissioned_at": row["decommissioned_at"],
+            "decommission_reason": row["decommission_reason"],
         }
 
     def list_processing_nodes(self) -> list[dict[str, Any]]:
@@ -2296,7 +3429,12 @@ class FleetStore:
                 "node_id": row["node_id"],
                 "display_name": row["display_name"],
                 "agent_ids": agents_by_node.get(row["node_id"], []),
+                "revision": row["revision"],
+                "lifecycle_state": row["lifecycle_state"],
                 "created_at": row["created_at"],
+                "updated_at": row["updated_at"],
+                "decommissioned_at": row["decommissioned_at"],
+                "decommission_reason": row["decommission_reason"],
             }
             for row in rows
         ]
@@ -2330,7 +3468,12 @@ class FleetStore:
                 "display_name": row["display_name"],
                 "description": row["description"],
                 "asset_ids": assets_by_workcell.get(row["workcell_id"], []),
+                "revision": row["revision"],
+                "lifecycle_state": row["lifecycle_state"],
                 "created_at": row["created_at"],
+                "updated_at": row["updated_at"],
+                "decommissioned_at": row["decommissioned_at"],
+                "decommission_reason": row["decommission_reason"],
             }
             for row in rows
         ]
@@ -2390,8 +3533,13 @@ class FleetStore:
             "workcell_id": row["workcell_id"],
             "display_name": row["display_name"],
             "state": row["state"],
+            "revision": row["revision"],
             "assignments": assignments,
             "created_at": row["created_at"],
+            "updated_at": row["updated_at"],
+            "started_at": row["started_at"],
+            "finished_at": row["finished_at"],
+            "terminal_reason": row["terminal_reason"],
         }
 
     def get_task_run(self, run_id: str) -> dict[str, Any] | None:

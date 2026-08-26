@@ -10,6 +10,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import math
 from pathlib import Path
+import re
 import ssl
 import sys
 from typing import Any
@@ -17,6 +18,14 @@ from typing import Any
 from cryptography import x509
 from pydantic import ValidationError
 
+from fleet_control_plane.capture_jobs import (
+    CaptureJobConflict,
+    CaptureJobInvalid,
+    CaptureJobNotFound,
+    CaptureJobReport,
+    CaptureJobStore,
+    CaptureWorkerPoll,
+)
 from fleet_control_plane.models import AgentHeartbeatV1
 from fleet_control_plane.status import isoformat_z, utc_now
 from fleet_control_plane.store import (
@@ -33,7 +42,11 @@ from sang_security.refs import SecretReferenceError, SecretResolver
 
 
 MAX_HEARTBEAT_BYTES = 256 * 1024
+MAX_CAPTURE_CONTROL_BYTES = 64 * 1024
 AGENT_URI_PREFIX = "urn:sang:agent:"
+CAPTURE_STATUS_PATH = re.compile(
+    r"^/api/v1/capture-jobs/(?P<job_id>[A-Za-z0-9][A-Za-z0-9._-]{0,63})/status$"
+)
 
 
 class AgentIngressError(ValueError):
@@ -95,6 +108,7 @@ class AgentIngressServer(ThreadingHTTPServer):
         if (tls_context is None) == (tls_context_factory is None):
             raise ValueError("provide exactly one TLS context or TLS context factory")
         self.store = store
+        self.capture_jobs = CaptureJobStore(store.path)
         self.now = now
         self.maximum_age_s = maximum_age_s
         self.maximum_future_s = maximum_future_s
@@ -163,7 +177,97 @@ class AgentIngressHandler(BaseHTTPRequestHandler):
             {"status": "ok", "scope": "agent-mtls-ingress"},
         )
 
+    def _capture_peer(self) -> tuple[str, datetime]:
+        peer_der = self.connection.getpeercert(binary_form=True)
+        if not peer_der:
+            raise AgentIngressError("TLS peer certificate is unavailable")
+        certificate = x509.load_der_x509_certificate(peer_der)
+        identity_uri = agent_identity_uri(certificate)
+        agent_id = identity_uri.removeprefix(AGENT_URI_PREFIX)
+        received_at = self.server.now()
+        self.server.store.authenticate_agent_certificate(
+            agent_id=agent_id,
+            certificate_sha256=certificate_sha256(certificate),
+            certificate_identity_uri=identity_uri,
+            occurred_at=received_at,
+        )
+        return agent_id, received_at
+
+    def _capture_control(self, *, job_id: str | None = None) -> None:
+        if self.headers.get_content_type() != "application/json":
+            self._json(
+                HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
+                {"error": "content-type must be application/json"},
+            )
+            return
+        try:
+            content_length = int(self.headers.get("Content-Length", ""))
+        except ValueError:
+            self._json(HTTPStatus.BAD_REQUEST, {"error": "invalid content-length"})
+            return
+        if not 1 <= content_length <= MAX_CAPTURE_CONTROL_BYTES:
+            self._json(
+                HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+                {"error": "capture control body must contain 1 to 65536 bytes"},
+            )
+            return
+        try:
+            agent_id, received_at = self._capture_peer()
+            raw = json.loads(self.rfile.read(content_length))
+            if job_id is None:
+                body = CaptureWorkerPoll.model_validate(raw)
+                result = self.server.capture_jobs.register_worker_and_claim(
+                    body,
+                    agent_id=agent_id,
+                    occurred_at=received_at,
+                )
+                response = {
+                    "received_at": isoformat_z(received_at),
+                    "next_interval_s": 3,
+                    **result,
+                }
+            else:
+                body = CaptureJobReport.model_validate(raw)
+                response = self.server.capture_jobs.report_job(
+                    job_id,
+                    body,
+                    agent_id=agent_id,
+                    occurred_at=received_at,
+                )
+        except json.JSONDecodeError:
+            self._json(HTTPStatus.BAD_REQUEST, {"error": "invalid JSON"})
+            return
+        except ValidationError as exc:
+            self._json(
+                HTTPStatus.UNPROCESSABLE_ENTITY,
+                {
+                    "error": "capture control schema validation failed",
+                    "details": exc.errors(include_context=False),
+                },
+            )
+            return
+        except (CertificateError, AgentIngressError, AgentAuthenticationError) as exc:
+            self._json(HTTPStatus.FORBIDDEN, {"error": str(exc)})
+            return
+        except CaptureJobNotFound as exc:
+            self._json(HTTPStatus.NOT_FOUND, {"error": str(exc)})
+            return
+        except CaptureJobConflict as exc:
+            self._json(HTTPStatus.CONFLICT, {"error": str(exc)})
+            return
+        except CaptureJobInvalid as exc:
+            self._json(HTTPStatus.UNPROCESSABLE_ENTITY, {"error": str(exc)})
+            return
+        self._json(HTTPStatus.OK, response)
+
     def do_POST(self) -> None:
+        if self.path == "/api/v1/capture-workers/poll":
+            self._capture_control()
+            return
+        capture_status = CAPTURE_STATUS_PATH.fullmatch(self.path)
+        if capture_status is not None:
+            self._capture_control(job_id=capture_status.group("job_id"))
+            return
         if self.path != "/api/v1/agents/heartbeat":
             self._json(HTTPStatus.NOT_FOUND, {"error": "not found"})
             return

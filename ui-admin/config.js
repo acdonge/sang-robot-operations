@@ -39,6 +39,7 @@ const state = {
   discovery: { robots: [], cameras: [] },
   agents: [],
   roles: [{ role: "primary_robot", asset_type: "robot", access_mode: "exclusive" }],
+  editing: { node: null, asset: null, workcell: null },
   toastTimer: null,
 };
 
@@ -67,20 +68,39 @@ function safeSuggestion(value) {
 
 async function getJson(path) {
   const response = await fetch(path, { headers: { Accept: "application/json" } });
+  if (response.status === 401) {
+    location.assign(`/login.html?next=${encodeURIComponent(location.href)}`);
+    throw new Error("authentication required");
+  }
   if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`);
   return response.json();
 }
 
-async function postJson(path, body) {
+async function requestJson(method, path, body) {
+  const csrf = document.cookie
+    .split(";")
+    .map((item) => item.trim())
+    .find((item) => item.startsWith("sang_csrf="))
+    ?.split("=", 2)[1];
   const response = await fetch(path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...(csrf ? { "X-CSRF-Token": decodeURIComponent(csrf) } : {}),
+    },
     body: JSON.stringify(body),
   });
+  if (response.status === 401) {
+    location.assign(`/login.html?next=${encodeURIComponent(location.href)}`);
+    throw new Error("authentication required");
+  }
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.error || `${path}: HTTP ${response.status}`);
   return payload;
 }
+
+const postJson = (path, body) => requestJson("POST", path, body);
 
 function showToast(message, isError = false) {
   const toast = byId("toast");
@@ -102,13 +122,27 @@ function selectedValues(container, name) {
   );
 }
 
-function registryItem(title, subtitle, aside) {
+function registryAction(label, handler, danger = false) {
+  const button = element("button", `registry-action${danger ? " is-danger" : ""}`, label);
+  button.type = "button";
+  button.addEventListener("click", handler);
+  return button;
+}
+
+function registryItem(title, subtitle, aside, actions = []) {
   const row = element("div", "registry-item");
   row.append(element("strong", "", title));
   row.append(element("span", "", subtitle));
-  row.append(element("span", "", aside));
+  row.append(element("span", "registry-aside", aside));
+  if (actions.length) {
+    const actionBar = element("div", "registry-actions");
+    actionBar.append(...actions);
+    row.append(actionBar);
+  }
   return row;
 }
+
+const isActive = (item) => item.lifecycle_state !== "decommissioned";
 
 function renderMetrics() {
   const config = state.configuration;
@@ -122,9 +156,14 @@ function renderAgentOptions() {
   const container = byId("agent-options");
   container.replaceChildren();
   const assigned = new Set(
-    state.configuration.processing_nodes.flatMap((node) => node.agent_ids),
+    state.configuration.processing_nodes
+      .filter((node) => isActive(node) && node.node_id !== state.editing.node?.node_id)
+      .flatMap((node) => node.agent_ids),
   );
-  const available = state.agents.filter((agent) => !assigned.has(agent.agent_id));
+  const editingAgents = new Set(state.editing.node?.agent_ids || []);
+  const available = state.agents.filter(
+    (agent) => !assigned.has(agent.agent_id) || editingAgents.has(agent.agent_id),
+  );
   if (!available.length) {
     container.append(element("p", "empty-copy", "새 Node에 배정할 미등록 Agent가 없습니다."));
     return;
@@ -135,6 +174,7 @@ function renderAgentOptions() {
     input.type = "checkbox";
     input.name = "agent_ids";
     input.value = agent.agent_id;
+    input.checked = editingAgents.has(agent.agent_id);
     label.append(input, document.createTextNode(`${agent.agent_name} · ${agent.agent_id}`));
     container.append(label);
   }
@@ -144,7 +184,7 @@ function renderNodeChoices() {
   const select = document.querySelector('#asset-form select[name="node_id"]');
   const current = select.value;
   select.replaceChildren(option("", "미지정"));
-  for (const node of state.configuration.processing_nodes) {
+  for (const node of state.configuration.processing_nodes.filter(isActive)) {
     select.append(option(node.node_id, `${node.display_name} · ${node.node_id}`));
   }
   if ([...select.options].some((item) => item.value === current)) select.value = current;
@@ -157,10 +197,15 @@ function renderNodes() {
     registry.append(registryItem("등록된 Node 없음", "Agent를 먼저 Node에 연결하세요.", "0"));
   }
   for (const node of state.configuration.processing_nodes) {
+    const active = isActive(node);
     registry.append(registryItem(
       node.display_name,
-      node.node_id,
-      `${node.agent_ids.length} agents`,
+      `${node.node_id} · rev ${node.revision}`,
+      active ? `${node.agent_ids.length} agents` : "DECOMMISSIONED",
+      active ? [
+        registryAction("수정", () => beginNodeEdit(node)),
+        registryAction("폐기", () => decommissionEntity("processing-nodes", node.node_id, node.revision), true),
+      ] : [],
     ));
   }
   renderAgentOptions();
@@ -221,14 +266,23 @@ function renderAssets() {
     registry.append(registryItem("등록된 Asset 없음", "관측 후보 또는 일반 장비를 등록하세요.", "0"));
   }
   for (const asset of state.configuration.assets) {
+    const active = isActive(asset);
     const binding = asset.binding
       ? `${asset.binding.agent_id}/${asset.binding.robot_id}${asset.binding.source_key ? `/${asset.binding.source_key}` : ""}`
       : "configuration only";
-    registry.append(registryItem(asset.display_name, `${asset.asset_id} · ${binding}`, asset.asset_type));
+    registry.append(registryItem(
+      asset.display_name,
+      `${asset.asset_id} · ${binding} · rev ${asset.revision}`,
+      active ? asset.asset_type : "DECOMMISSIONED",
+      active ? [
+        registryAction("수정", () => beginAssetEdit(asset)),
+        registryAction("폐기", () => decommissionEntity("assets", asset.asset_id, asset.revision), true),
+      ] : [],
+    ));
   }
   const options = byId("workcell-asset-options");
   options.replaceChildren();
-  for (const asset of state.configuration.assets) {
+  for (const asset of state.configuration.assets.filter(isActive)) {
     const label = element("label");
     const input = document.createElement("input");
     input.type = "checkbox";
@@ -249,16 +303,21 @@ function renderWorkcells() {
     registry.append(registryItem("등록된 Workcell 없음", "공간·안전 경계를 공유하는 Asset을 묶으세요.", "0"));
   }
   for (const workcell of state.configuration.workcells) {
+    const active = isActive(workcell);
     registry.append(registryItem(
       workcell.display_name,
-      workcell.workcell_id,
-      `${workcell.asset_ids.length} assets`,
+      `${workcell.workcell_id} · rev ${workcell.revision}`,
+      active ? `${workcell.asset_ids.length} assets` : "DECOMMISSIONED",
+      active ? [
+        registryAction("수정", () => beginWorkcellEdit(workcell)),
+        registryAction("폐기", () => decommissionEntity("workcells", workcell.workcell_id, workcell.revision), true),
+      ] : [],
     ));
   }
   const select = document.querySelector('#run-form select[name="workcell_id"]');
   const current = select.value;
   select.replaceChildren(option("", "전체 자산"));
-  for (const workcell of state.configuration.workcells) {
+  for (const workcell of state.configuration.workcells.filter(isActive)) {
     select.append(option(workcell.workcell_id, `${workcell.display_name} · ${workcell.workcell_id}`));
   }
   if ([...select.options].some((item) => item.value === current)) select.value = current;
@@ -317,7 +376,7 @@ function eligibleAssets(role) {
   const workcell = state.configuration.workcells.find((item) => item.workcell_id === workcellId);
   const allowed = workcell ? new Set(workcell.asset_ids) : null;
   return state.configuration.assets.filter(
-    (asset) => asset.asset_type === role.asset_type && (!allowed || allowed.has(asset.asset_id)),
+    (asset) => isActive(asset) && asset.asset_type === role.asset_type && (!allowed || allowed.has(asset.asset_id)),
   );
 }
 
@@ -381,9 +440,23 @@ function renderRuns() {
     card.append(element("strong", "", run.display_name));
     card.append(element("span", "", `${run.run_id} · ${run.task_definition_id}@${run.task_version}`));
     card.append(element("span", "run-state", `${run.state} · ${run.assignments.length} assigned`));
+    const actions = element("div", "run-actions");
+    const transitions = {
+      DRAFT: [["READY", "준비 완료"]],
+      READY: [["ACTIVE", "실행 시작"]],
+      ACTIVE: [["COMPLETE", "완료"], ["FAILED", "실패", true]],
+    }[run.state] || [];
+    for (const [nextState, label, danger] of transitions) {
+      actions.append(registryAction(
+        label,
+        () => transitionRun(run, nextState),
+        Boolean(danger),
+      ));
+    }
     const link = element("a", "", "OPERATOR 열기");
     link.href = `/operator/#run/${encodeURIComponent(run.run_id)}`;
-    card.append(link);
+    actions.append(link);
+    card.append(actions);
     registry.append(card);
   }
 }
@@ -424,6 +497,131 @@ function clearBinding() {
   byId("binding-banner").hidden = true;
 }
 
+function resetNodeEdit() {
+  state.editing.node = null;
+  const form = byId("node-form");
+  form.reset();
+  form.elements.node_id.disabled = false;
+  byId("node-submit").textContent = "Node 등록";
+  byId("node-cancel-edit").hidden = true;
+  renderAgentOptions();
+}
+
+function beginNodeEdit(node) {
+  state.editing.node = node;
+  const form = byId("node-form");
+  form.elements.node_id.value = node.node_id;
+  form.elements.node_id.disabled = true;
+  form.elements.display_name.value = node.display_name;
+  byId("node-submit").textContent = "Node 수정 저장";
+  byId("node-cancel-edit").hidden = false;
+  renderAgentOptions();
+  byId("node-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function resetAssetEdit() {
+  state.editing.asset = null;
+  const form = byId("asset-form");
+  form.reset();
+  form.elements.asset_id.disabled = false;
+  form.elements.asset_type.disabled = false;
+  byId("asset-submit").textContent = "Asset 등록";
+  byId("asset-cancel-edit").hidden = true;
+  clearBinding();
+}
+
+function beginAssetEdit(asset) {
+  state.editing.asset = asset;
+  const form = byId("asset-form");
+  form.elements.asset_id.value = asset.asset_id;
+  form.elements.asset_id.disabled = true;
+  form.elements.display_name.value = asset.display_name;
+  form.elements.asset_type.value = asset.asset_type;
+  form.elements.asset_type.disabled = true;
+  form.elements.node_id.value = asset.node_id || "";
+  form.elements.capabilities.value = asset.capabilities.join(", ");
+  form.elements.binding_agent_id.value = asset.binding?.agent_id || "";
+  form.elements.binding_robot_id.value = asset.binding?.robot_id || "";
+  form.elements.binding_source_key.value = asset.binding?.source_key || "";
+  byId("binding-banner").hidden = !asset.binding;
+  if (asset.binding) {
+    byId("binding-banner").textContent = `OBSERVED BINDING · ${asset.binding.agent_id} / ${asset.binding.robot_id}${asset.binding.source_key ? ` / ${asset.binding.source_key}` : ""}`;
+  }
+  byId("asset-submit").textContent = "Asset 수정 저장";
+  byId("asset-cancel-edit").hidden = false;
+  byId("asset-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function resetWorkcellEdit() {
+  state.editing.workcell = null;
+  const form = byId("workcell-form");
+  form.reset();
+  form.elements.workcell_id.disabled = false;
+  byId("workcell-submit").textContent = "Workcell 생성";
+  byId("workcell-cancel-edit").hidden = true;
+  renderAssets();
+}
+
+function beginWorkcellEdit(workcell) {
+  state.editing.workcell = workcell;
+  const form = byId("workcell-form");
+  form.elements.workcell_id.value = workcell.workcell_id;
+  form.elements.workcell_id.disabled = true;
+  form.elements.display_name.value = workcell.display_name;
+  form.elements.description.value = workcell.description || "";
+  byId("workcell-submit").textContent = "Workcell 수정 저장";
+  byId("workcell-cancel-edit").hidden = false;
+  renderAssets();
+  const selected = new Set(workcell.asset_ids);
+  byId("workcell-asset-options").querySelectorAll('input[name="asset_ids"]').forEach((input) => {
+    input.checked = selected.has(input.value);
+  });
+  byId("workcell-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function decommissionEntity(collection, entityId, revision) {
+  const reason = window.prompt(`${entityId} 폐기 사유를 입력하세요.`);
+  if (reason === null) return;
+  if (!reason.trim()) {
+    showToast("폐기 사유가 필요합니다.", true);
+    return;
+  }
+  try {
+    await postJson(`${API[collection === "processing-nodes" ? "nodes" : collection]}/${encodeURIComponent(entityId)}/decommission`, {
+      expected_revision: revision,
+      reason: reason.trim(),
+    });
+    showToast(`${entityId}가 폐기 상태로 전환되었습니다.`);
+    await refresh();
+  } catch (error) {
+    showToast(error.message, true);
+  }
+}
+
+async function transitionRun(run, nextState) {
+  let reason = null;
+  if (nextState === "FAILED") {
+    reason = window.prompt(`${run.run_id} 실패 사유를 입력하세요.`);
+    if (reason === null) return;
+    if (!reason.trim()) {
+      showToast("실패 사유가 필요합니다.", true);
+      return;
+    }
+    reason = reason.trim();
+  }
+  try {
+    await postJson(`${API.runs}/${encodeURIComponent(run.run_id)}/transition`, {
+      expected_revision: run.revision,
+      state: nextState,
+      ...(reason ? { reason } : {}),
+    });
+    showToast(`${run.run_id}: ${nextState}`);
+    await refresh();
+  } catch (error) {
+    showToast(error.message, true);
+  }
+}
+
 function updateSuggestedVersion() {
   const form = byId("task-form");
   const id = form.elements.task_definition_id.value;
@@ -433,11 +631,11 @@ function updateSuggestedVersion() {
   form.elements.version.value = versions.length ? Math.max(...versions) + 1 : 1;
 }
 
-async function submit(form, path, body, successMessage) {
+async function submit(form, path, body, successMessage, method = "POST") {
   const button = form.querySelector('button[type="submit"]');
   button.disabled = true;
   try {
-    await postJson(path, body);
+    await requestJson(method, path, body);
     showToast(successMessage);
     form.reset();
     await refresh();
@@ -453,6 +651,9 @@ async function submit(form, path, body, successMessage) {
 function bindForms() {
   byId("reload-button").addEventListener("click", refresh);
   byId("clear-binding").addEventListener("click", clearBinding);
+  byId("node-cancel-edit").addEventListener("click", resetNodeEdit);
+  byId("asset-cancel-edit").addEventListener("click", resetAssetEdit);
+  byId("workcell-cancel-edit").addEventListener("click", resetWorkcellEdit);
   byId("add-role").addEventListener("click", () => {
     state.roles.push({ role: `role_${state.roles.length + 1}`, asset_type: "robot", access_mode: "exclusive" });
     renderRoleEditor();
@@ -464,20 +665,27 @@ function bindForms() {
   byId("node-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
-    await submit(form, API.nodes, {
-      node_id: form.elements.node_id.value,
+    const editing = state.editing.node;
+    const body = {
+      ...(editing ? { expected_revision: editing.revision } : { node_id: form.elements.node_id.value }),
       display_name: form.elements.display_name.value,
       agent_ids: selectedValues(byId("agent-options"), "agent_ids"),
-    }, "Processing Node가 등록되었습니다.");
+    };
+    const path = editing ? `${API.nodes}/${encodeURIComponent(editing.node_id)}` : API.nodes;
+    const success = await submit(form, path, body, editing ? "Processing Node가 수정되었습니다." : "Processing Node가 등록되었습니다.", editing ? "PUT" : "POST");
+    if (success) resetNodeEdit();
   });
 
   byId("asset-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
     const agentId = form.elements.binding_agent_id.value;
+    const editing = state.editing.asset;
     const body = {
-      asset_id: form.elements.asset_id.value,
-      asset_type: form.elements.asset_type.value,
+      ...(editing ? { expected_revision: editing.revision } : {
+        asset_id: form.elements.asset_id.value,
+        asset_type: form.elements.asset_type.value,
+      }),
       display_name: form.elements.display_name.value,
       node_id: form.elements.node_id.value || null,
       binding: agentId ? {
@@ -488,18 +696,23 @@ function bindForms() {
       capabilities: form.elements.capabilities.value
         .split(",").map((item) => item.trim()).filter(Boolean),
     };
-    if (await submit(form, API.assets, body, "Asset이 등록되었습니다.")) clearBinding();
+    const path = editing ? `${API.assets}/${encodeURIComponent(editing.asset_id)}` : API.assets;
+    if (await submit(form, path, body, editing ? "Asset이 수정되었습니다." : "Asset이 등록되었습니다.", editing ? "PUT" : "POST")) resetAssetEdit();
   });
 
   byId("workcell-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
-    await submit(form, API.workcells, {
-      workcell_id: form.elements.workcell_id.value,
+    const editing = state.editing.workcell;
+    const body = {
+      ...(editing ? { expected_revision: editing.revision } : { workcell_id: form.elements.workcell_id.value }),
       display_name: form.elements.display_name.value,
       description: form.elements.description.value || null,
       asset_ids: selectedValues(byId("workcell-asset-options"), "asset_ids"),
-    }, "Workcell이 생성되었습니다.");
+    };
+    const path = editing ? `${API.workcells}/${encodeURIComponent(editing.workcell_id)}` : API.workcells;
+    const success = await submit(form, path, body, editing ? "Workcell이 수정되었습니다." : "Workcell이 생성되었습니다.", editing ? "PUT" : "POST");
+    if (success) resetWorkcellEdit();
   });
 
   byId("task-form").addEventListener("submit", async (event) => {

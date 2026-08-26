@@ -1,0 +1,201 @@
+services:
+  central-local:
+    profiles: [local]
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    user: "${SANG_UID:-1000}:${SANG_GID:-1000}"
+    init: true
+    network_mode: host
+    restart: unless-stopped
+    working_dir: /ws
+    environment:
+      HOME: /var/lib/sang
+      PYTHONPATH: /ws/src/sang_security:/ws/src/fleet_control_plane:/ws/src/robot_agent
+    volumes:
+      - ${SANG_WORKSPACE:?set SANG_WORKSPACE}:/ws:ro
+      - ${SANG_CENTRAL_DATA:?set SANG_CENTRAL_DATA}:/var/lib/sang
+      - ${SANG_OBJECT_STORE:?set SANG_OBJECT_STORE}:/var/lib/sang-objects
+    command:
+      - python3
+      - -m
+      - fleet_control_plane.serve
+      - --db-path
+      - /var/lib/sang/fleet.db
+      - --object-store-root
+      - /var/lib/sang-objects
+      - --host
+      - 127.0.0.1
+      - --port
+      - ${CENTRAL_ADMIN_PORT:-18091}
+    healthcheck:
+      test:
+        - CMD
+        - python3
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:${CENTRAL_ADMIN_PORT:-18091}/api/v1/healthz', timeout=2).read()"
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+
+  opcua-aggregate-local:
+    profiles: [local]
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    user: "${SANG_UID:-1000}:${SANG_GID:-1000}"
+    init: true
+    network_mode: host
+    restart: unless-stopped
+    depends_on:
+      central-local:
+        condition: service_healthy
+    working_dir: /ws
+    environment:
+      HOME: /var/lib/sang
+      PYTHONPATH: /ws/src/sang_security:/ws/src/fleet_control_plane
+    volumes:
+      - ${SANG_WORKSPACE:?set SANG_WORKSPACE}:/ws:ro
+      - ${SANG_CENTRAL_DATA:?set SANG_CENTRAL_DATA}:/var/lib/sang
+    command:
+      - python3
+      - -m
+      - fleet_control_plane.central_opcua
+      - --db-path
+      - /var/lib/sang/fleet.db
+      - --endpoint
+      - opc.tcp://127.0.0.1:${CENTRAL_OPCUA_PORT:-4850}/sang/central/
+      - --conformance-report
+      - /tmp/central-opcua-conformance.json
+
+  central-remote:
+    profiles: [remote]
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    user: "${SANG_UID:-1000}:${SANG_GID:-1000}"
+    init: true
+    network_mode: host
+    restart: unless-stopped
+    working_dir: /ws
+    environment:
+      HOME: /var/lib/sang
+      PYTHONPATH: /ws/src/sang_security:/ws/src/fleet_control_plane:/ws/src/robot_agent
+    volumes:
+      - ${SANG_WORKSPACE:?set SANG_WORKSPACE}:/ws:ro
+      - ${SANG_CENTRAL_DATA:?set SANG_CENTRAL_DATA}:/var/lib/sang
+      - ${SANG_OBJECT_STORE:?set SANG_OBJECT_STORE}:/var/lib/sang-objects
+      - ${SANG_CENTRAL_SECRETS:?set SANG_CENTRAL_SECRETS}:/run/secrets/sang:ro
+    command:
+      - python3
+      - -m
+      - fleet_control_plane.serve
+      - --db-path
+      - /var/lib/sang/fleet.db
+      - --object-store-root
+      - /var/lib/sang-objects
+      - --host
+      - 0.0.0.0
+      - --port
+      - ${CENTRAL_ADMIN_PORT:-18443}
+      - --allowed-host
+      - ${CENTRAL_ALLOWED_HOST:?set CENTRAL_ALLOWED_HOST}
+      - --https-secret-root
+      - /run/secrets/sang
+      - --https-server-certificate-ref
+      - ${CENTRAL_HTTPS_CERT_REF:-secret://https/server/chain.pem}
+      - --https-server-private-key-ref
+      - ${CENTRAL_HTTPS_KEY_REF:-secret://https/server/key.pem}
+      - --preview-secret-root
+      - /run/secrets/sang
+      - --preview-ca-bundle-ref
+      - ${CENTRAL_PREVIEW_CA_REF:-secret://https/trust/ca-crl.pem}
+      - --preview-client-certificate-ref
+      - ${CENTRAL_PREVIEW_CERT_REF:-secret://https/central/preview-client-chain.pem}
+      - --preview-client-private-key-ref
+      - ${CENTRAL_PREVIEW_KEY_REF:-secret://https/central/preview-client-key.pem}
+    healthcheck:
+      test:
+        - CMD
+        - python3
+        - -c
+        - "import ssl,urllib.request; urllib.request.urlopen('https://127.0.0.1:${CENTRAL_ADMIN_PORT:-18443}/api/v1/healthz', context=ssl._create_unverified_context(), timeout=2).read()"
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+
+  agent-ingress-remote:
+    profiles: [remote]
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    user: "${SANG_UID:-1000}:${SANG_GID:-1000}"
+    init: true
+    network_mode: host
+    restart: unless-stopped
+    depends_on:
+      central-remote:
+        condition: service_healthy
+    working_dir: /ws
+    environment:
+      HOME: /var/lib/sang
+      PYTHONPATH: /ws/src/sang_security:/ws/src/fleet_control_plane
+    volumes:
+      - ${SANG_WORKSPACE:?set SANG_WORKSPACE}:/ws:ro
+      - ${SANG_CENTRAL_DATA:?set SANG_CENTRAL_DATA}:/var/lib/sang
+      - ${SANG_CENTRAL_SECRETS:?set SANG_CENTRAL_SECRETS}:/run/secrets/sang:ro
+    command:
+      - python3
+      - -m
+      - fleet_control_plane.agent_ingress
+      - --db-path
+      - /var/lib/sang/fleet.db
+      - --host
+      - 0.0.0.0
+      - --port
+      - ${CENTRAL_INGRESS_PORT:-8443}
+      - --secret-root
+      - /run/secrets/sang
+      - --server-certificate-ref
+      - ${CENTRAL_INGRESS_CERT_REF:-secret://https/server/chain.pem}
+      - --server-private-key-ref
+      - ${CENTRAL_INGRESS_KEY_REF:-secret://https/server/key.pem}
+      - --client-ca-crl-bundle-ref
+      - ${CENTRAL_INGRESS_CA_CRL_REF:-secret://https/trust/ca-crl.pem}
+
+  opcua-aggregate-remote:
+    profiles: [remote]
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    user: "${SANG_UID:-1000}:${SANG_GID:-1000}"
+    init: true
+    network_mode: host
+    restart: unless-stopped
+    depends_on:
+      central-remote:
+        condition: service_healthy
+    working_dir: /ws
+    environment:
+      HOME: /var/lib/sang
+      PYTHONPATH: /ws/src/sang_security:/ws/src/fleet_control_plane
+    volumes:
+      - ${SANG_WORKSPACE:?set SANG_WORKSPACE}:/ws:ro
+      - ${SANG_CENTRAL_DATA:?set SANG_CENTRAL_DATA}:/var/lib/sang
+      - ${SANG_CENTRAL_SECRETS:?set SANG_CENTRAL_SECRETS}:/run/secrets/sang:ro
+    command:
+      - python3
+      - -m
+      - fleet_control_plane.central_opcua
+      - --db-path
+      - /var/lib/sang/fleet.db
+      - --endpoint
+      - opc.tcp://0.0.0.0:${CENTRAL_OPCUA_PORT:-4850}/sang/central/
+      - --security-mode
+      - sign-and-encrypt
+      - --secret-root
+      - /run/secrets/sang
+      - --server-certificate-ref
+      - ${CENTRAL_OPCUA_CERT_REF:-secret://opcua/central/server-cert.pem}
+      - --server-private-key-ref
+      - ${CENTRAL_OPCUA_KEY_REF:-secret://opcua/central/server-key.pem}
+      - --client-trust-directory-ref
+      - ${CENTRAL_OPCUA_TRUST_REF:-secret://opcua/central/trust}
+      - --client-crl-directory-ref
+      - ${CENTRAL_OPCUA_CRL_REF:-secret://opcua/central/crl}
+      - --authorized-user-certificate-ref
+      - ${CENTRAL_OPCUA_USER_CERT_REF:-secret://opcua/central/authorized-user.pem}
+      - --conformance-report
+      - /var/lib/sang/central-opcua-conformance.json

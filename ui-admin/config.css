@@ -337,11 +337,38 @@
   border-bottom: 1px solid var(--line);
 }
 
-.registry-item span:last-child {
+.registry-aside {
   grid-column: 2;
   grid-row: 1 / span 2;
   align-self: center;
   text-align: right;
+}
+
+.registry-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 5px;
+}
+
+.registry-action {
+  min-height: 28px;
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  background: transparent;
+  font: 10px var(--mono);
+  cursor: pointer;
+}
+
+.registry-action:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.registry-action.is-danger {
+  color: var(--fault);
 }
 
 .empty-copy {
@@ -380,17 +407,22 @@
 
 .run-card {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr;
   gap: 5px 12px;
   padding: 14px;
   border: 1px solid var(--line);
   background: var(--surface-strong);
 }
 
+.run-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding-top: 5px;
+}
+
 .run-card a {
-  grid-column: 2;
-  grid-row: 1 / span 3;
-  align-self: center;
   padding: 8px 10px;
   color: var(--surface-strong);
   background: var(--ink);

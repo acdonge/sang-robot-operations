@@ -1,5 +1,6 @@
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
+from pathlib import Path
 
 import pytest
 
@@ -8,6 +9,9 @@ from robot_agent.preview import (
     HealthSnapshotStore,
     PreviewFrameStore,
 )
+from robot_agent.heartbeat import AgentTLSConfig
+from robot_agent.node import build_preview_tls_server_context, parse_args
+from sang_security.pki import initialize_pki, issue_certificate
 
 
 JPEG = b"\xff\xd8test-frame\xff\xd9"
@@ -98,3 +102,86 @@ def test_preview_server_serves_health_snapshot_and_mjpeg():
         assert error.value.code == 404
     finally:
         server.stop()
+
+
+def test_preview_mtls_requires_and_pins_central_client_certificate(tmp_path):
+    pki = tmp_path / "pki"
+    initialize_pki(pki, common_name="Preview Test")
+    server_material = issue_certificate(
+        pki,
+        issuer="https",
+        name="preview-edge",
+        role="https-server",
+        ip_addresses=("127.0.0.1",),
+    )
+    client_material = issue_certificate(
+        pki,
+        issuer="https",
+        name="central-preview",
+        role="https-client",
+        uri="urn:sang:central:preview-client",
+    )
+    bundle = pki / "bundles/https-ca-crl.pem"
+    server_context = build_preview_tls_server_context(
+        Path(server_material["chain"]),
+        Path(server_material["private_key"]),
+        bundle,
+    )
+    client_context = AgentTLSConfig(
+        ca_bundle=bundle,
+        client_certificate_chain=Path(client_material["chain"]),
+        client_private_key=Path(client_material["private_key"]),
+    ).context()
+    server = CameraPreviewServer(
+        "127.0.0.1",
+        0,
+        public_base_url="https://127.0.0.1:1",
+        tls_context=server_context,
+        authorized_client_sha256=frozenset(
+            {client_material["certificate_sha256"]}
+        ),
+    )
+    server.frame_store.update("robot-1", "wrist", JPEG)
+    server.start()
+    try:
+        with urlopen(
+            f"https://127.0.0.1:{server.port}/robots/robot-1/cameras/wrist.jpg",
+            timeout=2,
+            context=client_context,
+        ) as response:
+            assert response.read() == JPEG
+    finally:
+        server.stop()
+
+
+def test_preview_mtls_cli_requires_authorized_client_pin():
+    base = [
+        "--manifest",
+        "/tmp/robot.yaml",
+        "--preview-host",
+        "0.0.0.0",
+        "--preview-port",
+        "8443",
+        "--preview-public-base-url",
+        "https://edge.example:8443",
+        "--preview-security-mode",
+        "mtls",
+        "--secret-root",
+        "/tmp/secrets",
+        "--preview-tls-server-certificate-ref",
+        "secret://preview/server.pem",
+        "--preview-tls-server-private-key-ref",
+        "secret://preview/server-key.pem",
+        "--preview-tls-client-ca-crl-bundle-ref",
+        "secret://preview/ca-crl.pem",
+    ]
+    with pytest.raises(SystemExit):
+        parse_args(base)
+    options = parse_args(
+        [
+            *base,
+            "--preview-tls-authorized-client-sha256",
+            "a" * 64,
+        ]
+    )
+    assert options.preview_tls_authorized_client_sha256 == ["a" * 64]

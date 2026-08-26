@@ -141,6 +141,7 @@ def build_heartbeat(
     robots: list[dict[str, Any]],
     storage: dict[str, float | None],
     recordings: dict[str, Any] | None = None,
+    sync: dict[str, Any] | None = None,
     sent_at: datetime | None = None,
     boot_id: str | None = None,
     sequence: int | None = None,
@@ -198,7 +199,11 @@ def build_heartbeat(
         "storage": storage,
         "datasets": {"count": 0, "total_episodes": 0, "total_size_mb": 0.0},
         "recordings": disabled_inventory() if recordings is None else recordings,
-        "sync": {"supported": False, "state": "unsupported", "pending": None},
+        "sync": (
+            {"supported": False, "state": "unsupported", "pending": None}
+            if sync is None
+            else sync
+        ),
         "robots": robots,
     }
 

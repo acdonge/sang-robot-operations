@@ -14,11 +14,19 @@ from fleet_control_plane.agent_ingress import (
     AgentIngressServer,
     create_server_tls_context,
 )
+from fleet_control_plane.capture_jobs import CaptureJobCreate, CaptureJobStore
+from fleet_control_plane.models import AgentHeartbeatV1
 from fleet_control_plane.operations_models import (
     AgentCredentialCreate,
     AgentRegistrationCreate,
+    AssetCreate,
     ConnectionProfileCreate,
     CredentialRevoke,
+    ObservedBinding,
+    ProcessingNodeCreate,
+    TaskDefinitionCreate,
+    TaskRunCreate,
+    TaskRunTransition,
 )
 from fleet_control_plane.store import FleetStore
 from robot_agent.heartbeat import AgentTLSConfig, build_heartbeat, post_heartbeat
@@ -156,6 +164,128 @@ def stop_ingress(server, thread):
     assert not thread.is_alive()
 
 
+def post_json(url, payload, *, tls):
+    request = Request(
+        url,
+        data=json.dumps(payload, separators=(",", ":")).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urlopen(request, timeout=2.0, context=tls.context()) as response:
+        return json.loads(response.read())
+
+
+def setup_capture_contract(store, clock):
+    robot_id = "robot-a"
+    source = {
+        "topic": "/robot/joint_states",
+        "age_ms": 20.0,
+        "rate_hz": 30.0,
+        "minimum_rate_hz": 10.0,
+        "rate_ok": True,
+        "seq": 10,
+        "fresh": True,
+    }
+    observed = build_heartbeat(
+        agent_id=AGENT_ID,
+        agent_name="SO-ARM Edge",
+        robots=[
+            {
+                "robot_id": robot_id,
+                "model": "so101",
+                "fsm_state": "READY",
+                "phase": "monitoring",
+                "sources_fresh": True,
+                "rates_ok": True,
+                "sources": [
+                    {
+                        "key": "observation.state",
+                        "kind": "state",
+                        "required": True,
+                        "freshness_ms": 1000,
+                        "fresh": True,
+                        "rate_ok": True,
+                        "topics": [source],
+                    }
+                ],
+                "fault": None,
+                "recording": {
+                    "active": False,
+                    "episode_index": 0,
+                    "episodes_total": 0,
+                    "frames": 0,
+                    "elapsed_s": 0,
+                    "current_instruction": None,
+                },
+            }
+        ],
+        storage={"cpu_pct": 1.0, "ram_free_gb": 2.0, "disk_free_gb": 3.0},
+        sent_at=clock(),
+    )
+    store.upsert(AgentHeartbeatV1.model_validate(observed), received_at=clock())
+    store.create_processing_node(
+        ProcessingNodeCreate(
+            node_id="node-a",
+            display_name="Processing Node A",
+            agent_ids=[AGENT_ID],
+        ),
+        occurred_at=clock(),
+    )
+    store.create_asset(
+        AssetCreate(
+            asset_id="arm-a",
+            asset_type="robot",
+            display_name="SO-101",
+            node_id="node-a",
+            binding=ObservedBinding(agent_id=AGENT_ID, robot_id=robot_id),
+            capabilities=["telemetry"],
+        ),
+        occurred_at=clock(),
+    )
+    store.create_task_definition(
+        TaskDefinitionCreate.model_validate(
+            {
+                "task_definition_id": "observe",
+                "version": 1,
+                "display_name": "Observe robot",
+                "roles": [
+                    {
+                        "role": "arm",
+                        "asset_type": "robot",
+                        "access_mode": "shared_read",
+                    }
+                ],
+            }
+        ),
+        occurred_at=clock(),
+    )
+    store.create_task_run(
+        TaskRunCreate.model_validate(
+            {
+                "run_id": "observe-001",
+                "task_definition_id": "observe",
+                "task_version": 1,
+                "display_name": "Observe 001",
+                "state": "READY",
+                "assignments": [
+                    {
+                        "role": "arm",
+                        "asset_id": "arm-a",
+                        "access_mode": "shared_read",
+                    }
+                ],
+            }
+        ),
+        occurred_at=clock(),
+    )
+    store.transition_task_run(
+        "observe-001",
+        TaskRunTransition(expected_revision=1, state="ACTIVE"),
+        occurred_at=clock(),
+    )
+    return robot_id
+
+
 def test_mtls_ingress_identity_replay_rotation_and_observation(tmp_path):
     clock = Clock()
     root = tmp_path / "pki"
@@ -250,6 +380,79 @@ def test_mtls_ingress_identity_replay_rotation_and_observation(tmp_path):
             timeout_s=2.0,
             tls=client_tls(root, second_client),
         )["accepted_sequence"] == 2
+    finally:
+        stop_ingress(server, thread)
+
+
+def test_mtls_capture_worker_poll_claim_and_report_are_agent_scoped(tmp_path):
+    clock = Clock()
+    root = tmp_path / "pki"
+    initialize_pki(root, key_size=2048)
+    server_material, client_material = issue_https_material(root)
+    store = FleetStore(tmp_path / "fleet.db")
+    setup_registry(store, clock, client_material["certificate"])
+    robot_id = setup_capture_contract(store, clock)
+    server, thread, url = start_ingress(store, clock, root, server_material)
+    tls = client_tls(root, client_material)
+    poll_body = {
+        "worker_id": "soarm-capture-worker",
+        "profile_id": "soarm-observation-v1",
+        "robot_id": robot_id,
+        "asset_ids": ["arm-a"],
+    }
+    try:
+        idle = post_json(
+            url + "/api/v1/capture-workers/poll",
+            poll_body,
+            tls=tls,
+        )
+        assert idle["job"] is None
+        assert idle["worker"]["agent_id"] == AGENT_ID
+
+        jobs = CaptureJobStore(store.path)
+        created = jobs.create_job(
+            "observe-001",
+            CaptureJobCreate(
+                request_id="operator-request-001",
+                worker_id="soarm-capture-worker",
+                duration_s=30,
+            ),
+            created_by="operator-a",
+            occurred_at=clock(),
+        )
+        claimed = post_json(
+            url + "/api/v1/capture-workers/poll",
+            poll_body,
+            tls=tls,
+        )["job"]
+        assert claimed["job_id"] == created["job_id"]
+        assert claimed["state"] == "CLAIMED"
+        assert claimed["lease_id"]
+
+        recording = post_json(
+            url + f"/api/v1/capture-jobs/{created['job_id']}/status",
+            {
+                "worker_id": "soarm-capture-worker",
+                "lease_id": claimed["lease_id"],
+                "state": "RECORDING",
+            },
+            tls=tls,
+        )
+        assert recording["state"] == "RECORDING"
+        assert "lease_id" not in recording
+
+        with pytest.raises(HTTPError) as wrong_worker:
+            post_json(
+                url + f"/api/v1/capture-jobs/{created['job_id']}/status",
+                {
+                    "worker_id": "different-worker",
+                    "lease_id": claimed["lease_id"],
+                    "state": "UPLOADING",
+                },
+                tls=tls,
+            )
+        assert wrong_worker.value.code == 422
+        assert CaptureJobStore(store.path).get_job(created["job_id"])["state"] == "RECORDING"
     finally:
         stop_ingress(server, thread)
 

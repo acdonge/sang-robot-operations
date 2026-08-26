@@ -2,7 +2,10 @@
 
 ## Purpose
 
-Provide a ROS 2 Jazzy, observation-first fleet view for multiple robot workcells, with durable health events, a read-only admin UI, preview-only Galaxy XR input, and isolated Isaac Sim observation profiles.
+Provide a ROS 2 Jazzy, observation-first operations system for multiple robot workcells, with durable
+asset/task state, authenticated Admin and read-only Operator views, selected-camera preview, selected
+MCAP retention, read-only OPC UA aggregation, preview-only Galaxy XR input, and isolated Isaac Sim
+observation profiles.
 
 ## Functional requirements
 
@@ -12,7 +15,10 @@ Provide a ROS 2 Jazzy, observation-first fleet view for multiple robot workcells
 4. OMY and RB5 use the same agent backend with separate manifests. RB5 joint observation uses only
    the vendor data channel on port 5001. Its D405 wrist camera is a separate read-only ROS publisher
    on an external Robot Agent PC; command, EEF, and control-box software modification remain absent.
-5. `ui-admin` displays registry, health, and event history but has no robot command endpoint.
+5. `ui-admin` displays fleet health, manages revisioned registry/Task Run metadata, and reads the
+   recording catalog, but has no robot command endpoint. `ui-operator` may create or stop only a
+   bounded Task Run Capture Job backed by a fixed observation profile; it has no actuator, policy,
+   robot-vendor, welding or feeder command endpoint.
 6. Galaxy XR packages parse and preview targets only; no actuator command is published.
 7. Isaac vendor profiles validate source assets without rewriting them, isolate runtime differences, and publish observation topics only on a simulation-specific domain.
 8. OPC UA Phase 1 implementations must consume the pinned read-only model, NodeId, timestamp,
@@ -29,10 +35,33 @@ Provide a ROS 2 Jazzy, observation-first fleet view for multiple robot workcells
 12. OPC UA Mapping Schema v2 declares each numeric feature's selector, order, data type, unit,
     semantic and finite valid range. The Agent and Gateway must bind the same canonical mapping digest
     into local health; a mismatch is rejected rather than projected.
+13. Central requires local users or service tokens, role-based authorization, browser CSRF protection,
+    and immutable security audit for writes. Remote HTTP requires TLS; Agent mTLS identity remains a
+    separate trust boundary.
+14. Central relays at most one explicitly selected, Task Run-assigned camera. It accepts no browser
+    upstream URL, bounds time/size, and requires the Edge to pin the exact Central preview-client
+    certificate in remote mode.
+15. A finalized selected recording may be uploaded into the Central Object Store only after manifest,
+    path, size, SHA-256, Agent, Task Run and assigned-asset validation. SQLite stores catalog metadata,
+    never media payloads.
+16. Central's independent OPC UA aggregator projects registry, health, Task Run and recording summaries
+    with deterministic NodeIds, no application Methods and no writable application Variables.
+17. Backup/restore must use SQLite online backup, copy only complete referenced objects, verify every
+    hash, reject staging sessions, and restore only to new paths.
+18. Capture Jobs must be durably linked to one ACTIVE Task Run, one mTLS-authenticated fixed-profile
+    worker, one recording session and the exact assigned assets. Client request replay is idempotent,
+    only one non-terminal job may exist per worker, UI refresh and Robot Agent restart must preserve
+    state, and only Central artifact verification may advance a job to `COMPLETE`.
+19. Central web playback exposes only SHA-256-verified, complete MCAP objects and indexed ROS 2
+    `sensor_msgs/msg/CompressedImage` JPEG topics. The Catalog requests at most four selected camera
+    frames on one record-time timeline, displays each nearest frame's actual skew, never downloads the
+    full MCAP for playback, and adds no robot, vendor, policy, welder or feeder command route.
 
 ## Operational contracts
 
-- Default Central/Agent endpoint is loopback. Remote workcells are not enabled until identity, authentication, TLS/mTLS, replay defense, allowlisting, and audit requirements are implemented.
+- Default Central endpoint remains loopback and authenticated. Remote Central requires HTTPS, an
+  explicit Host allowlist and authentication. Remote Agent ingress/preview use mTLS, replay defense,
+  allowlisting and certificate pinning.
 - SO-101 manifests require the documented joint/camera rates and startup grace. Changes require synchronized manifest, agent, soak, and documentation updates.
 - `rb5_readonly_adapter` may construct only `rbpodo.CobotData`. The command channel, operation-mode
   changes, speed changes, move/task APIs, and ROS command interfaces are forbidden.
@@ -40,6 +69,10 @@ Provide a ROS 2 Jazzy, observation-first fleet view for multiple robot workcells
 - Isaac runners disable scene ROS action graphs, default to `ROS_DOMAIN_ID=99`, create no hardware-command subscribers, and bound any exercise motion to the documented simulation limit.
 - Changes to the published SANG model namespace or v1 NodeId rules require a new contract major
   version; namespace indexes are never persisted as identity.
+- Stable configuration belongs in versioned manifests and the SQLite registry; high-rate selected
+  observations belong in immutable MCAP objects. A future vector database may contain derived
+  embeddings/references only, and a future AAS layer maps durable asset semantics without replacing
+  either authoritative store.
 
 ## MCP requirements
 

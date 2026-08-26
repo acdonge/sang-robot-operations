@@ -5,7 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import hashlib
 import json
+import ssl
 import re
 import threading
 import time
@@ -155,9 +157,11 @@ class _PreviewHttpServer(ThreadingHTTPServer):
         address: tuple[str, int],
         frame_store: PreviewFrameStore,
         health_store: HealthSnapshotStore,
+        authorized_client_sha256: frozenset[str] | None = None,
     ):
         self.frame_store = frame_store
         self.health_store = health_store
+        self.authorized_client_sha256 = authorized_client_sha256
         super().__init__(address, _PreviewRequestHandler)
 
 
@@ -185,6 +189,19 @@ class _PreviewRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self) -> None:
+        allowed = self.server.authorized_client_sha256
+        if allowed is not None:
+            certificate = self.connection.getpeercert(binary_form=True)
+            fingerprint = (
+                None if certificate is None else hashlib.sha256(certificate).hexdigest()
+            )
+            if fingerprint not in allowed:
+                self._send_bytes(
+                    HTTPStatus.FORBIDDEN,
+                    "text/plain; charset=utf-8",
+                    b"client certificate is not authorized",
+                )
+                return
         path = urlsplit(self.path).path
         if path == "/healthz":
             body = json.dumps({"status": "ok"}, separators=(",", ":")).encode("utf-8")
@@ -261,14 +278,26 @@ class CameraPreviewServer:
         port: int,
         *,
         public_base_url: str | None = None,
+        tls_context: ssl.SSLContext | None = None,
+        authorized_client_sha256: frozenset[str] | None = None,
     ) -> None:
+        if authorized_client_sha256 is not None and tls_context is None:
+            raise ValueError("client certificate pins require TLS")
+        if tls_context is not None and not authorized_client_sha256:
+            raise ValueError("TLS preview requires at least one authorized client pin")
         self.frame_store = PreviewFrameStore()
         self.health_store = HealthSnapshotStore()
         self._server = _PreviewHttpServer(
             (host, port),
             self.frame_store,
             self.health_store,
+            authorized_client_sha256,
         )
+        if tls_context is not None:
+            self._server.socket = tls_context.wrap_socket(
+                self._server.socket,
+                server_side=True,
+            )
         actual_port = self._server.server_address[1]
         self.public_base_url = (public_base_url or f"http://{host}:{actual_port}").rstrip("/")
         self._thread = threading.Thread(

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#14201c">
+  <title>SANG Central Login</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/login.css?v=20260821.1">
+  <script type="module" src="/login.js?v=20260821.1"></script>
+</head>
+<body>
+  <main class="login-shell">
+    <section class="identity-panel" aria-labelledby="login-title">
+      <p class="eyebrow">SANG / CENTRAL ACCESS</p>
+      <div class="brand-mark" aria-hidden="true"></div>
+      <h1 id="login-title">관측은 열고,<br>제어는 닫습니다.</h1>
+      <p class="lede">로봇과 카메라 운영 정보에 접근하려면 등록된 실험실 계정으로 로그인하세요.</p>
+      <dl>
+        <div><dt>Scope</dt><dd>Robot / Camera Operations</dd></div>
+        <div><dt>Boundary</dt><dd>Observation only</dd></div>
+        <div><dt>Session</dt><dd>8 hours / Strict cookie</dd></div>
+      </dl>
+    </section>
+    <section class="form-panel">
+      <div class="form-heading">
+        <span>AUTHORIZED PERSONNEL</span>
+        <h2>Central 로그인</h2>
+      </div>
+      <form id="login-form">
+        <label>사용자 ID<input name="principal_id" autocomplete="username" required></label>
+        <label>비밀번호<input name="password" type="password" autocomplete="current-password" minlength="12" required></label>
+        <p id="login-error" class="error" role="alert" hidden></p>
+        <button type="submit">세션 시작</button>
+      </form>
+      <p class="safety-copy">이 로그인은 로봇 명령 권한을 만들지 않습니다. 모든 운영 변경은 감사 로그에 남습니다.</p>
+    </section>
+  </main>
+</body>
+</html>

@@ -4,28 +4,86 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
+import hmac
 from pathlib import Path
+import ssl
+import threading
 import time
 from typing import Any
+from urllib.error import HTTPError, URLError
+from urllib.parse import quote, urlsplit
+from urllib.request import (
+    HTTPRedirectHandler,
+    HTTPSHandler,
+    Request as UrlRequest,
+    build_opener,
+)
 
-from fastapi import FastAPI, Query, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, Query, Request, Response, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.background import BackgroundTask
 
+from fleet_control_plane.capture_jobs import (
+    ACTIVE_CAPTURE_STATES,
+    CaptureJobConflict,
+    CaptureJobCreate,
+    CaptureJobInvalid,
+    CaptureJobNotFound,
+    CaptureJobStore,
+)
 from fleet_control_plane.models import AgentHeartbeatV1
+from fleet_control_plane.recording_models import RecordingFinalize, RecordingManifest
+from fleet_control_plane.recording_playback import (
+    PlaybackBusy,
+    PlaybackInvalid,
+    PlaybackNotFound,
+    PlaybackUnavailable,
+    RecordingPlayback,
+)
+from fleet_control_plane.recording_quality import (
+    QualityUnavailable,
+    RecordingQualityService,
+)
+from fleet_control_plane.recording_storage import (
+    FilesystemObjectStore,
+    ObjectStoreError,
+    RecordingCatalog,
+    RecordingConflict,
+    RecordingInvalid,
+    RecordingNotFound,
+)
+from fleet_control_plane.auth import (
+    AuthManager,
+    AuthenticationError,
+    AuthorizationError,
+    IdentityConflict,
+    LoginRequest,
+    Principal,
+    PrincipalUpdate,
+    ServiceIdentityCreate,
+    TokenRevokeRequest,
+    UserCreate,
+)
 from fleet_control_plane.operations_models import (
     AgentCredentialCreate,
     AgentRegistrationCreate,
     AgentRegistrationUpdate,
     AssetCreate,
+    AssetReplace,
     AssetRuntimeKindUpdate,
     ConnectionProfileCreate,
     ConnectionProfileReplace,
     CredentialRevoke,
+    DecommissionRequest,
     ProcessingNodeCreate,
+    ProcessingNodeReplace,
     TaskDefinitionCreate,
     TaskRunCreate,
+    TaskRunReplace,
+    TaskRunTransition,
     WorkcellCreate,
+    WorkcellReplace,
 )
 from fleet_control_plane.status import (
     FleetTTLs,
@@ -40,11 +98,14 @@ from fleet_control_plane.store import (
     ConfigurationNotFound,
     FleetStore,
 )
+from robot_agent.clock_sync import ClockSyncSampler, unsupported_sync
 
 
 HEARTBEAT_SCHEMA_VERSION = 1
 MAX_HEARTBEAT_BYTES = 256 * 1024
+MAX_RECORDING_MANIFEST_BYTES = 256 * 1024
 ALLOWED_ADMIN_HOSTS = frozenset({"127.0.0.1", "localhost", "::1", "testserver"})
+LOOPBACK_CLIENTS = frozenset({"127.0.0.1", "::1", "testclient"})
 
 
 def _source_rate_healthy(source: dict[str, Any]) -> bool:
@@ -62,6 +123,24 @@ class FleetAPIError(Exception):
         self.error = error
 
 
+class RejectPreviewRedirects(HTTPRedirectHandler):
+    def _reject(self, request, response, code, message, headers):
+        response.close()
+        raise HTTPError(
+            request.full_url,
+            code,
+            f"camera preview redirects are disabled: {message}",
+            headers,
+            None,
+        )
+
+    http_error_301 = _reject
+    http_error_302 = _reject
+    http_error_303 = _reject
+    http_error_307 = _reject
+    http_error_308 = _reject
+
+
 def create_app(
     store: FleetStore,
     *,
@@ -70,16 +149,102 @@ def create_app(
     ttls: FleetTTLs = FleetTTLs(),
     now: Callable[[], Any] = utc_now,
     websocket_interval_s: float = 1.0,
+    auth_enabled: bool = True,
+    secure_cookies: bool = False,
+    preview_ssl_context: ssl.SSLContext | None = None,
+    object_store: FilesystemObjectStore | None = None,
+    quality_policy_root: str | Path | None = None,
+    clock_sync: ClockSyncSampler | None = None,
+    allowed_admin_hosts: frozenset[str] = ALLOWED_ADMIN_HOSTS,
 ) -> FastAPI:
     if websocket_interval_s <= 0.0:
         raise ValueError("websocket_interval_s must be positive")
 
     app = FastAPI(title="SANG Fleet Control Plane", version="0.1.0")
     app.state.fleet_revision = 0
+    preview_slot = threading.BoundedSemaphore(value=1)
+    preview_opener = build_opener(
+        RejectPreviewRedirects(),
+        HTTPSHandler(context=preview_ssl_context),
+    )
+    auth = AuthManager(store.path)
+    capture_jobs = CaptureJobStore(store.path)
+    recordings = RecordingCatalog(store.path)
+    playback = (
+        None
+        if object_store is None
+        else RecordingPlayback(recordings, object_store)
+    )
+    quality = (
+        None
+        if object_store is None or quality_policy_root is None
+        else RecordingQualityService(recordings, object_store, quality_policy_root)
+    )
+    if auth_enabled and auth.principal_count() == 0:
+        raise RuntimeError(
+            "authentication is enabled but no principals exist; "
+            "run fleet_identity bootstrap-admin first"
+        )
+
+    def request_principal(request: Request) -> Principal:
+        authorization = request.headers.get("authorization", "")
+        if authorization.startswith("Bearer "):
+            return auth.authenticate_bearer(
+                authorization.removeprefix("Bearer ").strip(),
+                occurred_at=now(),
+            )
+        session = request.cookies.get("sang_session")
+        if session is None:
+            raise AuthenticationError("authentication is required")
+        return auth.authenticate_session(session, occurred_at=now())
+
+    def minimum_role(request: Request) -> str:
+        if request.url.path.startswith("/api/v1/auth/") and request.url.path not in {
+            "/api/v1/auth/me",
+            "/api/v1/auth/logout",
+        }:
+            return "admin"
+        if request.method in {"GET", "HEAD", "OPTIONS"}:
+            return "viewer"
+        if request.url.path.startswith("/api/v1/config/task-runs"):
+            return "operator"
+        if request.url.path.startswith("/api/v1/recording-sessions"):
+            return "operator"
+        if request.url.path.endswith("/complete-after-capture"):
+            return "operator"
+        if "/capture-jobs" in request.url.path:
+            return "operator"
+        if request.url.path == "/api/v1/auth/logout":
+            return "viewer"
+        return "admin"
+
+    async def authorize_websocket(websocket: WebSocket) -> bool:
+        if not auth_enabled:
+            return True
+        try:
+            authorization = websocket.headers.get("authorization", "")
+            if authorization.startswith("Bearer "):
+                principal = auth.authenticate_bearer(
+                    authorization.removeprefix("Bearer ").strip(),
+                    occurred_at=now(),
+                )
+            else:
+                session = websocket.cookies.get("sang_session")
+                if session is None:
+                    raise AuthenticationError("authentication is required")
+                principal = auth.authenticate_session(session, occurred_at=now())
+            principal.require("viewer")
+        except AuthenticationError:
+            await websocket.close(code=4401, reason="authentication required")
+            return False
+        except AuthorizationError:
+            await websocket.close(code=4403, reason="viewer role required")
+            return False
+        return True
 
     @app.middleware("http")
     async def reject_oversized_heartbeat(request: Request, call_next):
-        if request.url.hostname not in ALLOWED_ADMIN_HOSTS:
+        if request.url.hostname not in allowed_admin_hosts:
             return JSONResponse(
                 status_code=421,
                 content={"error": "Admin API requires a loopback Host header"},
@@ -95,7 +260,95 @@ def create_app(
                     status_code=413,
                     content={"error": "heartbeat body exceeds 256 KiB"},
                 )
-        return await call_next(request)
+        if request.method == "POST" and request.url.path == "/api/v1/recording-sessions":
+            value = request.headers.get("content-length")
+            try:
+                content_length = None if value is None else int(value)
+            except ValueError:
+                return JSONResponse(status_code=400, content={"error": "invalid content-length"})
+            if content_length is None:
+                return JSONResponse(status_code=411, content={"error": "content-length is required"})
+            if content_length > MAX_RECORDING_MANIFEST_BYTES:
+                return JSONResponse(
+                    status_code=413,
+                    content={"error": "recording manifest exceeds 256 KiB"},
+                )
+        public_api = request.url.path in {
+            "/api/v1/healthz",
+            "/api/v1/auth/login",
+            "/api/v1/agents/heartbeat",
+        }
+        principal = None
+        if auth_enabled and request.url.path.startswith("/api/v1/") and not public_api:
+            try:
+                principal = request_principal(request)
+                principal.require(minimum_role(request))
+                if (
+                    request.method not in {"GET", "HEAD", "OPTIONS"}
+                    and principal.auth_kind == "session"
+                ):
+                    csrf_header = request.headers.get("x-csrf-token")
+                    csrf_cookie = request.cookies.get("sang_csrf")
+                    if csrf_header is None or not hmac.compare_digest(
+                        csrf_header,
+                        csrf_cookie or "",
+                    ):
+                        raise AuthorizationError("CSRF double-submit token mismatch")
+                    auth.validate_csrf(principal.session_id or "", csrf_header)
+            except AuthenticationError as exc:
+                auth.record_request(
+                    principal_id=None,
+                    method=request.method,
+                    path=request.url.path,
+                    status_code=401,
+                    occurred_at=now(),
+                )
+                return JSONResponse(status_code=401, content={"error": str(exc)})
+            except AuthorizationError as exc:
+                auth.record_request(
+                    principal_id=None if principal is None else principal.principal_id,
+                    method=request.method,
+                    path=request.url.path,
+                    status_code=403,
+                    occurred_at=now(),
+                )
+                return JSONResponse(status_code=403, content={"error": str(exc)})
+        request.state.principal = principal
+        response = await call_next(request)
+        if (
+            auth_enabled
+            and principal is not None
+            and request.method not in {"GET", "HEAD", "OPTIONS"}
+        ):
+            auth.record_request(
+                principal_id=principal.principal_id,
+                method=request.method,
+                path=request.url.path,
+                status_code=response.status_code,
+                occurred_at=now(),
+            )
+        return response
+
+    @app.middleware("http")
+    async def add_browser_security_headers(request: Request, call_next):
+        response = await call_next(request)
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; base-uri 'none'; object-src 'none'; "
+            "frame-ancestors 'none'; form-action 'self'; "
+            "img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; "
+            "script-src 'self'; connect-src 'self' ws: wss:"
+        )
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["Permissions-Policy"] = (
+            "camera=(), microphone=(), geolocation=()"
+        )
+        if request.url.scheme == "https":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000"
+        if request.url.path.startswith("/api/v1/"):
+            response.headers["Cache-Control"] = "no-store"
+        return response
 
     @app.exception_handler(FleetAPIError)
     async def fleet_error_handler(request: Request, exc: FleetAPIError) -> JSONResponse:
@@ -126,6 +379,81 @@ def create_app(
         del request
         return JSONResponse(status_code=422, content={"error": str(exc)})
 
+    @app.exception_handler(IdentityConflict)
+    async def identity_conflict_handler(
+        request: Request,
+        exc: IdentityConflict,
+    ) -> JSONResponse:
+        del request
+        return JSONResponse(status_code=409, content={"error": str(exc)})
+
+    @app.exception_handler(AuthenticationError)
+    async def identity_not_found_handler(
+        request: Request,
+        exc: AuthenticationError,
+    ) -> JSONResponse:
+        del request
+        return JSONResponse(status_code=404, content={"error": str(exc)})
+
+    @app.exception_handler(RecordingNotFound)
+    async def recording_not_found_handler(
+        request: Request,
+        exc: RecordingNotFound,
+    ) -> JSONResponse:
+        del request
+        return JSONResponse(status_code=404, content={"error": str(exc)})
+
+    @app.exception_handler(CaptureJobNotFound)
+    async def capture_job_not_found_handler(
+        request: Request,
+        exc: CaptureJobNotFound,
+    ) -> JSONResponse:
+        del request
+        return JSONResponse(status_code=404, content={"error": str(exc)})
+
+    @app.exception_handler(CaptureJobConflict)
+    async def capture_job_conflict_handler(
+        request: Request,
+        exc: CaptureJobConflict,
+    ) -> JSONResponse:
+        del request
+        return JSONResponse(status_code=409, content={"error": str(exc)})
+
+    @app.exception_handler(CaptureJobInvalid)
+    async def capture_job_invalid_handler(
+        request: Request,
+        exc: CaptureJobInvalid,
+    ) -> JSONResponse:
+        del request
+        return JSONResponse(status_code=422, content={"error": str(exc)})
+
+    @app.exception_handler(RecordingConflict)
+    async def recording_conflict_handler(
+        request: Request,
+        exc: RecordingConflict,
+    ) -> JSONResponse:
+        del request
+        return JSONResponse(status_code=409, content={"error": str(exc)})
+
+    @app.exception_handler(RecordingInvalid)
+    async def recording_invalid_handler(
+        request: Request,
+        exc: RecordingInvalid,
+    ) -> JSONResponse:
+        del request
+        return JSONResponse(status_code=422, content={"error": str(exc)})
+
+    @app.exception_handler(ObjectStoreError)
+    async def object_store_error_handler(
+        request: Request,
+        exc: ObjectStoreError,
+    ) -> JSONResponse:
+        del request, exc
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Object Store integrity check failed"},
+        )
+
     def agents_at(current) -> list[dict[str, Any]]:
         agents = [
             present_agent(snapshot, now=current, ttls=ttls)
@@ -143,7 +471,7 @@ def create_app(
         return agents
 
     def agents_payload() -> list[dict[str, Any]]:
-        return agents_at(now())
+        return relay_urls(agents_at(now()))
 
     def shadow_agents_payload() -> list[dict[str, Any]]:
         current = now()
@@ -154,13 +482,30 @@ def create_app(
 
     def fleet_payload() -> dict[str, Any]:
         current = now()
-        agents = agents_at(current)
+        agents = relay_urls(agents_at(current))
         return {
             "type": "fleet",
             "agents": agents,
             "summary": summarize_agents(agents, now=current),
             "events": store.list_events(limit=100),
         }
+
+    @app.get("/api/v1/time-status")
+    async def time_status() -> dict[str, Any]:
+        central = (
+            unsupported_sync()
+            if clock_sync is None
+            else await asyncio.to_thread(clock_sync.sample)
+        )
+        agents = [
+            {
+                "agent_id": agent["agent_id"],
+                "status": agent["status"],
+                "sync": agent.get("sync", unsupported_sync()),
+            }
+            for agent in agents_payload()
+        ]
+        return {"central": central, "agents": agents}
 
     def configuration_discovery() -> dict[str, Any]:
         assets = store.list_assets()
@@ -172,10 +517,12 @@ def create_app(
             )
             for asset in assets
             if asset["binding"] is not None
+            and asset.get("lifecycle_state", "active") == "active"
         }
         node_by_agent = {
             agent_id: node["node_id"]
             for node in store.list_processing_nodes()
+            if node.get("lifecycle_state", "active") == "active"
             for agent_id in node["agent_ids"]
         }
         robots = []
@@ -226,6 +573,135 @@ def create_app(
         if task_run is None:
             raise ConfigurationNotFound(f"unknown task run: {run_id}")
         return task_run
+
+    def camera_asset_or_404(asset_id: str) -> dict[str, Any]:
+        asset = next(
+            (item for item in store.list_assets() if item["asset_id"] == asset_id),
+            None,
+        )
+        if asset is None:
+            raise ConfigurationNotFound(f"unknown asset: {asset_id}")
+        if asset["asset_type"] != "camera" or asset["binding"] is None:
+            raise ConfigurationInvalid(f"asset {asset_id} is not a bound camera")
+        if asset.get("lifecycle_state", "active") != "active":
+            raise ConfigurationInvalid(f"camera asset {asset_id} is decommissioned")
+        return asset
+
+    def camera_upstream_url(asset_id: str) -> str:
+        asset = camera_asset_or_404(asset_id)
+        binding = asset["binding"]
+        snapshot = store.get_snapshot(binding["agent_id"])
+        if snapshot is None:
+            raise FleetAPIError(503, "camera Agent has no heartbeat snapshot")
+        robot = next(
+            (
+                item
+                for item in snapshot.get("robots", [])
+                if item["robot_id"] == binding["robot_id"]
+            ),
+            None,
+        )
+        if robot is None:
+            raise FleetAPIError(503, "camera robot is absent from the latest heartbeat")
+        source = next(
+            (
+                item
+                for item in robot.get("sources", [])
+                if item["key"] == binding["source_key"]
+            ),
+            None,
+        )
+        if source is None or source.get("kind") != "camera":
+            raise FleetAPIError(503, "camera source is absent from the latest heartbeat")
+        upstream = source.get("preview_url")
+        if not upstream:
+            raise FleetAPIError(503, "camera Agent does not advertise a preview endpoint")
+        parsed = urlsplit(upstream)
+        if (
+            parsed.username is not None
+            or parsed.password is not None
+            or parsed.query
+            or parsed.fragment
+            or parsed.hostname is None
+            or parsed.port is None
+        ):
+            raise FleetAPIError(502, "camera preview endpoint is not canonical")
+        expected_path = (
+            f"/robots/{quote(binding['robot_id'], safe='')}"
+            f"/cameras/{quote(binding['source_key'], safe='')}.mjpg"
+        )
+        if parsed.path != expected_path:
+            raise FleetAPIError(502, "camera preview endpoint path does not match its binding")
+        loopback = parsed.hostname in {"127.0.0.1", "localhost", "::1"}
+        if parsed.scheme == "http" and not loopback:
+            raise FleetAPIError(502, "remote camera preview requires HTTPS mutual TLS")
+        if parsed.scheme == "https" and preview_ssl_context is None:
+            raise FleetAPIError(503, "Central preview TLS is not configured")
+        if parsed.scheme not in {"http", "https"}:
+            raise FleetAPIError(502, "unsupported camera preview transport")
+        if not loopback:
+            profile = store.get_agent_connection_profile(
+                binding["agent_id"],
+                "https_agent",
+            )
+            observation = None
+            if profile is not None and profile["enabled"]:
+                observation = next(
+                    (
+                        item
+                        for item in store.list_connection_observations()
+                        if item["profile_id"] == profile["profile_id"]
+                        and item["last_success_at"] is not None
+                    ),
+                    None,
+                )
+            peer_address = None if observation is None else observation["peer_address"]
+            peer_host = None if not peer_address else peer_address.rsplit(":", 1)[0]
+            if peer_host != parsed.hostname:
+                raise FleetAPIError(
+                    502,
+                    "camera preview host is not the Agent's allowlisted mTLS peer",
+                )
+        return upstream
+
+    def relay_urls(
+        agents: list[dict[str, Any]],
+        *,
+        run_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        camera_assets = {
+            (
+                asset["binding"]["agent_id"],
+                asset["binding"]["robot_id"],
+                asset["binding"]["source_key"],
+            ): asset["asset_id"]
+            for asset in store.list_assets()
+            if asset["asset_type"] == "camera"
+            and asset["binding"] is not None
+            and asset.get("lifecycle_state", "active") == "active"
+        }
+        for agent in agents:
+            for robot in agent["robots"]:
+                for source in robot["sources"]:
+                    if source["kind"] != "camera":
+                        continue
+                    upstream_available = bool(source.get("preview_url"))
+                    asset_id = camera_assets.get(
+                        (agent["agent_id"], robot["robot_id"], source["key"])
+                    )
+                    source["upstream_preview_available"] = upstream_available
+                    if not upstream_available or asset_id is None:
+                        source["preview_url"] = None
+                    elif run_id is None:
+                        source["preview_url"] = (
+                            f"/api/v1/cameras/{quote(asset_id, safe='')}/preview.mjpg"
+                        )
+                    else:
+                        source["preview_url"] = (
+                            f"/api/v1/task-runs/{quote(run_id, safe='')}/cameras/"
+                            f"{quote(asset_id, safe='')}/preview.mjpg"
+                        )
+        return agents
 
     def filter_agent_for_run(
         agent: dict[str, Any],
@@ -395,6 +871,7 @@ def create_app(
             counts[event["event_type"]] = counts.get(event["event_type"], 0) + 1
         for agent in filtered_agents:
             agent["event_counts"] = scoped_event_counts.get(agent["agent_id"], {})
+        filtered_agents = relay_urls(filtered_agents, run_id=run_id)
         summary = summarize_agents(filtered_agents, now=current)
         summary.pop("recordings", None)
         return {
@@ -405,14 +882,149 @@ def create_app(
             "agents": filtered_agents,
             "summary": summary,
             "events": scoped_events,
+            "capture_workers": capture_jobs.list_workers_for_run(
+                run_id,
+                now=current,
+            ),
+            "capture_jobs": capture_jobs.list_jobs(run_id=run_id),
+            "recording_sessions": recordings.list_sessions(run_id=run_id),
         }
 
     @app.get("/api/v1/healthz")
     async def healthz() -> dict[str, str]:
-        return {"status": "ok", "scope": "loopback-configuration-mvp"}
+        return {"status": "ok", "scope": "robot-camera-operations-v1"}
+
+    @app.post("/api/v1/auth/login")
+    async def login(body: LoginRequest) -> Response:
+        try:
+            row = auth.authenticate_password(
+                body.principal_id,
+                body.password,
+                occurred_at=now(),
+            )
+        except AuthenticationError as exc:
+            return JSONResponse(status_code=401, content={"error": str(exc)})
+        principal, session, csrf, expires_at = auth.create_session(
+            row,
+            occurred_at=now(),
+        )
+        response = JSONResponse(
+            content={
+                "principal": principal.public(),
+                "expires_at": isoformat_z(expires_at),
+            }
+        )
+        max_age = max(0, int((expires_at - now()).total_seconds()))
+        response.set_cookie(
+            "sang_session",
+            session,
+            max_age=max_age,
+            httponly=True,
+            secure=secure_cookies,
+            samesite="strict",
+            path="/",
+        )
+        response.set_cookie(
+            "sang_csrf",
+            csrf,
+            max_age=max_age,
+            httponly=False,
+            secure=secure_cookies,
+            samesite="strict",
+            path="/",
+        )
+        return response
+
+    @app.get("/api/v1/auth/me")
+    async def current_identity(request: Request) -> dict[str, Any]:
+        principal = request.state.principal
+        return {"principal": principal.public()}
+
+    @app.post("/api/v1/auth/logout")
+    async def logout(request: Request) -> Response:
+        principal = request.state.principal
+        if principal.auth_kind != "session" or principal.session_id is None:
+            raise FleetAPIError(422, "logout requires a browser session")
+        auth.revoke_session(
+            principal.session_id,
+            principal_id=principal.principal_id,
+            occurred_at=now(),
+        )
+        response = JSONResponse(content={"status": "logged_out"})
+        response.delete_cookie("sang_session", path="/")
+        response.delete_cookie("sang_csrf", path="/")
+        return response
+
+    @app.get("/api/v1/auth/principals")
+    async def list_principals() -> list[dict[str, object]]:
+        return auth.list_principals()
+
+    @app.post("/api/v1/auth/users", status_code=201)
+    async def create_user(body: UserCreate, request: Request) -> dict[str, object]:
+        principal = request.state.principal
+        return auth.create_user(
+            body,
+            actor_id=principal.principal_id,
+            occurred_at=now(),
+        )
+
+    @app.post("/api/v1/auth/service-identities", status_code=201)
+    async def create_service_identity(
+        body: ServiceIdentityCreate,
+        request: Request,
+    ) -> dict[str, object]:
+        principal = request.state.principal
+        return auth.create_service_identity(
+            body,
+            actor_id=principal.principal_id,
+            occurred_at=now(),
+        )
+
+    @app.put("/api/v1/auth/principals/{principal_id}")
+    async def update_principal(
+        principal_id: str,
+        body: PrincipalUpdate,
+        request: Request,
+    ) -> dict[str, object]:
+        principal = request.state.principal
+        return auth.update_principal(
+            principal_id,
+            body,
+            actor_id=principal.principal_id,
+            occurred_at=now(),
+        )
+
+    @app.post("/api/v1/auth/service-tokens/{token_id}/revoke")
+    async def revoke_service_token(
+        token_id: str,
+        body: TokenRevokeRequest,
+        request: Request,
+    ) -> dict[str, object]:
+        principal = request.state.principal
+        return auth.revoke_service_token(
+            token_id,
+            body,
+            actor_id=principal.principal_id,
+            occurred_at=now(),
+        )
+
+    @app.get("/api/v1/auth/audit")
+    async def list_security_audit(
+        limit: int = Query(default=100, ge=1, le=500),
+    ) -> list[dict[str, object]]:
+        return auth.list_security_audit(limit=limit)
 
     @app.post("/api/v1/agents/heartbeat", status_code=202)
-    async def receive_heartbeat(body: AgentHeartbeatV1) -> dict[str, Any]:
+    async def receive_heartbeat(
+        body: AgentHeartbeatV1,
+        request: Request,
+    ) -> dict[str, Any]:
+        client_host = None if request.client is None else request.client.host
+        if client_host not in LOOPBACK_CLIENTS:
+            raise FleetAPIError(
+                403,
+                "legacy heartbeat is loopback-only; remote Agents must use mTLS ingress",
+            )
         if body.schema_version != HEARTBEAT_SCHEMA_VERSION:
             raise FleetAPIError(
                 400,
@@ -539,9 +1151,49 @@ def create_app(
         app.state.fleet_revision += 1
         return result
 
+    @app.put("/api/v1/config/processing-nodes/{node_id}")
+    async def replace_processing_node(
+        node_id: str,
+        body: ProcessingNodeReplace,
+    ) -> dict[str, Any]:
+        result = store.replace_processing_node(node_id, body, occurred_at=now())
+        app.state.fleet_revision += 1
+        return result
+
+    @app.post("/api/v1/config/processing-nodes/{node_id}/decommission")
+    async def decommission_processing_node(
+        node_id: str,
+        body: DecommissionRequest,
+    ) -> dict[str, Any]:
+        result = store.decommission_processing_node(
+            node_id,
+            body,
+            occurred_at=now(),
+        )
+        app.state.fleet_revision += 1
+        return result
+
     @app.post("/api/v1/config/assets", status_code=201)
     async def create_asset(body: AssetCreate) -> dict[str, Any]:
         result = store.create_asset(body, occurred_at=now())
+        app.state.fleet_revision += 1
+        return result
+
+    @app.put("/api/v1/config/assets/{asset_id}")
+    async def replace_asset(
+        asset_id: str,
+        body: AssetReplace,
+    ) -> dict[str, Any]:
+        result = store.replace_asset(asset_id, body, occurred_at=now())
+        app.state.fleet_revision += 1
+        return result
+
+    @app.post("/api/v1/config/assets/{asset_id}/decommission")
+    async def decommission_asset(
+        asset_id: str,
+        body: DecommissionRequest,
+    ) -> dict[str, Any]:
+        result = store.decommission_asset(asset_id, body, occurred_at=now())
         app.state.fleet_revision += 1
         return result
 
@@ -564,6 +1216,28 @@ def create_app(
         app.state.fleet_revision += 1
         return result
 
+    @app.put("/api/v1/config/workcells/{workcell_id}")
+    async def replace_workcell(
+        workcell_id: str,
+        body: WorkcellReplace,
+    ) -> dict[str, Any]:
+        result = store.replace_workcell(workcell_id, body, occurred_at=now())
+        app.state.fleet_revision += 1
+        return result
+
+    @app.post("/api/v1/config/workcells/{workcell_id}/decommission")
+    async def decommission_workcell(
+        workcell_id: str,
+        body: DecommissionRequest,
+    ) -> dict[str, Any]:
+        result = store.decommission_workcell(
+            workcell_id,
+            body,
+            occurred_at=now(),
+        )
+        app.state.fleet_revision += 1
+        return result
+
     @app.post("/api/v1/config/task-definitions", status_code=201)
     async def create_task_definition(body: TaskDefinitionCreate) -> dict[str, Any]:
         result = store.create_task_definition(body, occurred_at=now())
@@ -576,6 +1250,24 @@ def create_app(
         app.state.fleet_revision += 1
         return result
 
+    @app.put("/api/v1/config/task-runs/{run_id}")
+    async def replace_task_run(
+        run_id: str,
+        body: TaskRunReplace,
+    ) -> dict[str, Any]:
+        result = store.replace_task_run(run_id, body, occurred_at=now())
+        app.state.fleet_revision += 1
+        return result
+
+    @app.post("/api/v1/config/task-runs/{run_id}/transition")
+    async def transition_task_run(
+        run_id: str,
+        body: TaskRunTransition,
+    ) -> dict[str, Any]:
+        result = store.transition_task_run(run_id, body, occurred_at=now())
+        app.state.fleet_revision += 1
+        return result
+
     @app.get("/api/v1/task-runs/{run_id}")
     async def get_task_run(run_id: str) -> dict[str, Any]:
         return task_run_or_404(run_id)
@@ -584,8 +1276,431 @@ def create_app(
     async def get_task_run_fleet(run_id: str) -> dict[str, Any]:
         return task_run_fleet_payload(run_id)
 
+    @app.post("/api/v1/task-runs/{run_id}/complete-after-capture")
+    async def complete_task_run_after_capture(
+        run_id: str,
+        body: TaskRunTransition,
+    ) -> dict[str, Any]:
+        task_run = task_run_or_404(run_id)
+        if body.state != "COMPLETE":
+            raise FleetAPIError(422, "capture-gated completion only accepts COMPLETE")
+        if task_run["state"] != "ACTIVE":
+            raise FleetAPIError(409, "Task Run must be ACTIVE")
+
+        jobs = capture_jobs.list_jobs(run_id=run_id)
+        if any(job["state"] in ACTIVE_CAPTURE_STATES for job in jobs):
+            raise FleetAPIError(409, "Task Run has an active Capture Job")
+        if not jobs or jobs[0]["state"] != "COMPLETE":
+            raise FleetAPIError(409, "latest Capture Job is not complete")
+
+        latest_job = jobs[0]
+        session = next(
+            (
+                item
+                for item in recordings.list_sessions(run_id=run_id)
+                if item["session_id"] == latest_job["session_id"]
+            ),
+            None,
+        )
+        if session is None or session["state"] != "COMPLETE":
+            raise FleetAPIError(409, "latest Capture Job is not stored completely")
+        quality_state = (session.get("quality") or {}).get("state")
+        if quality_state != "PASS":
+            raise FleetAPIError(
+                409,
+                f"latest Capture Job quality is {quality_state or 'PENDING'}, not PASS",
+            )
+
+        result = store.transition_task_run(run_id, body, occurred_at=now())
+        app.state.fleet_revision += 1
+        return result
+
+    @app.get("/api/v1/task-runs/{run_id}/capture-jobs")
+    async def list_task_run_capture_jobs(run_id: str) -> list[dict[str, Any]]:
+        task_run_or_404(run_id)
+        return capture_jobs.list_jobs(run_id=run_id)
+
+    @app.post("/api/v1/task-runs/{run_id}/capture-jobs", status_code=201)
+    async def create_task_run_capture_job(
+        run_id: str,
+        body: CaptureJobCreate,
+        request: Request,
+    ) -> dict[str, Any]:
+        principal = request.state.principal
+        worker = capture_jobs.get_worker(body.worker_id)
+        require_recording_agent_scope(request, worker["agent_id"])
+        result = capture_jobs.create_job(
+            run_id,
+            body,
+            created_by=(
+                "local-operator"
+                if principal is None
+                else principal.principal_id
+            ),
+            occurred_at=now(),
+        )
+        app.state.fleet_revision += 1
+        return result
+
+    @app.get("/api/v1/capture-jobs/{job_id}")
+    async def get_capture_job(job_id: str) -> dict[str, Any]:
+        return capture_jobs.get_job(job_id)
+
+    @app.post("/api/v1/capture-jobs/{job_id}/stop")
+    async def stop_capture_job(
+        job_id: str,
+        request: Request,
+    ) -> dict[str, Any]:
+        principal = request.state.principal
+        current = capture_jobs.get_job(job_id)
+        require_recording_agent_scope(request, current["agent_id"])
+        result = capture_jobs.request_stop(
+            job_id,
+            requested_by=(
+                "local-operator"
+                if principal is None
+                else principal.principal_id
+            ),
+            occurred_at=now(),
+        )
+        app.state.fleet_revision += 1
+        return result
+
+    def require_object_store() -> FilesystemObjectStore:
+        if object_store is None:
+            raise FleetAPIError(503, "Central Object Store is not configured")
+        return object_store
+
+    def require_recording_agent_scope(request: Request, agent_id: str) -> None:
+        principal = request.state.principal
+        if (
+            principal is not None
+            and principal.principal_kind == "service"
+            and principal.role != "admin"
+            and agent_id not in auth.service_agent_ids(principal.principal_id)
+        ):
+            raise FleetAPIError(
+                403,
+                f"service identity is not authorized for recording Agent {agent_id}",
+            )
+
+    @app.get("/api/v1/recording-sessions")
+    async def list_recording_sessions(
+        run_id: str | None = Query(
+            default=None,
+            min_length=1,
+            max_length=64,
+            pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*$",
+        ),
+        agent_id: str | None = Query(
+            default=None,
+            min_length=1,
+            max_length=64,
+            pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*$",
+        ),
+        state: str | None = Query(default=None, pattern=r"^(STAGING|COMPLETE)$"),
+        limit: int = Query(default=100, ge=1, le=500),
+    ) -> list[dict[str, Any]]:
+        return recordings.list_sessions(
+            run_id=run_id,
+            agent_id=agent_id,
+            state=state,
+            limit=limit,
+        )
+
+    @app.post("/api/v1/recording-sessions", status_code=201)
+    async def register_recording_session(
+        body: RecordingManifest,
+        request: Request,
+    ) -> dict[str, Any]:
+        backend = require_object_store()
+        principal = request.state.principal
+        require_recording_agent_scope(request, body.agent_id)
+        result = recordings.register(
+            body,
+            object_store=backend,
+            created_by=None if principal is None else principal.principal_id,
+            occurred_at=now(),
+        )
+        app.state.fleet_revision += 1
+        return result
+
+    @app.get("/api/v1/recording-sessions/{session_id}")
+    async def get_recording_session(session_id: str) -> dict[str, Any]:
+        return recordings.get_session(session_id)
+
+    def require_quality() -> RecordingQualityService:
+        if quality is None:
+            raise FleetAPIError(503, "Central recording quality analysis is not configured")
+        return quality
+
+    @app.get("/api/v1/recording-sessions/{session_id}/quality")
+    async def get_recording_quality(session_id: str) -> dict[str, Any]:
+        recordings.get_session(session_id)
+        result = recordings.quality_report(session_id)
+        if result is None:
+            return {
+                "available": False,
+                "session_id": session_id,
+                "state": "UNKNOWN",
+                "streams": [],
+            }
+        return result
+
+    @app.post("/api/v1/recording-sessions/{session_id}/quality/analyze")
+    async def analyze_recording_quality(session_id: str) -> dict[str, Any]:
+        try:
+            result = await asyncio.to_thread(require_quality().analyze, session_id)
+        except QualityUnavailable as exc:
+            raise FleetAPIError(422, str(exc)) from exc
+        app.state.fleet_revision += 1
+        return result
+
+    @app.get("/api/v1/recording-sessions/{session_id}/quality/report")
+    async def download_recording_quality_report(session_id: str) -> FileResponse:
+        backend = require_object_store()
+        report = recordings.quality_object(session_id)
+        try:
+            path = await asyncio.to_thread(
+                backend.open_path,
+                report["object_key"],
+                size_bytes=report["report_size_bytes"],
+                sha256=report["report_sha256"],
+            )
+        except ObjectStoreError as exc:
+            raise FleetAPIError(500, "quality report integrity check failed") from exc
+        return FileResponse(
+            path,
+            media_type="application/json",
+            filename=f"{session_id}-quality.json",
+            headers={
+                "ETag": f'"sha256:{report["report_sha256"]}"',
+                "Cache-Control": "private, no-store",
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
+
+    def require_playback() -> RecordingPlayback:
+        if playback is None:
+            raise FleetAPIError(503, "Central recording playback is not configured")
+        return playback
+
+    @app.get("/api/v1/recording-sessions/{session_id}/playback")
+    async def describe_recording_playback(session_id: str) -> dict[str, Any]:
+        try:
+            return await asyncio.to_thread(require_playback().describe, session_id)
+        except PlaybackNotFound as exc:
+            raise FleetAPIError(404, str(exc)) from exc
+        except PlaybackUnavailable as exc:
+            raise FleetAPIError(409, str(exc)) from exc
+        except PlaybackInvalid as exc:
+            raise FleetAPIError(422, str(exc)) from exc
+
+    @app.get("/api/v1/recording-sessions/{session_id}/playback/frame")
+    async def get_recording_playback_frame(
+        session_id: str,
+        topic_key: str = Query(
+            min_length=1,
+            max_length=128,
+            pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*$",
+        ),
+        offset_ms: int = Query(ge=0, le=28_800_000),
+    ) -> Response:
+        try:
+            frame = await asyncio.to_thread(
+                require_playback().frame,
+                session_id,
+                topic_key,
+                offset_ms,
+            )
+        except PlaybackNotFound as exc:
+            raise FleetAPIError(404, str(exc)) from exc
+        except PlaybackUnavailable as exc:
+            raise FleetAPIError(409, str(exc)) from exc
+        except PlaybackInvalid as exc:
+            raise FleetAPIError(422, str(exc)) from exc
+        except PlaybackBusy as exc:
+            raise FleetAPIError(429, str(exc)) from exc
+        return Response(
+            content=frame.data,
+            media_type="image/jpeg",
+            headers={
+                "Cache-Control": "private, no-store",
+                "X-Content-Type-Options": "nosniff",
+                "X-SANG-Log-Time-Ns": str(frame.log_time_ns),
+                "X-SANG-Source-Time-Ns": str(frame.source_time_ns),
+                "X-SANG-Frame-Offset-Ms": str(frame.frame_offset_ms),
+                "X-SANG-Source-Offset-Ms": str(frame.source_offset_ms),
+                "X-SANG-Skew-Ms": str(frame.skew_ms),
+            },
+        )
+
+    @app.put(
+        "/api/v1/recording-sessions/{session_id}/artifacts/{artifact_path:path}"
+    )
+    async def upload_recording_artifact(
+        session_id: str,
+        artifact_path: str,
+        request: Request,
+    ) -> dict[str, Any]:
+        backend = require_object_store()
+        require_recording_agent_scope(
+            request,
+            recordings.get_session(session_id)["agent_id"],
+        )
+        expected = recordings.artifact_expectation(session_id, artifact_path)
+        raw_length = request.headers.get("content-length")
+        if raw_length is None:
+            raise FleetAPIError(411, "artifact upload requires Content-Length")
+        try:
+            content_length = int(raw_length)
+        except ValueError as exc:
+            raise FleetAPIError(400, "invalid Content-Length") from exc
+        if content_length != expected["expected_size_bytes"]:
+            raise RecordingInvalid("artifact Content-Length differs from the manifest")
+        await backend.put_stream(
+            expected["object_key"],
+            request.stream(),
+            size_bytes=expected["expected_size_bytes"],
+            sha256=expected["expected_sha256"],
+        )
+        result = recordings.mark_uploaded(
+            session_id,
+            artifact_path,
+            occurred_at=now(),
+        )
+        app.state.fleet_revision += 1
+        return result
+
+    @app.post("/api/v1/recording-sessions/{session_id}/finalize")
+    async def finalize_recording_session(
+        session_id: str,
+        body: RecordingFinalize,
+        request: Request,
+    ) -> dict[str, Any]:
+        require_recording_agent_scope(
+            request,
+            recordings.get_session(session_id)["agent_id"],
+        )
+        result = await recordings.finalize_async(
+            session_id,
+            expected_manifest_sha256=body.expected_manifest_sha256,
+            object_store=require_object_store(),
+            occurred_at=now(),
+        )
+        app.state.fleet_revision += 1
+        return result
+
+    @app.get(
+        "/api/v1/recording-sessions/{session_id}/artifacts/{artifact_path:path}"
+    )
+    async def download_recording_artifact(
+        session_id: str,
+        artifact_path: str,
+    ) -> FileResponse:
+        backend = require_object_store()
+        artifact = recordings.artifact(session_id, artifact_path)
+        path = await asyncio.to_thread(
+            backend.open_path,
+            artifact["object_key"],
+            size_bytes=artifact["expected_size_bytes"],
+            sha256=artifact["expected_sha256"],
+        )
+        return FileResponse(
+            path,
+            media_type=artifact["media_type"],
+            filename=path.name,
+            headers={
+                "Cache-Control": "private, no-store",
+                "ETag": f'"sha256:{artifact["expected_sha256"]}"',
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
+
+    def stream_camera_asset(asset_id: str) -> StreamingResponse:
+        upstream = camera_upstream_url(asset_id)
+        if not preview_slot.acquire(blocking=False):
+            raise FleetAPIError(429, "another camera preview is already active")
+        request = UrlRequest(
+            upstream,
+            headers={
+                "Accept": "multipart/x-mixed-replace",
+                "User-Agent": "sang-central-preview/1",
+            },
+        )
+        try:
+            response = preview_opener.open(
+                request,
+                timeout=5.0,
+            )
+        except (HTTPError, URLError, TimeoutError, OSError) as exc:
+            preview_slot.release()
+            raise FleetAPIError(502, f"camera preview upstream failed: {exc}") from exc
+        content_type = response.headers.get("Content-Type", "")
+        if not content_type.lower().startswith("multipart/x-mixed-replace"):
+            response.close()
+            preview_slot.release()
+            raise FleetAPIError(502, "camera preview upstream is not an MJPEG stream")
+
+        release_lock = threading.Lock()
+        released = False
+
+        def release_preview() -> None:
+            nonlocal released
+            with release_lock:
+                if released:
+                    return
+                released = True
+            response.close()
+            preview_slot.release()
+
+        def chunks():
+            try:
+                while True:
+                    block = response.read(64 * 1024)
+                    if not block:
+                        return
+                    yield block
+            finally:
+                release_preview()
+
+        return StreamingResponse(
+            chunks(),
+            headers={
+                "Content-Type": content_type,
+                "Cache-Control": "no-store",
+                "X-Content-Type-Options": "nosniff",
+                "X-Accel-Buffering": "no",
+            },
+            background=BackgroundTask(release_preview),
+        )
+
+    @app.get("/api/v1/cameras/{asset_id}/preview.mjpg")
+    def camera_preview(asset_id: str) -> StreamingResponse:
+        return stream_camera_asset(asset_id)
+
+    @app.get(
+        "/api/v1/task-runs/{run_id}/cameras/{asset_id}/preview.mjpg"
+    )
+    def task_run_camera_preview(
+        run_id: str,
+        asset_id: str,
+    ) -> StreamingResponse:
+        task_run = task_run_or_404(run_id)
+        if not any(
+            item["asset_id"] == asset_id
+            and item["asset"]["asset_type"] == "camera"
+            for item in task_run["assignments"]
+        ):
+            raise ConfigurationNotFound(
+                f"camera asset {asset_id} is not assigned to task run {run_id}"
+            )
+        return stream_camera_asset(asset_id)
+
     @app.websocket("/api/v1/fleet")
     async def fleet_websocket(websocket: WebSocket) -> None:
+        if not await authorize_websocket(websocket):
+            return
         await websocket.accept()
         last_revision = -1
         next_periodic = 0.0
@@ -604,6 +1719,8 @@ def create_app(
 
     @app.websocket("/api/v1/task-runs/{run_id}/stream")
     async def task_run_fleet_websocket(websocket: WebSocket, run_id: str) -> None:
+        if not await authorize_websocket(websocket):
+            return
         if store.get_task_run(run_id) is None:
             await websocket.close(code=4404, reason="unknown task run")
             return

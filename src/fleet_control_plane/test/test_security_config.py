@@ -14,7 +14,12 @@ FINGERPRINT = "a" * 64
 
 def make_client(tmp_path):
     store = FleetStore(tmp_path / "fleet.db")
-    app = create_app(store, now=lambda: NOW, websocket_interval_s=0.01)
+    app = create_app(
+        store,
+        now=lambda: NOW,
+        websocket_interval_s=0.01,
+        auth_enabled=False,
+    )
     return TestClient(app), store
 
 
@@ -76,7 +81,7 @@ def test_phase3_migration_is_additive_and_preserves_existing_rows(tmp_path):
 
     migrated = FleetStore(path)
 
-    assert migrated.schema_versions() == [1, 2, 3, 4]
+    assert migrated.schema_versions() == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     with migrated._connect() as connection:
         assert connection.execute(
             "SELECT agent_name FROM agents WHERE agent_id = 'legacy-agent'"
@@ -107,7 +112,7 @@ def test_phase3_migration_resumes_after_partial_ddl(tmp_path):
 
     resumed = FleetStore(path)
 
-    assert resumed.schema_versions() == [1, 2, 3, 4]
+    assert resumed.schema_versions() == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     assert resumed.list_agent_registrations() == []
 
 
@@ -150,13 +155,13 @@ def test_phase4_pin_migration_preserves_profiles_and_observations(tmp_path):
         connection.execute(
             "ALTER TABLE connection_profiles_v3 RENAME TO connection_profiles"
         )
-        connection.execute("DELETE FROM schema_migrations WHERE version = 4")
+        connection.execute("DELETE FROM schema_migrations WHERE version >= 4")
         connection.commit()
         connection.execute("PRAGMA foreign_keys = ON")
 
     migrated = FleetStore(store.path)
 
-    assert migrated.schema_versions() == [1, 2, 3, 4]
+    assert migrated.schema_versions() == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     profile = migrated.get_agent_connection_profile("workcell-soarm-01", "opcua")
     assert profile["server_certificate_ref"] == "secret://opcua/pins/edge-cert.pem"
     assert migrated.list_connection_observations()[0]["profile_id"] == "soarm-opcua"
@@ -241,7 +246,7 @@ def test_agent_allowlist_credential_rotation_and_profile_revision(tmp_path):
     assert revoked.json()["status"] == "revoked"
 
     security = client.get("/api/v1/config/security").json()
-    assert security["schema_versions"] == [1, 2, 3, 4]
+    assert security["schema_versions"] == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     assert security["agent_registrations"][0]["enabled"] is True
     assert security["agent_credentials"][0]["status"] == "revoked"
     assert security["connection_profiles"][0]["revision"] == 2
