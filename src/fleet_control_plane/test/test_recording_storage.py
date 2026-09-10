@@ -771,10 +771,12 @@ def test_backup_restore_reproduces_catalog_and_object_hashes(tmp_path):
             output=backup,
         )
     )
-    assert result["database"]["schema_versions"] == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    assert result["database"]["schema_versions"] == list(range(1, 20))
     verified = verify_backup(backup)
     assert verified["passed"] is True
     assert verified["object_count"] == 3
+    assert not (backup / "fleet.db-wal").exists()
+    assert not (backup / "fleet.db-shm").exists()
 
     restored_db = tmp_path / "restored/fleet.db"
     restored_objects = tmp_path / "restored/objects"
@@ -785,8 +787,10 @@ def test_backup_restore_reproduces_catalog_and_object_hashes(tmp_path):
             object_store_root=restored_objects,
         )
     )
+    assert not restored_db.with_name("fleet.db.partial-wal").exists()
+    assert not restored_db.with_name("fleet.db.partial-shm").exists()
     restored_store = FleetStore(restored_db)
-    assert restored_store.schema_versions() == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    assert restored_store.schema_versions() == list(range(1, 20))
     assert (
         restored_objects / "sessions/rb5-session-001/bag_0.mcap"
     ).read_bytes() == files["bag_0.mcap"]

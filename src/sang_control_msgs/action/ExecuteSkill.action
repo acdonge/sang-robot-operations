@@ -1,0 +1,19 @@
+string agent_id
+string command_id
+string run_id
+string step_id
+# Canonical JSON for ExecuteSkillRequestV1. It contains the signed delegation
+# grant, sublease, control envelope, and goal without flattening away fields.
+string execute_skill_request_json
+string execute_skill_request_sha256
+---
+bool accepted
+string state
+string result_json
+string evidence_ref
+string error_code
+string error_message
+---
+string state
+float32 progress
+builtin_interfaces/Time observed_at

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
+from datetime import timedelta
 import hmac
 from pathlib import Path
 import ssl
@@ -32,6 +33,24 @@ from fleet_control_plane.capture_jobs import (
     CaptureJobNotFound,
     CaptureJobStore,
 )
+from fleet_control_plane.aas_projection import (
+    MAX_AAS_IMPORT_BYTES,
+    AasProjectionCatalog,
+    AasProjectionConflict,
+    AasProjectionInvalid,
+    AasProjectionNotFound,
+)
+from fleet_control_plane.commissioning_evidence import (
+    MAX_G6B_ARTIFACT_BYTES,
+    MAX_G6B_EVIDENCE_BYTES,
+    G6bCaseCreateV1,
+    G6bEvidenceCatalog,
+    G6bEvidenceConflict,
+    G6bEvidenceInvalid,
+    G6bEvidenceNotFound,
+    G6bEvidencePackageV1,
+    G6bReviewRequestV1,
+)
 from fleet_control_plane.models import AgentHeartbeatV1
 from fleet_control_plane.lerobot_derivation import (
     DatasetDerivationCatalog,
@@ -57,6 +76,27 @@ from fleet_control_plane.recording_storage import (
     RecordingInvalid,
     RecordingNotFound,
 )
+from fleet_control_plane.safety_models import SafetyAssessmentV1, SafetyState
+from fleet_control_plane.safety_shadow import (
+    SafetyAssessmentConflict,
+    SafetyAssessmentInvalid,
+    SafetyShadowCatalog,
+)
+from fleet_control_plane.safety_v2 import (
+    SafetyEvidenceIngressV2,
+    SafetyV2Catalog,
+    SafetyV2Conflict,
+    SafetyV2Invalid,
+)
+from fleet_control_plane.control_authority import (
+    ControlAuthority,
+    ControlAuthorityError,
+    ControlRoleBindingV1,
+    ResumeApprovalV1,
+    ResumeChallengeCreateV1,
+    XrSessionUpdateV1,
+)
+from fleet_control_plane.control_signing import VerificationKeyRing
 from fleet_control_plane.auth import (
     AuthManager,
     AuthenticationError,
@@ -102,12 +142,20 @@ from fleet_control_plane.store import (
     ConfigurationNotFound,
     FleetStore,
 )
+from fleet_control_plane.orchestration_api import orchestration_router
+from fleet_control_plane.orchestration_models import ClockMeasurementV2
+from fleet_control_plane.orchestration_store import OrchestrationStore
+from fleet_control_plane.workflow_authoring import WorkflowAuthoringStore
+from fleet_control_plane.workflow_authoring_api import workflow_authoring_router
+from fleet_control_plane.unity_runtime_proxy import unity_runtime_router
 from robot_agent.clock_sync import ClockSyncSampler, unsupported_sync
 
 
 HEARTBEAT_SCHEMA_VERSION = 1
 MAX_HEARTBEAT_BYTES = 256 * 1024
 MAX_RECORDING_MANIFEST_BYTES = 256 * 1024
+MAX_SAFETY_ASSESSMENT_BYTES = 256 * 1024
+MAX_WORKFLOW_AUTHORING_BYTES = 512 * 1024
 ALLOWED_ADMIN_HOSTS = frozenset({"127.0.0.1", "localhost", "::1", "testserver"})
 LOOPBACK_CLIENTS = frozenset({"127.0.0.1", "::1", "testclient"})
 
@@ -159,6 +207,12 @@ def create_app(
     object_store: FilesystemObjectStore | None = None,
     quality_policy_root: str | Path | None = None,
     clock_sync: ClockSyncSampler | None = None,
+    safety_clock: Callable[[], ClockMeasurementV2] | None = None,
+    unity_build_keyring: VerificationKeyRing | None = None,
+    workflow_adapter_profile_paths: list[str | Path] | None = None,
+    workflow_skill_catalog_paths: list[str | Path] | None = None,
+    workflow_runtime_base_url: str | None = None,
+    aas_model_lock_path: str | Path | None = None,
     allowed_admin_hosts: frozenset[str] = ALLOWED_ADMIN_HOSTS,
 ) -> FastAPI:
     if websocket_interval_s <= 0.0:
@@ -175,6 +229,43 @@ def create_app(
     capture_jobs = CaptureJobStore(store.path)
     recordings = RecordingCatalog(store.path)
     derivations = DatasetDerivationCatalog(store.path)
+    safety = SafetyShadowCatalog(store.path)
+    orchestration = OrchestrationStore(store.path)
+    workflow_authoring = WorkflowAuthoringStore(
+        store.path,
+        adapter_profile_paths=workflow_adapter_profile_paths,
+        skill_catalog_paths=workflow_skill_catalog_paths,
+    )
+    safety_v2 = SafetyV2Catalog(store.path, orchestration)
+    control_authority = ControlAuthority(store.path, orchestration)
+    aas_projections = (
+        None
+        if object_store is None
+        else AasProjectionCatalog(
+            store.path,
+            object_store,
+            (
+                Path(__file__).resolve().parents[3]
+                / "contracts/aas/metamodel.lock.yaml"
+                if aas_model_lock_path is None
+                else aas_model_lock_path
+            ),
+        )
+    )
+    g6b_evidence = (
+        None
+        if object_store is None
+        else G6bEvidenceCatalog(store.path, object_store)
+    )
+    app.include_router(
+        orchestration_router(
+            orchestration,
+            now=now,
+            unity_build_keyring=unity_build_keyring,
+        )
+    )
+    app.include_router(workflow_authoring_router(workflow_authoring, now=now))
+    app.include_router(unity_runtime_router(workflow_runtime_base_url))
     playback = (
         None
         if object_store is None
@@ -214,6 +305,15 @@ def create_app(
         if request.url.path.startswith("/api/v1/config/task-runs"):
             return "operator"
         if request.url.path.startswith("/api/v1/recording-sessions"):
+            return "operator"
+        if request.url.path in {
+            "/api/v1/safety/assessments",
+            "/api/v2/safety/evidence",
+        }:
+            return "operator"
+        if request.url.path.startswith("/api/v1/control/xr-sessions"):
+            return "operator"
+        if "/resume-challenges" in request.url.path:
             return "operator"
         if request.url.path.endswith("/complete-after-capture"):
             return "operator"
@@ -278,13 +378,111 @@ def create_app(
                     status_code=413,
                     content={"error": "recording manifest exceeds 256 KiB"},
                 )
+        if request.method == "POST" and request.url.path in {
+            "/api/v1/safety/assessments",
+            "/api/v2/safety/evidence",
+        }:
+            value = request.headers.get("content-length")
+            try:
+                content_length = None if value is None else int(value)
+            except ValueError:
+                return JSONResponse(status_code=400, content={"error": "invalid content-length"})
+            if content_length is None:
+                return JSONResponse(status_code=411, content={"error": "content-length is required"})
+            if content_length > MAX_SAFETY_ASSESSMENT_BYTES:
+                return JSONResponse(
+                    status_code=413,
+                    content={"error": "safety assessment exceeds 256 KiB"},
+                )
+        if (
+            request.method in {"POST", "PUT"}
+            and request.url.path.startswith("/api/v1/workflow-authoring/")
+        ):
+            value = request.headers.get("content-length")
+            try:
+                content_length = None if value is None else int(value)
+            except ValueError:
+                return JSONResponse(status_code=400, content={"error": "invalid content-length"})
+            if content_length is None:
+                return JSONResponse(
+                    status_code=411,
+                    content={"error": "content-length is required"},
+                )
+            if content_length > MAX_WORKFLOW_AUTHORING_BYTES:
+                return JSONResponse(
+                    status_code=413,
+                    content={"error": "Workflow authoring body exceeds 512 KiB"},
+                )
+            body = await request.body()
+            if len(body) > MAX_WORKFLOW_AUTHORING_BYTES:
+                return JSONResponse(
+                    status_code=413,
+                    content={"error": "Workflow authoring body exceeds 512 KiB"},
+                )
+            if content_length != len(body):
+                return JSONResponse(
+                    status_code=400,
+                    content={"error": "content-length does not match the request body"},
+                )
+        if request.method == "POST" and request.url.path == "/api/v1/aas/projections":
+            value = request.headers.get("content-length")
+            try:
+                content_length = None if value is None else int(value)
+            except ValueError:
+                return JSONResponse(status_code=400, content={"error": "invalid content-length"})
+            if content_length is None:
+                return JSONResponse(
+                    status_code=411,
+                    content={"error": "AAS import requires content-length"},
+                )
+            if not 0 < content_length <= MAX_AAS_IMPORT_BYTES:
+                return JSONResponse(
+                    status_code=413,
+                    content={"error": "AAS import exceeds 64 MiB"},
+                )
+        if (
+            request.method == "POST"
+            and request.url.path.startswith("/api/v1/commissioning/g6b/")
+        ):
+            artifact_upload = request.url.path == "/api/v1/commissioning/g6b/artifacts"
+            size_limit = (
+                MAX_G6B_ARTIFACT_BYTES if artifact_upload else MAX_G6B_EVIDENCE_BYTES
+            )
+            size_label = "64 MiB" if artifact_upload else "2 MiB"
+            value = request.headers.get("content-length")
+            try:
+                content_length = None if value is None else int(value)
+            except ValueError:
+                return JSONResponse(status_code=400, content={"error": "invalid content-length"})
+            if content_length is None:
+                return JSONResponse(
+                    status_code=411,
+                    content={"error": "G6b evidence requires content-length"},
+                )
+            if not 0 < content_length <= size_limit:
+                return JSONResponse(
+                    status_code=413,
+                    content={"error": f"G6b upload exceeds {size_label}"},
+                )
+            body = await request.body()
+            if len(body) > size_limit:
+                return JSONResponse(
+                    status_code=413,
+                    content={"error": f"G6b upload exceeds {size_label}"},
+                )
+            if content_length != len(body):
+                return JSONResponse(
+                    status_code=400,
+                    content={"error": "G6b content-length does not match the request body"},
+                )
         public_api = request.url.path in {
             "/api/v1/healthz",
             "/api/v1/auth/login",
             "/api/v1/agents/heartbeat",
         }
         principal = None
-        if auth_enabled and request.url.path.startswith("/api/v1/") and not public_api:
+        protected_api = request.url.path.startswith(("/api/v1/", "/api/v2/"))
+        if auth_enabled and protected_api and not public_api:
             try:
                 principal = request_principal(request)
                 principal.require(minimum_role(request))
@@ -353,6 +551,13 @@ def create_app(
             response.headers["Strict-Transport-Security"] = "max-age=31536000"
         if request.url.path.startswith("/api/v1/"):
             response.headers["Cache-Control"] = "no-store"
+        elif (
+            request.url.path in {"/", "/operator", "/operator/"}
+            or request.url.path.endswith(".html")
+            or request.url.path.startswith("/antd-assets/")
+        ):
+            # Fixed-name UI assets must revalidate after deployment, including 304s.
+            response.headers["Cache-Control"] = "no-cache"
         return response
 
     @app.exception_handler(FleetAPIError)
@@ -380,6 +585,54 @@ def create_app(
     async def configuration_invalid_handler(
         request: Request,
         exc: ConfigurationInvalid,
+    ) -> JSONResponse:
+        del request
+        return JSONResponse(status_code=422, content={"error": str(exc)})
+
+    @app.exception_handler(AasProjectionNotFound)
+    async def aas_projection_not_found_handler(
+        request: Request,
+        exc: AasProjectionNotFound,
+    ) -> JSONResponse:
+        del request
+        return JSONResponse(status_code=404, content={"error": str(exc)})
+
+    @app.exception_handler(AasProjectionConflict)
+    async def aas_projection_conflict_handler(
+        request: Request,
+        exc: AasProjectionConflict,
+    ) -> JSONResponse:
+        del request
+        return JSONResponse(status_code=409, content={"error": str(exc)})
+
+    @app.exception_handler(AasProjectionInvalid)
+    async def aas_projection_invalid_handler(
+        request: Request,
+        exc: AasProjectionInvalid,
+    ) -> JSONResponse:
+        del request
+        return JSONResponse(status_code=422, content={"error": str(exc)})
+
+    @app.exception_handler(G6bEvidenceNotFound)
+    async def g6b_evidence_not_found_handler(
+        request: Request,
+        exc: G6bEvidenceNotFound,
+    ) -> JSONResponse:
+        del request
+        return JSONResponse(status_code=404, content={"error": str(exc)})
+
+    @app.exception_handler(G6bEvidenceConflict)
+    async def g6b_evidence_conflict_handler(
+        request: Request,
+        exc: G6bEvidenceConflict,
+    ) -> JSONResponse:
+        del request
+        return JSONResponse(status_code=409, content={"error": str(exc)})
+
+    @app.exception_handler(G6bEvidenceInvalid)
+    async def g6b_evidence_invalid_handler(
+        request: Request,
+        exc: G6bEvidenceInvalid,
     ) -> JSONResponse:
         del request
         return JSONResponse(status_code=422, content={"error": str(exc)})
@@ -458,6 +711,46 @@ def create_app(
             status_code=500,
             content={"error": "Object Store integrity check failed"},
         )
+
+    @app.exception_handler(SafetyAssessmentConflict)
+    async def safety_assessment_conflict_handler(
+        request: Request,
+        exc: SafetyAssessmentConflict,
+    ) -> JSONResponse:
+        del request
+        return JSONResponse(status_code=409, content={"error": str(exc)})
+
+    @app.exception_handler(SafetyAssessmentInvalid)
+    async def safety_assessment_invalid_handler(
+        request: Request,
+        exc: SafetyAssessmentInvalid,
+    ) -> JSONResponse:
+        del request
+        return JSONResponse(status_code=422, content={"error": str(exc)})
+
+    @app.exception_handler(SafetyV2Conflict)
+    async def safety_v2_conflict_handler(
+        request: Request,
+        exc: SafetyV2Conflict,
+    ) -> JSONResponse:
+        del request
+        return JSONResponse(status_code=409, content={"error": str(exc)})
+
+    @app.exception_handler(SafetyV2Invalid)
+    async def safety_v2_invalid_handler(
+        request: Request,
+        exc: SafetyV2Invalid,
+    ) -> JSONResponse:
+        del request
+        return JSONResponse(status_code=422, content={"error": str(exc)})
+
+    @app.exception_handler(ControlAuthorityError)
+    async def control_authority_error_handler(
+        request: Request,
+        exc: ControlAuthorityError,
+    ) -> JSONResponse:
+        del request
+        return JSONResponse(status_code=422, content={"error": str(exc)})
 
     def agents_at(current) -> list[dict[str, Any]]:
         agents = [
@@ -1376,6 +1669,22 @@ def create_app(
             raise FleetAPIError(503, "Central Object Store is not configured")
         return object_store
 
+    def require_aas_projections() -> AasProjectionCatalog:
+        if aas_projections is None:
+            raise FleetAPIError(
+                503,
+                "AAS projection requires the Central Object Store",
+            )
+        return aas_projections
+
+    def require_g6b_evidence() -> G6bEvidenceCatalog:
+        if g6b_evidence is None:
+            raise FleetAPIError(
+                503,
+                "G6b evidence requires the Central Object Store",
+            )
+        return g6b_evidence
+
     def require_recording_agent_scope(request: Request, agent_id: str) -> None:
         principal = request.state.principal
         if (
@@ -1388,6 +1697,425 @@ def create_app(
                 403,
                 f"service identity is not authorized for recording Agent {agent_id}",
             )
+
+    def require_safety_agent_scope(request: Request, agent_id: str) -> None:
+        principal = request.state.principal
+        if (
+            principal is not None
+            and principal.principal_kind == "service"
+            and principal.role != "admin"
+            and agent_id not in auth.service_agent_ids(principal.principal_id)
+        ):
+            raise FleetAPIError(
+                403,
+                f"service identity is not authorized for safety Agent {agent_id}",
+            )
+
+    def require_safety_v2_producer(request: Request, producer_id: str) -> None:
+        if not auth_enabled:
+            return
+        principal = request.state.principal
+        if principal is None or principal.principal_kind != "service":
+            raise FleetAPIError(
+                403,
+                "Safety Evidence v2 ingress requires a service identity",
+            )
+        if principal.principal_id != producer_id:
+            raise FleetAPIError(
+                403,
+                "service identity does not match the bound safety producer",
+            )
+
+    def trusted_safety_clock() -> ClockMeasurementV2:
+        if safety_clock is not None:
+            return safety_clock()
+        sampled_at = now()
+        return ClockMeasurementV2(
+            monitor_id="central-clock-monitor",
+            reference_id="unconfigured-reference",
+            sampled_at=sampled_at,
+            offset_ms=0.0,
+            uncertainty_ms=0.0,
+            state="unknown",
+        )
+
+    @app.post("/api/v1/safety/assessments", status_code=202)
+    async def accept_safety_assessment(
+        body: SafetyAssessmentV1,
+        request: Request,
+    ) -> dict[str, Any]:
+        require_safety_agent_scope(request, body.agent_id)
+        result = safety.accept(body, received_at=now())
+        if result["transition_recorded"]:
+            app.state.fleet_revision += 1
+        return result
+
+    @app.post("/api/v2/safety/evidence", status_code=202)
+    async def accept_safety_evidence_v2(
+        body: SafetyEvidenceIngressV2,
+        request: Request,
+    ) -> dict[str, Any]:
+        require_safety_v2_producer(request, body.producer_id)
+        result = safety_v2.accept(
+            body,
+            received_at=now(),
+            measured_clock=trusted_safety_clock(),
+        )
+        if result.get("run_state") == "HELD":
+            app.state.fleet_revision += 1
+        return result
+
+    @app.get("/api/v2/safety/assessments")
+    async def list_safety_assessments_v2(
+        run_id: str = Query(
+            min_length=1,
+            max_length=64,
+            pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*$",
+        ),
+        limit: int = Query(default=100, ge=1, le=500),
+    ) -> list[dict[str, Any]]:
+        return safety_v2.list_assessments(run_id, limit=limit)
+
+    def authenticated_control_principal(
+        request: Request,
+        declared_principal_id: str | None,
+    ) -> str:
+        principal = request.state.principal
+        if principal is None:
+            if auth_enabled or declared_principal_id is None:
+                raise FleetAPIError(403, "an authenticated control principal is required")
+            return declared_principal_id
+        if (
+            declared_principal_id is not None
+            and declared_principal_id != principal.principal_id
+        ):
+            raise FleetAPIError(403, "declared control principal does not match authentication")
+        return principal.principal_id
+
+    @app.post("/api/v1/control/role-bindings", status_code=201)
+    async def bind_control_role(body: ControlRoleBindingV1) -> dict[str, Any]:
+        return control_authority.bind_role(body.principal_id, body.role, now=now())
+
+    @app.post("/api/v1/control/xr-sessions", status_code=202)
+    async def update_xr_intervention_session(
+        body: XrSessionUpdateV1,
+        request: Request,
+    ) -> dict[str, Any]:
+        authenticated_control_principal(request, body.principal_id)
+        return control_authority.update_xr_session(body, received_at=now())
+
+    @app.post(
+        "/api/v1/orchestration/runs/{run_id}/resume-challenges",
+        status_code=201,
+    )
+    async def begin_run_resume_challenge(
+        run_id: str,
+        body: ResumeChallengeCreateV1,
+        request: Request,
+    ) -> dict[str, Any]:
+        principal = request.state.principal
+        if auth_enabled:
+            if principal is None or not control_authority.has_role(
+                principal.principal_id, "manager"
+            ):
+                raise FleetAPIError(403, "Manager role is required to begin resume")
+        return control_authority.begin_resume(
+            run_id,
+            now=now(),
+            ttl=timedelta(seconds=body.ttl_seconds),
+        )
+
+    @app.post(
+        "/api/v1/control/resume-challenges/{challenge_id}/approvals",
+        status_code=202,
+    )
+    async def approve_run_resume(
+        challenge_id: str,
+        body: ResumeApprovalV1,
+        request: Request,
+    ) -> dict[str, Any]:
+        principal_id = authenticated_control_principal(request, body.principal_id)
+        return control_authority.approve_resume(
+            challenge_id,
+            principal_id=principal_id,
+            session_id=body.session_id,
+            now=now(),
+        )
+
+    @app.get("/api/v1/safety/latest")
+    async def list_latest_safety_assessments(
+        run_id: str | None = Query(
+            default=None,
+            min_length=1,
+            max_length=64,
+            pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*$",
+        ),
+        agent_id: str | None = Query(
+            default=None,
+            min_length=1,
+            max_length=64,
+            pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*$",
+        ),
+        limit: int = Query(default=100, ge=1, le=500),
+    ) -> list[dict[str, Any]]:
+        return safety.list_latest(run_id=run_id, agent_id=agent_id, limit=limit)
+
+    @app.get("/api/v1/safety/events")
+    async def list_safety_events(
+        run_id: str | None = Query(
+            default=None,
+            min_length=1,
+            max_length=64,
+            pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*$",
+        ),
+        agent_id: str | None = Query(
+            default=None,
+            min_length=1,
+            max_length=64,
+            pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*$",
+        ),
+        state: SafetyState | None = Query(default=None),
+        limit: int = Query(default=100, ge=1, le=500),
+    ) -> list[dict[str, Any]]:
+        return safety.list_events(
+            run_id=run_id,
+            agent_id=agent_id,
+            state=state,
+            limit=limit,
+        )
+
+    @app.get("/api/v1/aas/projections")
+    async def list_aas_projections(
+        asset_id: str | None = Query(
+            default=None,
+            min_length=1,
+            max_length=192,
+            pattern=r"^[A-Za-z0-9][A-Za-z0-9._~-]*$",
+        ),
+    ) -> list[dict[str, Any]]:
+        return require_aas_projections().list_projections(asset_id=asset_id)
+
+    @app.post("/api/v1/aas/projections", status_code=201)
+    async def import_aas_projection(
+        request: Request,
+        asset_id: str = Query(
+            min_length=1,
+            max_length=192,
+            pattern=r"^[A-Za-z0-9][A-Za-z0-9._~-]*$",
+        ),
+        source_file_name: str = Query(min_length=1, max_length=256),
+        shell_id: str | None = Query(default=None, min_length=1, max_length=2048),
+        robotics_profile_id: str | None = Query(
+            default=None,
+            min_length=1,
+            max_length=192,
+            pattern=r"^[A-Za-z0-9][A-Za-z0-9._~-]*$",
+        ),
+        opcua_endpoint: str | None = Query(default=None, min_length=1, max_length=2048),
+    ) -> dict[str, Any]:
+        declared = int(request.headers["content-length"])
+        payload = await request.body()
+        if len(payload) != declared:
+            raise FleetAPIError(400, "AAS body size differs from Content-Length")
+        if len(payload) > MAX_AAS_IMPORT_BYTES:
+            raise FleetAPIError(413, "AAS import exceeds 64 MiB")
+        principal = request.state.principal
+        result = await require_aas_projections().import_artifact(
+            payload,
+            asset_id=asset_id,
+            source_file_name=source_file_name,
+            shell_id=shell_id,
+            robotics_profile_id=robotics_profile_id,
+            opcua_endpoint=opcua_endpoint,
+            imported_by=None if principal is None else principal.principal_id,
+            occurred_at=now(),
+        )
+        app.state.fleet_revision += 1
+        return result
+
+    @app.get("/api/v1/aas/projections/{projection_id}")
+    async def get_aas_projection(projection_id: str) -> dict[str, Any]:
+        return require_aas_projections().get_projection(projection_id)
+
+    @app.get("/api/v1/aas/projections/{projection_id}/artifact")
+    async def download_aas_artifact(projection_id: str) -> FileResponse:
+        catalog = require_aas_projections()
+        projection = catalog.get_projection(projection_id)
+        path = await asyncio.to_thread(
+            catalog.open_artifact,
+            projection_id,
+            environment=False,
+        )
+        return FileResponse(
+            path,
+            media_type=projection["artifact_media_type"],
+            filename=projection["source_file_name"],
+            headers={
+                "Cache-Control": "private, no-store",
+                "ETag": f'"sha256:{projection["artifact_sha256"]}"',
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
+
+    @app.get("/api/v1/aas/projections/{projection_id}/environment.json")
+    async def export_aas_environment(projection_id: str) -> FileResponse:
+        catalog = require_aas_projections()
+        projection = catalog.get_projection(projection_id)
+        path = await asyncio.to_thread(
+            catalog.open_artifact,
+            projection_id,
+            environment=True,
+        )
+        return FileResponse(
+            path,
+            media_type="application/json",
+            filename="aas-environment.json",
+            headers={
+                "Cache-Control": "private, no-store",
+                "ETag": f'"sha256:{projection["environment_sha256"]}"',
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
+
+    @app.get("/api/v1/commissioning/g6b/cases")
+    async def list_g6b_cases() -> list[dict[str, Any]]:
+        return require_g6b_evidence().list_cases()
+
+    @app.post("/api/v1/commissioning/g6b/cases", status_code=201)
+    async def create_g6b_case(
+        body: G6bCaseCreateV1,
+        request: Request,
+    ) -> dict[str, Any]:
+        principal = request.state.principal
+        result = require_g6b_evidence().create_case(
+            body,
+            created_by=None if principal is None else principal.principal_id,
+            occurred_at=now(),
+        )
+        app.state.fleet_revision += 1
+        return result
+
+    @app.post("/api/v1/commissioning/g6b/artifacts", status_code=201)
+    async def import_g6b_supporting_artifact(
+        request: Request,
+        source_file_name: str = Query(min_length=1, max_length=256),
+        sha256: str = Query(pattern=r"^[0-9a-f]{64}$"),
+    ) -> dict[str, Any]:
+        payload = await request.body()
+        principal = request.state.principal
+        media_type = request.headers.get(
+            "content-type",
+            "application/octet-stream",
+        ).split(";", 1)[0]
+        result = await require_g6b_evidence().import_supporting_artifact(
+            payload,
+            source_file_name=source_file_name,
+            media_type=media_type,
+            expected_sha256=sha256,
+            uploaded_by=None if principal is None else principal.principal_id,
+            occurred_at=now(),
+        )
+        app.state.fleet_revision += 1
+        return result
+
+    @app.get("/api/v1/commissioning/g6b/artifacts/{artifact_id}")
+    async def download_g6b_supporting_artifact(artifact_id: str) -> FileResponse:
+        catalog = require_g6b_evidence()
+        artifact = catalog.get_supporting_artifact(artifact_id)
+        path = await asyncio.to_thread(catalog.open_supporting_artifact, artifact_id)
+        return FileResponse(
+            path,
+            media_type=artifact["media_type"],
+            filename=artifact["source_file_name"],
+            headers={
+                "Cache-Control": "private, no-store",
+                "ETag": f'"sha256:{artifact["sha256"]}"',
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
+
+    @app.get("/api/v1/commissioning/g6b/cases/{case_id}")
+    async def get_g6b_case(case_id: str) -> dict[str, Any]:
+        return require_g6b_evidence().get_case(case_id)
+
+    @app.get("/api/v1/commissioning/g6b/cases/{case_id}/submissions")
+    async def list_g6b_submissions(case_id: str) -> list[dict[str, Any]]:
+        return require_g6b_evidence().list_submissions(case_id)
+
+    @app.post(
+        "/api/v1/commissioning/g6b/cases/{case_id}/submissions",
+        status_code=201,
+    )
+    async def submit_g6b_evidence(
+        case_id: str,
+        body: G6bEvidencePackageV1,
+        request: Request,
+    ) -> dict[str, Any]:
+        if body.case_id != case_id:
+            raise G6bEvidenceInvalid("G6b body case_id differs from the route")
+        principal = request.state.principal
+        result = await require_g6b_evidence().submit(
+            body,
+            submitted_by=None if principal is None else principal.principal_id,
+            occurred_at=now(),
+        )
+        app.state.fleet_revision += 1
+        return result
+
+    @app.get("/api/v1/commissioning/g6b/cases/{case_id}/report")
+    async def get_g6b_report(
+        case_id: str,
+        submission_id: str | None = Query(
+            default=None,
+            min_length=1,
+            max_length=64,
+            pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*$",
+        ),
+    ) -> dict[str, Any]:
+        return require_g6b_evidence().report(
+            case_id,
+            generated_at=now(),
+            submission_id=submission_id,
+        ).model_dump(mode="json")
+
+    @app.get("/api/v1/commissioning/g6b/submissions/{submission_id}/artifact")
+    async def download_g6b_submission(submission_id: str) -> FileResponse:
+        catalog = require_g6b_evidence()
+        submission = catalog.get_submission(submission_id)
+        path = await asyncio.to_thread(catalog.open_submission, submission_id)
+        return FileResponse(
+            path,
+            media_type="application/json",
+            filename=f"{submission_id}.json",
+            headers={
+                "Cache-Control": "private, no-store",
+                "ETag": f'"sha256:{submission["payload_sha256"]}"',
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
+
+    @app.post(
+        "/api/v1/commissioning/g6b/submissions/{submission_id}/reviews",
+        status_code=201,
+    )
+    async def review_g6b_submission(
+        submission_id: str,
+        body: G6bReviewRequestV1,
+        request: Request,
+    ) -> dict[str, Any]:
+        principal = request.state.principal
+        if principal is not None and principal.principal_id != body.reviewer_id:
+            raise FleetAPIError(
+                403,
+                "authenticated principal differs from the G6b reviewer",
+            )
+        result = require_g6b_evidence().review(
+            submission_id,
+            body,
+            occurred_at=now(),
+        )
+        app.state.fleet_revision += 1
+        return result
 
     @app.get("/api/v1/recording-sessions")
     async def list_recording_sessions(

@@ -1,0 +1,622 @@
+{
+  "$defs": {
+    "ForbiddenZoneOccupancyV1": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_ids": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+            "type": "string"
+          },
+          "maxItems": 64,
+          "title": "Asset Ids",
+          "type": "array"
+        },
+        "entity_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "zone_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Zone Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "zone_id",
+        "entity_id"
+      ],
+      "title": "ForbiddenZoneOccupancyV1",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "SafetyAssessmentV1": {
+      "additionalProperties": false,
+      "properties": {
+        "agent_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Agent Id",
+          "type": "string"
+        },
+        "assessed_at": {
+          "format": "date-time",
+          "title": "Assessed At",
+          "type": "string"
+        },
+        "assessment_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Assessment Id",
+          "type": "string"
+        },
+        "asset_ids": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+            "type": "string"
+          },
+          "maxItems": 256,
+          "minItems": 1,
+          "title": "Asset Ids",
+          "type": "array"
+        },
+        "command_emitted": {
+          "const": false,
+          "default": false,
+          "title": "Command Emitted",
+          "type": "boolean"
+        },
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "evaluator_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Evaluator Id",
+          "type": "string"
+        },
+        "evaluator_version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Evaluator Version",
+          "type": "string"
+        },
+        "evidence_refs": {
+          "items": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 64,
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "input_captured_at": {
+          "format": "date-time",
+          "title": "Input Captured At",
+          "type": "string"
+        },
+        "policy_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "policy_version": {
+          "minimum": 1,
+          "title": "Policy Version",
+          "type": "integer"
+        },
+        "reasons": {
+          "items": {
+            "$ref": "#/$defs/SafetyReasonV1"
+          },
+          "maxItems": 128,
+          "title": "Reasons",
+          "type": "array"
+        },
+        "recommended_response": {
+          "enum": [
+            "none",
+            "operator_review",
+            "task_pause_candidate"
+          ],
+          "title": "Recommended Response",
+          "type": "string"
+        },
+        "run_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "shadow_mode": {
+          "const": true,
+          "default": true,
+          "title": "Shadow Mode",
+          "type": "boolean"
+        },
+        "snapshot_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Snapshot Id",
+          "type": "string"
+        },
+        "source_kind": {
+          "enum": [
+            "live",
+            "replay",
+            "synthetic"
+          ],
+          "title": "Source Kind",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "SAFE",
+            "WARNING",
+            "UNSAFE",
+            "UNKNOWN"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "valid_until": {
+          "format": "date-time",
+          "title": "Valid Until",
+          "type": "string"
+        }
+      },
+      "required": [
+        "assessment_id",
+        "snapshot_id",
+        "source_kind",
+        "agent_id",
+        "run_id",
+        "evaluator_id",
+        "evaluator_version",
+        "policy_id",
+        "policy_version",
+        "state",
+        "assessed_at",
+        "input_captured_at",
+        "valid_until",
+        "confidence",
+        "asset_ids",
+        "recommended_response"
+      ],
+      "title": "SafetyAssessmentV1",
+      "type": "object"
+    },
+    "SafetyPolicyV1": {
+      "additionalProperties": false,
+      "properties": {
+        "degraded_clock_state": {
+          "default": "WARNING",
+          "enum": [
+            "WARNING",
+            "UNKNOWN"
+          ],
+          "title": "Degraded Clock State",
+          "type": "string"
+        },
+        "future_tolerance_ms": {
+          "default": 2000,
+          "maximum": 10000,
+          "minimum": 0,
+          "title": "Future Tolerance Ms",
+          "type": "integer"
+        },
+        "max_signal_age_ms": {
+          "default": 250,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Max Signal Age Ms",
+          "type": "integer"
+        },
+        "minimum_tracking_confidence": {
+          "default": 0.6,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Minimum Tracking Confidence",
+          "type": "number"
+        },
+        "policy_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "require_human_distance": {
+          "default": true,
+          "title": "Require Human Distance",
+          "type": "boolean"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "task_sequence_mismatch_state": {
+          "default": "UNSAFE",
+          "enum": [
+            "WARNING",
+            "UNSAFE"
+          ],
+          "title": "Task Sequence Mismatch State",
+          "type": "string"
+        },
+        "unsafe_distance_m": {
+          "default": 0.5,
+          "minimum": 0.0,
+          "title": "Unsafe Distance M",
+          "type": "number"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        },
+        "warning_distance_m": {
+          "default": 1.0,
+          "exclusiveMinimum": 0.0,
+          "title": "Warning Distance M",
+          "type": "number"
+        }
+      },
+      "required": [
+        "policy_id",
+        "version"
+      ],
+      "title": "SafetyPolicyV1",
+      "type": "object"
+    },
+    "SafetyReasonV1": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_ids": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+            "type": "string"
+          },
+          "maxItems": 64,
+          "title": "Asset Ids",
+          "type": "array"
+        },
+        "code": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Code",
+          "type": "string"
+        },
+        "details": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Details",
+          "type": "object"
+        },
+        "message": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "WARNING",
+            "UNSAFE",
+            "UNKNOWN"
+          ],
+          "title": "Severity",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "severity",
+        "message"
+      ],
+      "title": "SafetyReasonV1",
+      "type": "object"
+    },
+    "SafetySignalV1": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Asset Id"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "sampled_at": {
+          "format": "date-time",
+          "title": "Sampled At",
+          "type": "string"
+        },
+        "signal_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Signal Id",
+          "type": "string"
+        },
+        "valid": {
+          "default": true,
+          "title": "Valid",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "signal_id",
+        "sampled_at"
+      ],
+      "title": "SafetySignalV1",
+      "type": "object"
+    },
+    "SafetySnapshotV1": {
+      "additionalProperties": false,
+      "properties": {
+        "agent_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Agent Id",
+          "type": "string"
+        },
+        "asset_ids": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+            "type": "string"
+          },
+          "maxItems": 256,
+          "minItems": 1,
+          "title": "Asset Ids",
+          "type": "array"
+        },
+        "captured_at": {
+          "format": "date-time",
+          "title": "Captured At",
+          "type": "string"
+        },
+        "clock_quality": {
+          "enum": [
+            "synchronized",
+            "degraded",
+            "unknown"
+          ],
+          "title": "Clock Quality",
+          "type": "string"
+        },
+        "coordinate_frame": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Coordinate Frame",
+          "type": "string"
+        },
+        "evidence_refs": {
+          "items": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 64,
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "forbidden_zone_occupancies": {
+          "items": {
+            "$ref": "#/$defs/ForbiddenZoneOccupancyV1"
+          },
+          "maxItems": 128,
+          "title": "Forbidden Zone Occupancies",
+          "type": "array"
+        },
+        "human_robot_distance_m": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Human Robot Distance M"
+        },
+        "run_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "signals": {
+          "items": {
+            "$ref": "#/$defs/SafetySignalV1"
+          },
+          "maxItems": 256,
+          "minItems": 1,
+          "title": "Signals",
+          "type": "array"
+        },
+        "snapshot_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Snapshot Id",
+          "type": "string"
+        },
+        "source_kind": {
+          "enum": [
+            "live",
+            "replay",
+            "synthetic"
+          ],
+          "title": "Source Kind",
+          "type": "string"
+        },
+        "task_progress": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TaskProgressV1"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "tracking_confidence": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tracking Confidence"
+        },
+        "ttl_ms": {
+          "default": 500,
+          "maximum": 10000,
+          "minimum": 10,
+          "title": "Ttl Ms",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "snapshot_id",
+        "source_kind",
+        "agent_id",
+        "run_id",
+        "captured_at",
+        "coordinate_frame",
+        "clock_quality",
+        "asset_ids",
+        "signals"
+      ],
+      "title": "SafetySnapshotV1",
+      "type": "object"
+    },
+    "TaskProgressV1": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_step": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Expected Step",
+          "type": "string"
+        },
+        "observed_step": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Observed Step",
+          "type": "string"
+        }
+      },
+      "required": [
+        "expected_step",
+        "observed_step"
+      ],
+      "title": "TaskProgressV1",
+      "type": "object"
+    }
+  },
+  "$id": "https://sang.local/contracts/safety/shadow-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "SANG command-free Unity safety Shadow Mode contract. The bundle documents three independently transported message types.",
+  "properties": {
+    "assessment": {
+      "$ref": "#/$defs/SafetyAssessmentV1"
+    },
+    "policy": {
+      "$ref": "#/$defs/SafetyPolicyV1"
+    },
+    "snapshot": {
+      "$ref": "#/$defs/SafetySnapshotV1"
+    }
+  },
+  "required": [
+    "snapshot",
+    "policy",
+    "assessment"
+  ],
+  "title": "SafetyContractV1",
+  "type": "object"
+}

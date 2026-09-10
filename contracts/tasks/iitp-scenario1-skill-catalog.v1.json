@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "catalog_id": "iitp-scenario1-simulation-skills",
+  "version": 1,
+  "skills": [
+    {
+      "capability": "simulate-material-delivery@1",
+      "title": "Deliver material",
+      "description": "Move the simulated carrier and base plate from the start position to the Scenario 1 workcell dock.",
+      "category": "Mobile robot",
+      "execution_modes": [
+        "SIMULATION"
+      ],
+      "parameter_schema": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "title": "Operation",
+            "description": "Adapter-owned Scenario 1 operation identity.",
+            "const": "deliver-base-plate",
+            "default": "deliver-base-plate",
+            "readOnly": true
+          },
+          "speed_scale": {
+            "type": "number",
+            "title": "Motion speed",
+            "description": "Simulation-only speed relative to the tested motion. Slower values increase duration.",
+            "default": 1.0,
+            "minimum": 0.5,
+            "maximum": 1.0,
+            "multipleOf": 0.05,
+            "unit": "x"
+          }
+        },
+        "required": [
+          "operation"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "capability": "simulate-pick-place@1",
+      "title": "Pick and place material",
+      "description": "Run the Scenario 1 OMY material-transfer motion using the operation selected by the fixed adapter step.",
+      "category": "Manipulator",
+      "execution_modes": [
+        "SIMULATION"
+      ],
+      "parameter_schema": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "title": "Operation",
+            "description": "Adapter-owned transfer direction for this Scenario 1 step.",
+            "enum": [
+              "place-on-waam-table",
+              "return-to-carrier"
+            ]
+          },
+          "speed_scale": {
+            "type": "number",
+            "title": "Motion speed",
+            "description": "Simulation-only OMY motion speed relative to the tested trajectory.",
+            "default": 1.0,
+            "minimum": 0.5,
+            "maximum": 1.0,
+            "multipleOf": 0.05,
+            "unit": "x"
+          }
+        },
+        "required": [
+          "operation"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "capability": "simulate-waam-path@1",
+      "title": "Follow WAAM path",
+      "description": "Run the output-disconnected RB5 WAAM path and synchronized monitoring media in Unity.",
+      "category": "Process simulation",
+      "execution_modes": [
+        "SIMULATION"
+      ],
+      "parameter_schema": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "title": "Operation",
+            "description": "Adapter-owned Scenario 1 WAAM operation identity.",
+            "const": "follow-simulated-waam-path",
+            "default": "follow-simulated-waam-path",
+            "readOnly": true
+          },
+          "speed_scale": {
+            "type": "number",
+            "title": "Motion speed",
+            "description": "Simulation-only RB5 path and monitoring playback speed relative to the tested run.",
+            "default": 1.0,
+            "minimum": 0.5,
+            "maximum": 1.0,
+            "multipleOf": 0.05,
+            "unit": "x"
+          }
+        },
+        "required": [
+          "operation"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "capability": "simulate-material-return@1",
+      "title": "Return material",
+      "description": "Secure the simulated base plate and return the carrier to the Scenario 1 start position.",
+      "category": "Mobile robot",
+      "execution_modes": [
+        "SIMULATION"
+      ],
+      "parameter_schema": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "title": "Operation",
+            "description": "Adapter-owned Scenario 1 operation identity.",
+            "const": "return-with-base-plate",
+            "default": "return-with-base-plate",
+            "readOnly": true
+          },
+          "speed_scale": {
+            "type": "number",
+            "title": "Motion speed",
+            "description": "Simulation-only speed relative to the tested return motion.",
+            "default": 1.0,
+            "minimum": 0.5,
+            "maximum": 1.0,
+            "multipleOf": 0.05,
+            "unit": "x"
+          }
+        },
+        "required": [
+          "operation"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

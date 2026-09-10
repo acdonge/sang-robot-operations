@@ -1,5 +1,10 @@
 # SANG Fleet Workspace Requirements
 
+Document authority: this file defines mandatory product and safety requirements. Current implementation
+status and ordering are maintained only in
+[`../SANG_MASTER_IMPLEMENTATION_PLAN.md`](../SANG_MASTER_IMPLEMENTATION_PLAN.md); document precedence is
+defined in [`DOCUMENT_AUTHORITY_INDEX.md`](DOCUMENT_AUTHORITY_INDEX.md).
+
 ## Purpose
 
 Provide a ROS 2 Jazzy, observation-first operations system for multiple robot workcells, with durable
@@ -56,6 +61,71 @@ observation profiles.
     `sensor_msgs/msg/CompressedImage` JPEG topics. The Catalog requests at most four selected camera
     frames on one record-time timeline, displays each nearest frame's actual skew, never downloads the
     full MCAP for playback, and adds no robot, vendor, policy, welder or feeder command route.
+20. Unity Safety Phase 0 uses the versioned command-free contract under `contracts/safety/`. Central
+    accepts only Task Run-assigned asset assessments, keeps one latest row plus bounded meaningful transitions,
+    and exposes read APIs. `UNSAFE`, `UNKNOWN`, and `task_pause_candidate` remain Shadow evidence and
+    must not publish, invoke, or imply a physical Task Pause, robot, vendor, welder, feeder, or E-stop
+    command.
+21. IITP Scenario 1 is registered from a versioned Task bundle with simulation assets kept separate
+    from physical assets. Unity may send only `synthetic` or `replay` snapshots to a loopback Safety
+    Edge; the Edge uses the reference evaluator and forwards assessments only. Its workflow is mobile
+    delivery, OMY pre pick/place, RB5 WAAM, OMY post pick/place, and mobile return. Activating the
+    supplied Unity UDP Sim-to-Real launchers remains outside this integration. The Unity Reporter must
+    refuse to run whenever either supplied Sim-to-Real environment arm flag is active.
+22. Heterogeneous robot control development and every later physical release must follow
+    `docs/MULTI_ROBOT_ORCHESTRATOR_IMPLEMENTATION_DESIGN.md`: Central owns intent, audit,
+    reservations, authorization and bounded delegation grants; a Processing-PC Cell Orchestrator owns
+    capability-based DAG sequencing and recovery; only a local Device Agent may hold a vendor command
+    handle. G1-G6a software/disconnected-HIL implementation does not authorize physical motion.
+    Scenario 1/2 remain conformance fixtures. Existing read-only packages retain zero command sinks,
+    and no physical manifest may set `command_sink_present: true` before the documented G7 attended
+    commissioning gate.
+23. Workflow Studio authoring uses mutable, revisioned Drafts and atomically publishes an immutable
+    Task Definition plus `WorkflowDefinitionV2` and SHA-256 linkage. Published versions have no update
+    or delete path; edits and Task copies target a new version or new identity. Manager UI execution is
+    limited to queueing one checked-in-profile, output-disconnected Unity `SIMULATION` Run for a
+    separate local Worker. Central HTTP must not execute Unity, spawn scripts, accept runtime paths, or
+    expose physical robot/process commands. Simulation Runs pin the exact publication and profile
+    digests, reject stale/non-isolated Workers, and become `INTERRUPTED` after Worker lease expiry
+    without automatic redispatch.
+24. Normal Workflow editing is robot-action based. Each UI-visible action belongs to one robot type
+    and pins a versioned logical action, Skill capability, fixed intent, safe editable inputs, timeout,
+    allowlisted runtime, registry-owned script reference, entrypoint, and SHA-256 digest. The Manager
+    chooses only Robot, Action, order, and declared safe inputs; Central derives roles, Step IDs, fixed
+    operations, and a linear dependency chain. The browser cannot upload source, submit paths, execute
+    arbitrary scripts, or author endpoints, ROS topics, joints, vendor calls, or physical bindings.
+25. The separate Admin Action Library may accept one bounded UTF-8 `.cs` or `.py` source file into a
+    mutable Action Draft. Central stores the bytes in a content-addressed data directory, returns only
+    file metadata and SHA-256, and never imports, compiles, or executes uploaded source. Source Gate
+    statically enforces the registered Unity C# or ROS 2 Python simulation contract and rejects file,
+    process, network, native-library, reflection, dynamic-code and deployment APIs. Simulation Gate
+    passes only when the exact script digest is already installed in a configured output-disconnected
+    adapter and an immutable completed Simulation Run contains the matching Step, Capability and fixed
+    parameters. Both Gates must pass before immutable publication; only published versions appear in
+    normal Workflow authoring. Action Library v1 cannot publish physical Actions or modify Unity,
+    robot, vendor, ROS topic, endpoint, joint, welder or feeder configuration.
+26. AAS Asset Package Phase A0 is a command-free contract layer under `contracts/assets/`. Central
+    SQLite remains the operational identity source of truth; global/AAS identity is read-only
+    projection metadata, and model bytes remain immutable Object Store objects referenced by exact
+    size and SHA-256. Scene Binding v1 accepts simulation assets only, requires stable Unity binding
+    IDs, exact package digests, articulation/frame/controller/Reset/outcome contracts, and literal
+    `physical_output_connected=false`. A PASS Simulation Qualification pins the exact Scene, package,
+    Action source/build, adapter/orchestrator build, validation profile, Run, report and isolation
+    evidence. A0 introduces no AAS Repository, DB migration, Unity loader, ROS 2 transport, OPC UA
+    write, browser path, vendor endpoint, high-rate payload, or physical command sink.
+27. The frozen SANG OPC UA v1 tree and Central aggregate are compatibility projections, not an OPC UA
+    Robotics 1.02 conformance claim. Any official projection must import pinned Core/DI/IA/Robotics
+    NodeSets, preserve the official types and NodeIds, provide truthful mandatory controller, axis,
+    power-train, safety, identification, unit and range data, declare a per-robot profile/evidence
+    state, and preserve the existing v1 tree during migration.
+28. Raw D405, D455, OTOS, MJPEG and render-camera streams are not modeled as OPC UA Machine Vision
+    systems. That Companion Specification may be adopted only for a complete processing system with
+    declared modes, jobs/recipes or configuration, results, events and lifecycle. Raw frame/video
+    payloads continue to use the preview/ROS 2/MCAP paths.
+29. Before implementing an AAS projection, AASX export or Repository, the project must pin exact
+    current IDTA metamodel, API, serialization and package revisions and define one-way ownership from
+    SQLite/Object Store to each Submodel. A0 terminology and identifiers remain internal AAS-ready
+    metadata until that mapping passes conformance-oriented tests.
 
 ## Operational contracts
 
@@ -67,12 +137,25 @@ observation profiles.
   changes, speed changes, move/task APIs, and ROS command interfaces are forbidden.
 - Hardware reconnect tests preserve torque-off physical safety and validation evidence.
 - Isaac runners disable scene ROS action graphs, default to `ROS_DOMAIN_ID=99`, create no hardware-command subscribers, and bound any exercise motion to the documented simulation limit.
+- The separate `sim/isaac_twin` pilot uses domain 98 with LOCALHOST discovery and
+  publisher-only ROS feedback. Its checked-in schema-3 Workflow adapter reuses the
+  durable simulation queue, not the hardware observer. The RB5 pilot permits only
+  base +0.1 rad and return-to-zero. The separate `sim/isaac_scenario1` extension
+  permits only its pinned five-stage recorded-path workflow and explicit virtual
+  carrier/grasp fixtures; it does not qualify real mobile/grasp/welding dynamics.
+  Both require actual measured completion predicates. Worker authority expires within two wall
+  seconds, regardless of simulation time. Reset clears run state without moving
+  joints. Unity consumes ROS-derived measurements in a separate observer build and
+  never executes motion in this topology. Pilot success does not authorize physical
+  control, prove hard real-time behavior, or qualify collision/safety assessment.
 - Changes to the published SANG model namespace or v1 NodeId rules require a new contract major
   version; namespace indexes are never persisted as identity.
 - Stable configuration belongs in versioned manifests and the SQLite registry; high-rate selected
   observations belong in immutable MCAP objects. A future vector database may contain derived
   embeddings/references only, and a future AAS layer maps durable asset semantics without replacing
   either authoritative store.
+- Workflow authoring payloads are viewer-readable contracts, not a secret store. Bodies, nesting and
+  collections are bounded, and credentials plus deployment-specific connection details are rejected.
 
 ## MCP requirements
 

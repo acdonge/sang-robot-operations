@@ -1,0 +1,293 @@
+{
+  "$defs": {
+    "DeviceExecutionContractV1": {
+      "additionalProperties": false,
+      "properties": {
+        "agent_api": {
+          "maxLength": 256,
+          "minLength": 3,
+          "title": "Agent Api",
+          "type": "string"
+        },
+        "command_sink_present": {
+          "default": false,
+          "title": "Command Sink Present",
+          "type": "boolean"
+        },
+        "supported_modes": {
+          "items": {
+            "enum": [
+              "OBSERVE_ONLY",
+              "SIMULATION",
+              "REPLAY",
+              "SHADOW",
+              "HIL",
+              "PHYSICAL_AUTO",
+              "PHYSICAL_TELEOP",
+              "MAINTENANCE"
+            ],
+            "type": "string"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Supported Modes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "agent_api",
+        "supported_modes"
+      ],
+      "title": "DeviceExecutionContractV1",
+      "type": "object"
+    },
+    "FrameContractV1": {
+      "additionalProperties": false,
+      "properties": {
+        "mappings": {
+          "maxProperties": 128,
+          "minProperties": 1,
+          "patternProperties": {
+            "^[A-Za-z0-9][A-Za-z0-9._-]*$": {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+              "type": "string"
+            }
+          },
+          "propertyNames": {
+            "maxLength": 64,
+            "minLength": 1
+          },
+          "title": "Mappings",
+          "type": "object"
+        },
+        "world_calibration_required": {
+          "default": true,
+          "title": "World Calibration Required",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "mappings"
+      ],
+      "title": "FrameContractV1",
+      "type": "object"
+    },
+    "ObservationChannelV1": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Key",
+          "type": "string"
+        },
+        "message_type": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Message Type",
+          "type": "string"
+        },
+        "min_rate_hz": {
+          "exclusiveMinimum": 0.0,
+          "title": "Min Rate Hz",
+          "type": "number"
+        }
+      },
+      "required": [
+        "key",
+        "message_type",
+        "min_rate_hz"
+      ],
+      "title": "ObservationChannelV1",
+      "type": "object"
+    },
+    "ProfileRefV1": {
+      "additionalProperties": false,
+      "properties": {
+        "profile_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "profile_id",
+        "version"
+      ],
+      "title": "ProfileRefV1",
+      "type": "object"
+    },
+    "RegistryRefV1": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "object_id",
+        "version",
+        "sha256"
+      ],
+      "title": "RegistryRefV1",
+      "type": "object"
+    },
+    "UnitContractV1": {
+      "additionalProperties": false,
+      "properties": {
+        "mappings": {
+          "maxProperties": 128,
+          "minProperties": 1,
+          "patternProperties": {
+            "^[A-Za-z0-9][A-Za-z0-9._-]*$": {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+              "type": "string"
+            }
+          },
+          "propertyNames": {
+            "maxLength": 64,
+            "minLength": 1
+          },
+          "title": "Mappings",
+          "type": "object"
+        }
+      },
+      "required": [
+        "mappings"
+      ],
+      "title": "UnitContractV1",
+      "type": "object"
+    },
+    "VendorIdentityV1": {
+      "additionalProperties": false,
+      "properties": {
+        "make": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Make",
+          "type": "string"
+        },
+        "model": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Model",
+          "type": "string"
+        }
+      },
+      "required": [
+        "make",
+        "model"
+      ],
+      "title": "VendorIdentityV1",
+      "type": "object"
+    }
+  },
+  "$id": "https://sang.local/contracts/orchestration/device-manifest-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Immutable technical manifest separated from deployment secrets.",
+  "properties": {
+    "capability_refs": {
+      "items": {
+        "maxLength": 96,
+        "minLength": 3,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*@[1-9][0-9]*$",
+        "type": "string"
+      },
+      "maxItems": 256,
+      "minItems": 1,
+      "title": "Capability Refs",
+      "type": "array"
+    },
+    "execution_contract": {
+      "$ref": "#/$defs/DeviceExecutionContractV1"
+    },
+    "frames": {
+      "$ref": "#/$defs/FrameContractV1"
+    },
+    "limits_ref": {
+      "$ref": "#/$defs/RegistryRefV1"
+    },
+    "local_fail_behavior_ref": {
+      "maxLength": 2048,
+      "minLength": 3,
+      "title": "Local Fail Behavior Ref",
+      "type": "string"
+    },
+    "manifest_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "title": "Manifest Id",
+      "type": "string"
+    },
+    "observation_contract": {
+      "items": {
+        "$ref": "#/$defs/ObservationChannelV1"
+      },
+      "maxItems": 256,
+      "title": "Observation Contract",
+      "type": "array"
+    },
+    "profile_ref": {
+      "$ref": "#/$defs/ProfileRefV1"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "units": {
+      "$ref": "#/$defs/UnitContractV1"
+    },
+    "vendor": {
+      "$ref": "#/$defs/VendorIdentityV1"
+    },
+    "version": {
+      "minimum": 1,
+      "title": "Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "manifest_id",
+    "version",
+    "profile_ref",
+    "vendor",
+    "capability_refs",
+    "frames",
+    "units",
+    "limits_ref",
+    "execution_contract",
+    "local_fail_behavior_ref"
+  ],
+  "title": "DeviceManifestV1",
+  "type": "object"
+}

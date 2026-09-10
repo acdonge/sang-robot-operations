@@ -1,0 +1,29 @@
+# Optional local virtual-device Worker. No hardware/device mounts or ROS commands.
+services:
+  isaac-workflow-worker:
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    user: "${SANG_UID:-1000}:${SANG_GID:-1000}"
+    init: true
+    restart: "no"
+    working_dir: /ws
+    environment:
+      HOME: /var/lib/sang
+      PYTHONPATH: /ws/src/fleet_control_plane
+    volumes:
+      - ${SANG_WORKSPACE:?set SANG_WORKSPACE}:/ws:ro
+      - ${SANG_CENTRAL_DATA:?set SANG_CENTRAL_DATA}:/var/lib/sang
+      - /tmp/sang-isaac-rb5-twin:/tmp/sang-isaac-rb5-twin
+    command:
+      - python3
+      - -m
+      - fleet_control_plane.workflow_simulation_worker
+      - --db-path
+      - /var/lib/sang/fleet.db
+      - --worker-id
+      - isaac-rb5-twin-worker
+      - --adapter-profile
+      - /ws/contracts/tasks/isaac-rb5-twin-adapter.v1.json
+      - --scenario-config
+      - /ws/config/isaac_rb5_twin_simulation.yaml
+      - --runtime-root
+      - /var/lib/sang/isaac-workflow-simulations

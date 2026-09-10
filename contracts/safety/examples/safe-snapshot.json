@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "snapshot_id": "snapshot-example-001",
+  "source_kind": "synthetic",
+  "agent_id": "processing-lab1",
+  "run_id": "run-safety-01",
+  "captured_at": "2026-08-27T12:00:00Z",
+  "ttl_ms": 500,
+  "coordinate_frame": "rb5-cell-world",
+  "clock_quality": "synchronized",
+  "asset_ids": [
+    "rb5-lab-robot"
+  ],
+  "signals": [
+    {
+      "signal_id": "robot-state",
+      "sampled_at": "2026-08-27T12:00:00Z",
+      "asset_id": "rb5-lab-robot",
+      "required": true,
+      "valid": true,
+      "confidence": 0.98
+    }
+  ],
+  "human_robot_distance_m": 1.5,
+  "tracking_confidence": 0.95,
+  "forbidden_zone_occupancies": [],
+  "task_progress": {
+    "expected_step": "approach",
+    "observed_step": "approach"
+  },
+  "evidence_refs": []
+}

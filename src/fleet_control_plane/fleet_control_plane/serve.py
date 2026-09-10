@@ -65,8 +65,32 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
         type=Path,
         help="checked-in Robot Manifest directory used for recording quality limits",
     )
+    parser.add_argument(
+        "--aas-model-lock",
+        type=Path,
+        default=Path("/ws/contracts/aas/metamodel.lock.yaml"),
+        help="pinned IDTA metamodel lock used for read-only AAS imports",
+    )
     parser.add_argument("--clock-sync-host")
     parser.add_argument("--clock-sync-timeout-s", type=float, default=1.0)
+    parser.add_argument(
+        "--workflow-adapter-profile",
+        action="append",
+        type=Path,
+        default=[],
+        help="checked-in output-disconnected Unity adapter profile",
+    )
+    parser.add_argument(
+        "--workflow-skill-catalog",
+        action="append",
+        type=Path,
+        default=[],
+        help="checked-in versioned Skill definitions for Workflow authoring",
+    )
+    parser.add_argument(
+        "--workflow-runtime-base-url",
+        help="loopback URL of the fixed Unity runtime supervisor",
+    )
     options = parser.parse_args(args)
     if not 1 <= options.port <= 65535:
         parser.error("port must be between 1 and 65535")
@@ -158,6 +182,10 @@ def main(args: list[str] | None = None) -> None:
                 timeout_s=options.clock_sync_timeout_s,
             )
         ),
+        workflow_adapter_profile_paths=options.workflow_adapter_profile,
+        workflow_skill_catalog_paths=options.workflow_skill_catalog,
+        workflow_runtime_base_url=options.workflow_runtime_base_url,
+        aas_model_lock_path=options.aas_model_lock,
         allowed_admin_hosts=frozenset(
             {"127.0.0.1", "localhost", "::1", "testserver", *options.allowed_host}
         ),

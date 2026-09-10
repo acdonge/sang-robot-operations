@@ -1,0 +1,173 @@
+{
+  "$defs": {
+    "AssetRelationshipV1": {
+      "additionalProperties": false,
+      "properties": {
+        "relationship": {
+          "enum": [
+            "isDigitalTwinOf",
+            "hasDigitalTwin",
+            "mountedOn",
+            "composedOf",
+            "observes",
+            "locatedIn",
+            "represents"
+          ],
+          "title": "Relationship",
+          "type": "string"
+        },
+        "target_asset_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Asset Id"
+        },
+        "target_global_asset_id": {
+          "maxLength": 1024,
+          "minLength": 8,
+          "pattern": "^(?:urn:[A-Za-z0-9][A-Za-z0-9:._~/%-]*|https://[A-Za-z0-9][A-Za-z0-9._~/%-]*)$",
+          "title": "Target Global Asset Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "relationship",
+        "target_global_asset_id"
+      ],
+      "title": "AssetRelationshipV1",
+      "type": "object"
+    }
+  },
+  "$id": "https://sang.local/contracts/assets/global-asset-identity-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Read-only AAS identity projection linked to one stable SANG asset.",
+  "properties": {
+    "aas_id": {
+      "maxLength": 1024,
+      "minLength": 8,
+      "pattern": "^(?:urn:[A-Za-z0-9][A-Za-z0-9:._~/%-]*|https://[A-Za-z0-9][A-Za-z0-9._~/%-]*)$",
+      "title": "Aas Id",
+      "type": "string"
+    },
+    "asset_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "title": "Asset Id",
+      "type": "string"
+    },
+    "asset_type": {
+      "enum": [
+        "robot",
+        "camera",
+        "eef",
+        "welder",
+        "feeder",
+        "mobile_robot",
+        "sensor",
+        "other"
+      ],
+      "title": "Asset Type",
+      "type": "string"
+    },
+    "display_name": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Display Name",
+      "type": "string"
+    },
+    "global_asset_id": {
+      "maxLength": 1024,
+      "minLength": 8,
+      "pattern": "^(?:urn:[A-Za-z0-9][A-Za-z0-9:._~/%-]*|https://[A-Za-z0-9][A-Za-z0-9._~/%-]*)$",
+      "title": "Global Asset Id",
+      "type": "string"
+    },
+    "identity_revision": {
+      "minimum": 1,
+      "title": "Identity Revision",
+      "type": "integer"
+    },
+    "lifecycle_state": {
+      "default": "active",
+      "enum": [
+        "active",
+        "decommissioned"
+      ],
+      "title": "Lifecycle State",
+      "type": "string"
+    },
+    "projection_mode": {
+      "const": "read_only",
+      "default": "read_only",
+      "title": "Projection Mode",
+      "type": "string"
+    },
+    "relationships": {
+      "items": {
+        "$ref": "#/$defs/AssetRelationshipV1"
+      },
+      "maxItems": 256,
+      "title": "Relationships",
+      "type": "array"
+    },
+    "runtime_class": {
+      "enum": [
+        "physical",
+        "simulation",
+        "replay"
+      ],
+      "title": "Runtime Class",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "submodel_slots": {
+      "items": {
+        "enum": [
+          "identification_nameplate",
+          "technical_data",
+          "capabilities_skills",
+          "simulation_model",
+          "frames_kinematics",
+          "safety_workspace",
+          "calibration_maintenance",
+          "runtime_interfaces",
+          "data_model_provenance",
+          "relationships"
+        ],
+        "type": "string"
+      },
+      "maxItems": 10,
+      "minItems": 1,
+      "title": "Submodel Slots",
+      "type": "array"
+    }
+  },
+  "required": [
+    "asset_id",
+    "global_asset_id",
+    "aas_id",
+    "identity_revision",
+    "runtime_class",
+    "asset_type",
+    "display_name",
+    "submodel_slots"
+  ],
+  "title": "GlobalAssetIdentityV1",
+  "type": "object"
+}

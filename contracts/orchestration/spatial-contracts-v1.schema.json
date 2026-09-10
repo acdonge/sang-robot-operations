@@ -1,0 +1,416 @@
+{
+  "$defs": {
+    "ApprovalV1": {
+      "additionalProperties": false,
+      "properties": {
+        "approved_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Approved At"
+        },
+        "approver_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Approver Id"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expires At"
+        },
+        "state": {
+          "enum": [
+            "draft",
+            "approved",
+            "revoked"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "title": "ApprovalV1",
+      "type": "object"
+    },
+    "BoxGeometryV1": {
+      "additionalProperties": false,
+      "properties": {
+        "center": {
+          "$ref": "#/$defs/Vec3V1"
+        },
+        "kind": {
+          "const": "box",
+          "default": "box",
+          "title": "Kind",
+          "type": "string"
+        },
+        "size": {
+          "$ref": "#/$defs/Vec3V1"
+        }
+      },
+      "required": [
+        "center",
+        "size"
+      ],
+      "title": "BoxGeometryV1",
+      "type": "object"
+    },
+    "CalibrationV1": {
+      "additionalProperties": false,
+      "properties": {
+        "approval": {
+          "$ref": "#/$defs/ApprovalV1"
+        },
+        "artifact_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Artifact Sha256",
+          "type": "string"
+        },
+        "calibration_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Calibration Id",
+          "type": "string"
+        },
+        "method": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Method",
+          "type": "string"
+        },
+        "residual_m": {
+          "minimum": 0.0,
+          "title": "Residual M",
+          "type": "number"
+        },
+        "sample_count": {
+          "minimum": 1,
+          "title": "Sample Count",
+          "type": "integer"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "source_frame": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Source Frame",
+          "type": "string"
+        },
+        "target_frame": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Target Frame",
+          "type": "string"
+        },
+        "transform": {
+          "$ref": "#/$defs/RigidTransformV1"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "calibration_id",
+        "version",
+        "source_frame",
+        "target_frame",
+        "transform",
+        "method",
+        "residual_m",
+        "sample_count",
+        "artifact_sha256",
+        "approval"
+      ],
+      "title": "CalibrationV1",
+      "type": "object"
+    },
+    "MeshGeometryV1": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "mesh",
+          "default": "mesh",
+          "title": "Kind",
+          "type": "string"
+        },
+        "mesh_ref": {
+          "$ref": "#/$defs/RegistryRefV1"
+        }
+      },
+      "required": [
+        "mesh_ref"
+      ],
+      "title": "MeshGeometryV1",
+      "type": "object"
+    },
+    "PolygonPrismGeometryV1": {
+      "additionalProperties": false,
+      "properties": {
+        "footprint": {
+          "items": {
+            "$ref": "#/$defs/Vec2V1"
+          },
+          "maxItems": 256,
+          "minItems": 3,
+          "title": "Footprint",
+          "type": "array"
+        },
+        "kind": {
+          "const": "polygon_prism",
+          "default": "polygon_prism",
+          "title": "Kind",
+          "type": "string"
+        },
+        "max_z": {
+          "title": "Max Z",
+          "type": "number"
+        },
+        "min_z": {
+          "title": "Min Z",
+          "type": "number"
+        }
+      },
+      "required": [
+        "footprint",
+        "min_z",
+        "max_z"
+      ],
+      "title": "PolygonPrismGeometryV1",
+      "type": "object"
+    },
+    "RegistryRefV1": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "object_id",
+        "version",
+        "sha256"
+      ],
+      "title": "RegistryRefV1",
+      "type": "object"
+    },
+    "RigidTransformV1": {
+      "additionalProperties": false,
+      "properties": {
+        "rotation_xyzw": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "title": "Rotation Xyzw",
+          "type": "array"
+        },
+        "translation_m": {
+          "$ref": "#/$defs/Vec3V1"
+        }
+      },
+      "required": [
+        "translation_m",
+        "rotation_xyzw"
+      ],
+      "title": "RigidTransformV1",
+      "type": "object"
+    },
+    "Vec2V1": {
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "title": "Y",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "title": "Vec2V1",
+      "type": "object"
+    },
+    "Vec3V1": {
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "title": "Y",
+          "type": "number"
+        },
+        "z": {
+          "title": "Z",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "z"
+      ],
+      "title": "Vec3V1",
+      "type": "object"
+    },
+    "ZoneV1": {
+      "additionalProperties": false,
+      "properties": {
+        "approval": {
+          "$ref": "#/$defs/ApprovalV1"
+        },
+        "classification": {
+          "enum": [
+            "operational",
+            "shared",
+            "restricted",
+            "forbidden"
+          ],
+          "title": "Classification",
+          "type": "string"
+        },
+        "frame_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Frame Id",
+          "type": "string"
+        },
+        "geometry": {
+          "discriminator": {
+            "mapping": {
+              "box": "#/$defs/BoxGeometryV1",
+              "mesh": "#/$defs/MeshGeometryV1",
+              "polygon_prism": "#/$defs/PolygonPrismGeometryV1"
+            },
+            "propertyName": "kind"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/BoxGeometryV1"
+            },
+            {
+              "$ref": "#/$defs/PolygonPrismGeometryV1"
+            },
+            {
+              "$ref": "#/$defs/MeshGeometryV1"
+            }
+          ],
+          "title": "Geometry"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        },
+        "workcell_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Workcell Id",
+          "type": "string"
+        },
+        "zone_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Zone Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "zone_id",
+        "version",
+        "workcell_id",
+        "frame_id",
+        "classification",
+        "geometry",
+        "approval"
+      ],
+      "title": "ZoneV1",
+      "type": "object"
+    }
+  },
+  "$id": "https://sang.local/contracts/orchestration/spatial-contracts-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Versioned zone and calibration contracts.",
+  "properties": {
+    "calibration": {
+      "$ref": "#/$defs/CalibrationV1"
+    },
+    "zone": {
+      "$ref": "#/$defs/ZoneV1"
+    }
+  },
+  "required": [
+    "zone",
+    "calibration"
+  ],
+  "title": "SpatialContractBundleV1",
+  "type": "object"
+}

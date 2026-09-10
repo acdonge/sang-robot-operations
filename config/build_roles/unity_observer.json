@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "profile_id": "sang-unity-observer",
+  "build_role": "observer",
+  "assembly_name": "Sang.Observer",
+  "include_globs": [
+    "unity/Sang.Observer/Runtime/*.cs",
+    "unity/Sang.Observer/Runtime/*.asmdef"
+  ],
+  "exclude_globs": [],
+  "forbidden_assemblies": [
+    "Assembly-CSharp",
+    "Sang.LegacyPhysicalTransport"
+  ]
+}

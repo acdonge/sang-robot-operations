@@ -1,0 +1,727 @@
+{
+  "$defs": {
+    "ArticulationBindingV1": {
+      "additionalProperties": false,
+      "properties": {
+        "ordered_joints": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+            "type": "string"
+          },
+          "maxItems": 256,
+          "minItems": 1,
+          "title": "Ordered Joints",
+          "type": "array"
+        },
+        "root_binding_id": {
+          "maxLength": 192,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$",
+          "title": "Root Binding Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "root_binding_id",
+        "ordered_joints"
+      ],
+      "title": "ArticulationBindingV1",
+      "type": "object"
+    },
+    "ArtifactObjectRefV1": {
+      "additionalProperties": false,
+      "properties": {
+        "file_name": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._+ -]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "File Name"
+        },
+        "media_type": {
+          "maxLength": 160,
+          "minLength": 3,
+          "pattern": "^[a-z0-9][a-z0-9!#$&^_.+-]+/[a-z0-9][a-z0-9!#$&^_.+-]+$",
+          "title": "Media Type",
+          "type": "string"
+        },
+        "object_id": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "unity_prefab",
+            "unity_scene_package",
+            "urdf",
+            "xacro",
+            "srdf",
+            "usd",
+            "visual_meshes",
+            "collision_meshes",
+            "materials_textures",
+            "controller_assembly",
+            "reset_profile",
+            "frame_unit_contract",
+            "camera_intrinsics",
+            "camera_extrinsics",
+            "workspace_geometry",
+            "calibration",
+            "vendor_documentation",
+            "license",
+            "build_attestation",
+            "validation_report",
+            "mcap_evidence",
+            "preview_media"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size_bytes": {
+          "exclusiveMinimum": 0,
+          "title": "Size Bytes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "role",
+        "object_id",
+        "media_type",
+        "sha256",
+        "size_bytes"
+      ],
+      "title": "ArtifactObjectRefV1",
+      "type": "object"
+    },
+    "AssetPackageRefV1": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_package_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Asset Package Id",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "asset_package_id",
+        "version",
+        "sha256"
+      ],
+      "title": "AssetPackageRefV1",
+      "type": "object"
+    },
+    "ControllerBindingV1": {
+      "additionalProperties": false,
+      "properties": {
+        "component_binding_id": {
+          "maxLength": 192,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$",
+          "title": "Component Binding Id",
+          "type": "string"
+        },
+        "contract_ref": {
+          "maxLength": 192,
+          "minLength": 3,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*@[1-9][0-9]*$",
+          "title": "Contract Ref",
+          "type": "string"
+        }
+      },
+      "required": [
+        "component_binding_id",
+        "contract_ref"
+      ],
+      "title": "ControllerBindingV1",
+      "type": "object"
+    },
+    "GlobalAssetReferenceV1": {
+      "additionalProperties": false,
+      "properties": {
+        "aas_id": {
+          "maxLength": 1024,
+          "minLength": 8,
+          "pattern": "^(?:urn:[A-Za-z0-9][A-Za-z0-9:._~/%-]*|https://[A-Za-z0-9][A-Za-z0-9._~/%-]*)$",
+          "title": "Aas Id",
+          "type": "string"
+        },
+        "asset_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "global_asset_id": {
+          "maxLength": 1024,
+          "minLength": 8,
+          "pattern": "^(?:urn:[A-Za-z0-9][A-Za-z0-9:._~/%-]*|https://[A-Za-z0-9][A-Za-z0-9._~/%-]*)$",
+          "title": "Global Asset Id",
+          "type": "string"
+        },
+        "identity_revision": {
+          "minimum": 1,
+          "title": "Identity Revision",
+          "type": "integer"
+        },
+        "runtime_class": {
+          "enum": [
+            "physical",
+            "simulation",
+            "replay"
+          ],
+          "title": "Runtime Class",
+          "type": "string"
+        }
+      },
+      "required": [
+        "asset_id",
+        "global_asset_id",
+        "aas_id",
+        "identity_revision",
+        "runtime_class"
+      ],
+      "title": "GlobalAssetReferenceV1",
+      "type": "object"
+    },
+    "OutputIsolationV1": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_ref": {
+          "$ref": "#/$defs/RegistryRefV1"
+        },
+        "physical_output_connected": {
+          "const": false,
+          "default": false,
+          "title": "Physical Output Connected",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "evidence_ref"
+      ],
+      "title": "OutputIsolationV1",
+      "type": "object"
+    },
+    "RegistryRefV1": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "object_id",
+        "version",
+        "sha256"
+      ],
+      "title": "RegistryRefV1",
+      "type": "object"
+    },
+    "SceneAssetBindingV1": {
+      "additionalProperties": false,
+      "properties": {
+        "articulation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ArticulationBindingV1"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "asset_type": {
+          "enum": [
+            "robot",
+            "camera",
+            "eef",
+            "welder",
+            "feeder",
+            "mobile_robot",
+            "sensor",
+            "other"
+          ],
+          "title": "Asset Type",
+          "type": "string"
+        },
+        "collider_group": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Collider Group"
+        },
+        "controller": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ControllerBindingV1"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "diagnostic_hierarchy_path": {
+          "anyOf": [
+            {
+              "maxLength": 1024,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Diagnostic Hierarchy Path"
+        },
+        "expected_asset_profile": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Expected Asset Profile",
+          "type": "string"
+        },
+        "frames": {
+          "maxProperties": 128,
+          "minProperties": 1,
+          "patternProperties": {
+            "^[A-Za-z0-9][A-Za-z0-9._-]*$": {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+              "type": "string"
+            }
+          },
+          "propertyNames": {
+            "maxLength": 64,
+            "minLength": 1
+          },
+          "title": "Frames",
+          "type": "object"
+        },
+        "identity": {
+          "$ref": "#/$defs/GlobalAssetReferenceV1"
+        },
+        "outcome_contract_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionedObjectRefV1"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "package_ref": {
+          "$ref": "#/$defs/AssetPackageRefV1"
+        },
+        "reset_contract_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionedObjectRefV1"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "sensors": {
+          "items": {
+            "$ref": "#/$defs/SceneSensorBindingV1"
+          },
+          "maxItems": 64,
+          "title": "Sensors",
+          "type": "array"
+        },
+        "signals": {
+          "items": {
+            "$ref": "#/$defs/SceneSignalBindingV1"
+          },
+          "maxItems": 16,
+          "title": "Signals",
+          "type": "array"
+        },
+        "unity_binding_id": {
+          "maxLength": 192,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$",
+          "title": "Unity Binding Id",
+          "type": "string"
+        },
+        "workspace_refs": {
+          "items": {
+            "$ref": "#/$defs/RegistryRefV1"
+          },
+          "maxItems": 64,
+          "title": "Workspace Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "identity",
+        "asset_type",
+        "expected_asset_profile",
+        "package_ref",
+        "unity_binding_id",
+        "frames"
+      ],
+      "title": "SceneAssetBindingV1",
+      "type": "object"
+    },
+    "SceneSensorBindingV1": {
+      "additionalProperties": false,
+      "properties": {
+        "calibration_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RegistryRefV1"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "frame_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Frame Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "camera",
+            "depth_camera",
+            "point_cloud",
+            "diagnostic"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "render_target_binding_id": {
+          "anyOf": [
+            {
+              "maxLength": 192,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Render Target Binding Id"
+        },
+        "semantic_channels": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+            "type": "string"
+          },
+          "maxItems": 64,
+          "minItems": 1,
+          "title": "Semantic Channels",
+          "type": "array"
+        },
+        "sensor_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Sensor Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sensor_id",
+        "kind",
+        "frame_id",
+        "semantic_channels"
+      ],
+      "title": "SceneSensorBindingV1",
+      "type": "object"
+    },
+    "SceneSignalBindingV1": {
+      "additionalProperties": false,
+      "properties": {
+        "component_binding_id": {
+          "maxLength": 192,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$",
+          "title": "Component Binding Id",
+          "type": "string"
+        },
+        "member": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Member",
+          "type": "string"
+        },
+        "semantic": {
+          "enum": [
+            "health",
+            "ready",
+            "busy",
+            "success",
+            "failure",
+            "fault"
+          ],
+          "title": "Semantic",
+          "type": "string"
+        }
+      },
+      "required": [
+        "semantic",
+        "component_binding_id",
+        "member"
+      ],
+      "title": "SceneSignalBindingV1",
+      "type": "object"
+    },
+    "VersionedObjectRefV1": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "object_id",
+        "version",
+        "sha256"
+      ],
+      "title": "VersionedObjectRefV1",
+      "type": "object"
+    },
+    "WorldFrameV1": {
+      "additionalProperties": false,
+      "properties": {
+        "angle_unit": {
+          "const": "rad",
+          "default": "rad",
+          "title": "Angle Unit",
+          "type": "string"
+        },
+        "fixed_timestep_s": {
+          "exclusiveMinimum": 0.0,
+          "maximum": 1.0,
+          "title": "Fixed Timestep S",
+          "type": "number"
+        },
+        "forward_axis": {
+          "enum": [
+            "+x",
+            "-x",
+            "+y",
+            "-y",
+            "+z",
+            "-z"
+          ],
+          "title": "Forward Axis",
+          "type": "string"
+        },
+        "frame_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Frame Id",
+          "type": "string"
+        },
+        "handedness": {
+          "enum": [
+            "right",
+            "left"
+          ],
+          "title": "Handedness",
+          "type": "string"
+        },
+        "length_unit": {
+          "const": "m",
+          "default": "m",
+          "title": "Length Unit",
+          "type": "string"
+        },
+        "up_axis": {
+          "enum": [
+            "+x",
+            "-x",
+            "+y",
+            "-y",
+            "+z",
+            "-z"
+          ],
+          "title": "Up Axis",
+          "type": "string"
+        }
+      },
+      "required": [
+        "frame_id",
+        "handedness",
+        "up_axis",
+        "forward_axis",
+        "fixed_timestep_s"
+      ],
+      "title": "WorldFrameV1",
+      "type": "object"
+    }
+  },
+  "$id": "https://sang.local/contracts/assets/scene-binding-manifest-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Stable Unity binding IDs, frames, controllers, sensors, and output isolation.",
+  "properties": {
+    "bindings": {
+      "items": {
+        "$ref": "#/$defs/SceneAssetBindingV1"
+      },
+      "maxItems": 512,
+      "minItems": 1,
+      "title": "Bindings",
+      "type": "array"
+    },
+    "build_attestation_ref": {
+      "$ref": "#/$defs/RegistryRefV1"
+    },
+    "environment_artifacts": {
+      "items": {
+        "$ref": "#/$defs/ArtifactObjectRefV1"
+      },
+      "maxItems": 256,
+      "title": "Environment Artifacts",
+      "type": "array"
+    },
+    "output_isolation": {
+      "$ref": "#/$defs/OutputIsolationV1"
+    },
+    "required_packages": {
+      "items": {
+        "$ref": "#/$defs/AssetPackageRefV1"
+      },
+      "maxItems": 256,
+      "minItems": 1,
+      "title": "Required Packages",
+      "type": "array"
+    },
+    "scene_artifact": {
+      "$ref": "#/$defs/ArtifactObjectRefV1"
+    },
+    "scene_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "title": "Scene Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "time_source": {
+      "const": "unity_simulation_clock",
+      "default": "unity_simulation_clock",
+      "title": "Time Source",
+      "type": "string"
+    },
+    "unity_version": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Unity Version",
+      "type": "string"
+    },
+    "version": {
+      "minimum": 1,
+      "title": "Version",
+      "type": "integer"
+    },
+    "world": {
+      "$ref": "#/$defs/WorldFrameV1"
+    }
+  },
+  "required": [
+    "scene_id",
+    "version",
+    "scene_artifact",
+    "unity_version",
+    "world",
+    "required_packages",
+    "bindings",
+    "output_isolation",
+    "build_attestation_ref"
+  ],
+  "title": "SceneBindingManifestV1",
+  "type": "object"
+}

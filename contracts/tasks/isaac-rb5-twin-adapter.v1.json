@@ -1,0 +1,15 @@
+{
+  "schema_version": 3,
+  "adapter_id": "isaac-rb5-twin-pilot-v1",
+  "scenario_id": "isaac-rb5-twin-pilot",
+  "bridge_root": "/tmp/sang-isaac-rb5-twin",
+  "poll_interval_seconds": 0.05,
+  "execution_runtime": "isaac",
+  "profile_id": "rb5",
+  "scene_sha256": "5837e8eb41c67024a4d461f07e3d63dc53bde338209fd64c6c238ceb187972ce",
+  "roles": [{"role": "virtual-robot", "access": "exclusive", "requires": ["simulate-bounded-joint@1"]}],
+  "steps": [
+    {"step_id": "move_offset", "role": "virtual-robot", "capability": "simulate-bounded-joint@1", "depends_on": [], "parameters": {"operation": "move-offset"}},
+    {"step_id": "return_ready", "role": "virtual-robot", "capability": "simulate-bounded-joint@1", "depends_on": ["move_offset"], "parameters": {"operation": "return-ready"}}
+  ]
+}

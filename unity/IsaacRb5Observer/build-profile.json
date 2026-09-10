@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "profile_id": "sang-isaac-rb5-observer",
+  "build_role": "observer",
+  "assembly_name": "Sang.IsaacRb5Observer",
+  "include_globs": [
+    "Assets/Observer/Runtime/*.cs",
+    "Assets/Observer/Runtime/*.asmdef"
+  ],
+  "exclude_globs": [],
+  "forbidden_assemblies": [
+    "Assembly-CSharp",
+    "Assembly-CSharp-firstpass",
+    "Sang.LegacyPhysicalTransport",
+    "Sang.Observer",
+    "Sang.IsaacRb5Observer.Editor"
+  ]
+}

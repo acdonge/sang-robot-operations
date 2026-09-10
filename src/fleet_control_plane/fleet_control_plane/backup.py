@@ -25,6 +25,11 @@ class BackupError(RuntimeError):
     """Backup material is incomplete, unsafe or corrupt."""
 
 
+def _immutable_connection(path: Path) -> sqlite3.Connection:
+    uri = path.resolve().as_uri() + "?mode=ro&immutable=1"
+    return sqlite3.connect(uri, uri=True)
+
+
 def sha256_file(path: Path) -> tuple[int, str]:
     if path.is_symlink() or not path.is_file():
         raise BackupError(f"backup input is not a regular file: {path}")
@@ -47,7 +52,7 @@ def sha256_file(path: Path) -> tuple[int, str]:
 def validate_database(path: Path) -> list[int]:
     if path.is_symlink() or not path.is_file():
         raise BackupError("fleet database must be a regular non-symlink file")
-    connection = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+    connection = _immutable_connection(path)
     try:
         integrity = connection.execute("PRAGMA integrity_check").fetchone()[0]
         if integrity != "ok":
@@ -84,7 +89,7 @@ def sqlite_online_backup(source: Path, destination: Path) -> None:
 
 
 def referenced_objects(database: Path) -> list[dict[str, Any]]:
-    connection = sqlite3.connect(f"file:{database}?mode=ro", uri=True)
+    connection = _immutable_connection(database)
     connection.row_factory = sqlite3.Row
     try:
         staging = connection.execute(
@@ -178,11 +183,88 @@ def referenced_objects(database: Path) -> list[dict[str, Any]]:
                         },
                     )
                 )
+        aas_table = connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'aas_artifacts'"
+        ).fetchone()
+        if aas_table is not None:
+            for row in connection.execute(
+                """
+                SELECT object_key, size_bytes, sha256,
+                       environment_object_key, environment_size_bytes,
+                       environment_sha256
+                FROM aas_artifacts
+                ORDER BY sha256
+                """
+            ).fetchall():
+                objects.extend(
+                    (
+                        {
+                            "object_key": row["object_key"],
+                            "size_bytes": row["size_bytes"],
+                            "sha256": row["sha256"],
+                        },
+                        {
+                            "object_key": row["environment_object_key"],
+                            "size_bytes": row["environment_size_bytes"],
+                            "sha256": row["environment_sha256"],
+                        },
+                    )
+                )
+        g6b_table = connection.execute(
+            """
+            SELECT 1 FROM sqlite_master
+            WHERE type = 'table' AND name = 'g6b_evidence_submissions'
+            """
+        ).fetchone()
+        g6b_artifact_table = connection.execute(
+            """
+            SELECT 1 FROM sqlite_master
+            WHERE type = 'table' AND name = 'g6b_supporting_artifacts'
+            """
+        ).fetchone()
+        if g6b_artifact_table is not None:
+            objects.extend(
+                {
+                    "object_key": row["object_key"],
+                    "size_bytes": row["size_bytes"],
+                    "sha256": row["sha256"],
+                }
+                for row in connection.execute(
+                    """
+                    SELECT object_key, size_bytes, sha256
+                    FROM g6b_supporting_artifacts
+                    ORDER BY artifact_id
+                    """
+                ).fetchall()
+            )
+        if g6b_table is not None:
+            objects.extend(
+                {
+                    "object_key": row["object_key"],
+                    "size_bytes": row["payload_size_bytes"],
+                    "sha256": row["payload_sha256"],
+                }
+                for row in connection.execute(
+                    """
+                    SELECT object_key, payload_size_bytes, payload_sha256
+                    FROM g6b_evidence_submissions
+                    ORDER BY case_id, revision
+                    """
+                ).fetchall()
+            )
     except sqlite3.Error as exc:
         raise BackupError(f"cannot enumerate recording objects: {exc}") from exc
     finally:
         connection.close()
-    return sorted(objects, key=lambda item: item["object_key"])
+    unique: dict[str, dict[str, Any]] = {}
+    for item in objects:
+        existing = unique.get(item["object_key"])
+        if existing is not None and existing != item:
+            raise BackupError(
+                f"Object Store key has conflicting catalog metadata: {item['object_key']}"
+            )
+        unique[item["object_key"]] = item
+    return sorted(unique.values(), key=lambda item: item["object_key"])
 
 
 async def copy_object(

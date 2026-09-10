@@ -1,0 +1,8 @@
+{
+  "name": "Sang.IsaacScenario1Observer.Editor",
+  "rootNamespace": "Sang.IsaacScenario1Observer.Editor",
+  "references": ["Sang.IsaacScenario1Observer"],
+  "includePlatforms": ["Editor"],
+  "allowUnsafeCode": false,
+  "autoReferenced": false
+}

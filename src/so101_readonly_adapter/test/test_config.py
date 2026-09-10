@@ -45,19 +45,23 @@ def test_duplicate_device_and_unsupported_fourcc_are_rejected():
 
     invalid = deepcopy(config_data())
     invalid["cameras"][0]["fourcc"] = "H264"
-    with pytest.raises(HardwareConfigError, match="must be MJPG or YUYV"):
+    with pytest.raises(
+        HardwareConfigError,
+        match="must be MJPG, YUYV, or UYVY",
+    ):
         parse_hardware_config(invalid)
 
 
-def test_camera_only_config_accepts_yuyv_jpeg_encoding():
+@pytest.mark.parametrize("fourcc", ("YUYV", "UYVY"))
+def test_camera_only_config_accepts_raw_jpeg_encoding(fourcc):
     data = config_data()
     data["arms"] = []
     data["cameras"] = [deepcopy(data["cameras"][0])]
-    data["cameras"][0]["fourcc"] = "YUYV"
+    data["cameras"][0]["fourcc"] = fourcc
     data["cameras"][0]["jpeg_quality"] = 85
 
     config = parse_hardware_config(data)
 
     assert config.arms == ()
-    assert config.cameras[0].fourcc == "YUYV"
+    assert config.cameras[0].fourcc == fourcc
     assert config.cameras[0].jpeg_quality == 85

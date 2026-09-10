@@ -1,0 +1,82 @@
+{
+  "schema_version": 2,
+  "workflow_id": "generic-position-and-observe",
+  "version": 1,
+  "roles": [
+    {
+      "role": "handler",
+      "cardinality": "1",
+      "selector": {
+        "requires": [
+          "execute-registered-joint-plan@1"
+        ]
+      },
+      "access": "exclusive"
+    },
+    {
+      "role": "cell-view",
+      "cardinality": "1..n",
+      "selector": {
+        "requires": [
+          "record-compressed-video@1"
+        ],
+        "zone_id": "process-cell"
+      },
+      "access": "shared_read"
+    }
+  ],
+  "steps": [
+    {
+      "step_id": "position",
+      "kind": "action",
+      "role": "handler",
+      "capability": "execute-registered-joint-plan@1",
+      "parameters": {
+        "plan_ref": "artifact://plans/position@1"
+      },
+      "timeout_s": 30.0
+    },
+    {
+      "step_id": "approval",
+      "kind": "human_approval",
+      "authority": "manager",
+      "depends_on": [
+        "position"
+      ],
+      "timeout_s": 60.0
+    },
+    {
+      "step_id": "process",
+      "kind": "action",
+      "role": "handler",
+      "capability": "execute-registered-joint-plan@1",
+      "parameters": {
+        "plan_ref": "artifact://plans/process@1"
+      },
+      "depends_on": [
+        "approval"
+      ],
+      "timeout_s": 60.0
+    },
+    {
+      "step_id": "capture",
+      "kind": "action",
+      "role": "cell-view",
+      "capability": "record-compressed-video@1",
+      "parameters": {
+        "recording_profile_ref": "artifact://video/mjpg@1"
+      },
+      "depends_on": [
+        "approval"
+      ],
+      "timeout_s": 60.0,
+      "fan_out": "all_bound_assets",
+      "join": "all",
+      "lifetime": {
+        "start_on": "approval:SUCCEEDED",
+        "stop_on": "process:TERMINAL",
+        "on_unreachable": "cancel"
+      }
+    }
+  ]
+}

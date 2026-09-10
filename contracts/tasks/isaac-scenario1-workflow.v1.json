@@ -1,0 +1,17 @@
+{
+  "schema_version": 2,
+  "workflow_id": "isaac-scenario1",
+  "version": 1,
+  "roles": [
+    {"role": "mobile-carrier", "cardinality": "1", "selector": {"requires": ["simulate-material-delivery@1", "simulate-material-return@1"]}, "access": "exclusive"},
+    {"role": "omy-material-handler", "cardinality": "1", "selector": {"requires": ["simulate-pick-place@1"]}, "access": "exclusive"},
+    {"role": "rb5-waam-path", "cardinality": "1", "selector": {"requires": ["simulate-waam-path@1"]}, "access": "exclusive"}
+  ],
+  "steps": [
+    {"step_id": "mobile_delivery", "kind": "action", "role": "mobile-carrier", "capability": "simulate-material-delivery@1", "parameters": {"operation": "deliver-base-plate"}, "timeout_s": 180},
+    {"step_id": "omy_pre_pick_place", "kind": "action", "depends_on": ["mobile_delivery"], "role": "omy-material-handler", "capability": "simulate-pick-place@1", "parameters": {"operation": "place-on-waam-table"}, "timeout_s": 300},
+    {"step_id": "rb5_waam", "kind": "action", "depends_on": ["omy_pre_pick_place"], "role": "rb5-waam-path", "capability": "simulate-waam-path@1", "parameters": {"operation": "follow-simulated-waam-path"}, "timeout_s": 420},
+    {"step_id": "omy_post_pick_place", "kind": "action", "depends_on": ["rb5_waam"], "role": "omy-material-handler", "capability": "simulate-pick-place@1", "parameters": {"operation": "return-to-carrier"}, "timeout_s": 300},
+    {"step_id": "mobile_return", "kind": "action", "depends_on": ["omy_post_pick_place"], "role": "mobile-carrier", "capability": "simulate-material-return@1", "parameters": {"operation": "return-with-base-plate"}, "timeout_s": 180}
+  ]
+}

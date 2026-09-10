@@ -1,0 +1,1105 @@
+{
+  "$defs": {
+    "ApprovalV1": {
+      "additionalProperties": false,
+      "properties": {
+        "approved_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Approved At"
+        },
+        "approver_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Approver Id"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expires At"
+        },
+        "state": {
+          "enum": [
+            "draft",
+            "approved",
+            "revoked"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "title": "ApprovalV1",
+      "type": "object"
+    },
+    "ControlEnvelopeV1": {
+      "additionalProperties": false,
+      "properties": {
+        "approval": {
+          "$ref": "#/$defs/ApprovalV1"
+        },
+        "capabilities": {
+          "items": {
+            "maxLength": 96,
+            "minLength": 3,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*@[1-9][0-9]*$",
+            "type": "string"
+          },
+          "maxItems": 256,
+          "minItems": 1,
+          "title": "Capabilities",
+          "type": "array"
+        },
+        "declared_time_to_safe_state_ms": {
+          "exclusiveMinimum": 0.0,
+          "title": "Declared Time To Safe State Ms",
+          "type": "number"
+        },
+        "envelope_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Envelope Id",
+          "type": "string"
+        },
+        "max_clock_uncertainty_ms": {
+          "exclusiveMinimum": 0.0,
+          "title": "Max Clock Uncertainty Ms",
+          "type": "number"
+        },
+        "max_delta_by_axis": {
+          "maxProperties": 128,
+          "minProperties": 1,
+          "patternProperties": {
+            "^[A-Za-z0-9][A-Za-z0-9._-]*$": {
+              "type": "number"
+            }
+          },
+          "propertyNames": {
+            "maxLength": 64,
+            "minLength": 1
+          },
+          "title": "Max Delta By Axis",
+          "type": "object"
+        },
+        "max_demand_age_ms": {
+          "exclusiveMinimum": 0.0,
+          "title": "Max Demand Age Ms",
+          "type": "number"
+        },
+        "max_rate_hz": {
+          "exclusiveMinimum": 0.0,
+          "title": "Max Rate Hz",
+          "type": "number"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        },
+        "workspace_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RegistryRefV1"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "envelope_id",
+        "version",
+        "capabilities",
+        "max_rate_hz",
+        "max_demand_age_ms",
+        "max_clock_uncertainty_ms",
+        "declared_time_to_safe_state_ms",
+        "max_delta_by_axis",
+        "approval"
+      ],
+      "title": "ControlEnvelopeV1",
+      "type": "object"
+    },
+    "ControlSubleaseV1": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "authorization_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Authorization Id",
+          "type": "string"
+        },
+        "capabilities": {
+          "items": {
+            "maxLength": 96,
+            "minLength": 3,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*@[1-9][0-9]*$",
+            "type": "string"
+          },
+          "maxItems": 256,
+          "minItems": 1,
+          "title": "Capabilities",
+          "type": "array"
+        },
+        "command_id": {
+          "format": "uuid",
+          "title": "Command Id",
+          "type": "string"
+        },
+        "control_envelope_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Control Envelope Id",
+          "type": "string"
+        },
+        "control_envelope_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Control Envelope Sha256",
+          "type": "string"
+        },
+        "epoch": {
+          "minimum": 1,
+          "title": "Epoch",
+          "type": "integer"
+        },
+        "execution_mode": {
+          "enum": [
+            "OBSERVE_ONLY",
+            "SIMULATION",
+            "REPLAY",
+            "SHADOW",
+            "HIL",
+            "PHYSICAL_AUTO",
+            "PHYSICAL_TELEOP",
+            "MAINTENANCE"
+          ],
+          "title": "Execution Mode",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "issued_at": {
+          "format": "date-time",
+          "title": "Issued At",
+          "type": "string"
+        },
+        "issuer_key_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Issuer Key Id",
+          "type": "string"
+        },
+        "lease_id": {
+          "format": "uuid",
+          "title": "Lease Id",
+          "type": "string"
+        },
+        "lease_kind": {
+          "enum": [
+            "auto",
+            "teleop"
+          ],
+          "title": "Lease Kind",
+          "type": "string"
+        },
+        "orchestrator_boot_id": {
+          "format": "uuid",
+          "title": "Orchestrator Boot Id",
+          "type": "string"
+        },
+        "orchestrator_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$",
+          "title": "Orchestrator Id",
+          "type": "string"
+        },
+        "output_isolation_evidence_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RegistryRefV1"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "parent_grant_id": {
+          "format": "uuid",
+          "title": "Parent Grant Id",
+          "type": "string"
+        },
+        "presence_attestation_ref": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 3,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Presence Attestation Ref"
+        },
+        "renewable_until": {
+          "format": "date-time",
+          "title": "Renewable Until",
+          "type": "string"
+        },
+        "run_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "signature": {
+          "maxLength": 8192,
+          "minLength": 16,
+          "title": "Signature",
+          "type": "string"
+        },
+        "subject": {
+          "$ref": "#/$defs/LeaseSubjectV1"
+        },
+        "xr_session_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Xr Session Id"
+        }
+      },
+      "required": [
+        "lease_id",
+        "lease_kind",
+        "parent_grant_id",
+        "run_id",
+        "orchestrator_id",
+        "orchestrator_boot_id",
+        "command_id",
+        "subject",
+        "asset_id",
+        "capabilities",
+        "execution_mode",
+        "authorization_id",
+        "control_envelope_id",
+        "control_envelope_sha256",
+        "epoch",
+        "issued_at",
+        "expires_at",
+        "renewable_until",
+        "issuer_key_id",
+        "signature"
+      ],
+      "title": "ControlSubleaseV1",
+      "type": "object"
+    },
+    "CoordinatedGroupV1": {
+      "additionalProperties": false,
+      "properties": {
+        "cancel_scope": {
+          "const": "all_or_nothing",
+          "default": "all_or_nothing",
+          "title": "Cancel Scope",
+          "type": "string"
+        },
+        "capabilities": {
+          "items": {
+            "maxLength": 96,
+            "minLength": 3,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*@[1-9][0-9]*$",
+            "type": "string"
+          },
+          "maxItems": 256,
+          "minItems": 1,
+          "title": "Capabilities",
+          "type": "array"
+        },
+        "group_asset_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Group Asset Id",
+          "type": "string"
+        },
+        "max_command_skew_ms": {
+          "exclusiveMinimum": 0.0,
+          "title": "Max Command Skew Ms",
+          "type": "number"
+        },
+        "member_asset_ids": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+            "type": "string"
+          },
+          "maxItems": 64,
+          "minItems": 2,
+          "title": "Member Asset Ids",
+          "type": "array"
+        },
+        "reservation_mode": {
+          "const": "transitive_exclusive",
+          "default": "transitive_exclusive",
+          "title": "Reservation Mode",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "group_asset_id",
+        "version",
+        "member_asset_ids",
+        "capabilities",
+        "max_command_skew_ms"
+      ],
+      "title": "CoordinatedGroupV1",
+      "type": "object"
+    },
+    "DelegationGrantV1": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "authorization_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Authorization Id",
+          "type": "string"
+        },
+        "capabilities": {
+          "items": {
+            "maxLength": 96,
+            "minLength": 3,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*@[1-9][0-9]*$",
+            "type": "string"
+          },
+          "maxItems": 256,
+          "minItems": 1,
+          "title": "Capabilities",
+          "type": "array"
+        },
+        "control_envelope_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Control Envelope Id",
+          "type": "string"
+        },
+        "control_envelope_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Control Envelope Sha256",
+          "type": "string"
+        },
+        "delegated_key_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Delegated Key Id",
+          "type": "string"
+        },
+        "delegated_public_key_ref": {
+          "maxLength": 2048,
+          "minLength": 3,
+          "title": "Delegated Public Key Ref",
+          "type": "string"
+        },
+        "epoch": {
+          "minimum": 1,
+          "title": "Epoch",
+          "type": "integer"
+        },
+        "execution_mode": {
+          "enum": [
+            "OBSERVE_ONLY",
+            "SIMULATION",
+            "REPLAY",
+            "SHADOW",
+            "HIL",
+            "PHYSICAL_AUTO",
+            "PHYSICAL_TELEOP",
+            "MAINTENANCE"
+          ],
+          "title": "Execution Mode",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "grant_id": {
+          "format": "uuid",
+          "title": "Grant Id",
+          "type": "string"
+        },
+        "issued_at": {
+          "format": "date-time",
+          "title": "Issued At",
+          "type": "string"
+        },
+        "issuer_key_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Issuer Key Id",
+          "type": "string"
+        },
+        "manifest_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Manifest Sha256",
+          "type": "string"
+        },
+        "max_sublease_ttl_ms": {
+          "exclusiveMinimum": 0,
+          "maximum": 3600000,
+          "title": "Max Sublease Ttl Ms",
+          "type": "integer"
+        },
+        "orchestrator_boot_id": {
+          "format": "uuid",
+          "title": "Orchestrator Boot Id",
+          "type": "string"
+        },
+        "orchestrator_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$",
+          "title": "Orchestrator Id",
+          "type": "string"
+        },
+        "output_isolation_evidence_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RegistryRefV1"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "renewable_until": {
+          "format": "date-time",
+          "title": "Renewable Until",
+          "type": "string"
+        },
+        "run_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "signature": {
+          "maxLength": 8192,
+          "minLength": 16,
+          "title": "Signature",
+          "type": "string"
+        }
+      },
+      "required": [
+        "grant_id",
+        "run_id",
+        "orchestrator_id",
+        "orchestrator_boot_id",
+        "asset_id",
+        "execution_mode",
+        "authorization_id",
+        "manifest_sha256",
+        "control_envelope_id",
+        "control_envelope_sha256",
+        "epoch",
+        "capabilities",
+        "delegated_key_id",
+        "delegated_public_key_ref",
+        "issued_at",
+        "expires_at",
+        "renewable_until",
+        "max_sublease_ttl_ms",
+        "issuer_key_id",
+        "signature"
+      ],
+      "title": "DelegationGrantV1",
+      "type": "object"
+    },
+    "ExecuteSkillFeedbackV1": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "format": "uuid",
+          "title": "Command Id",
+          "type": "string"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "title": "Observed At",
+          "type": "string"
+        },
+        "observed_state": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "maxProperties": 256,
+          "title": "Observed State",
+          "type": "object"
+        },
+        "phase": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Phase",
+          "type": "string"
+        },
+        "progress": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Progress",
+          "type": "number"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "sequence": {
+          "minimum": 0,
+          "title": "Sequence",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "command_id",
+        "progress",
+        "phase",
+        "sequence",
+        "observed_at"
+      ],
+      "title": "ExecuteSkillFeedbackV1",
+      "type": "object"
+    },
+    "ExecuteSkillGoalV1": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Artifact Id"
+        },
+        "artifact_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Artifact Sha256"
+        },
+        "asset_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "attempt": {
+          "minimum": 1,
+          "title": "Attempt",
+          "type": "integer"
+        },
+        "authorization_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Authorization Id",
+          "type": "string"
+        },
+        "calibration_refs": {
+          "items": {
+            "$ref": "#/$defs/RegistryRefV1"
+          },
+          "maxItems": 64,
+          "title": "Calibration Refs",
+          "type": "array"
+        },
+        "capability": {
+          "maxLength": 96,
+          "minLength": 3,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*@[1-9][0-9]*$",
+          "title": "Capability",
+          "type": "string"
+        },
+        "command_id": {
+          "format": "uuid",
+          "title": "Command Id",
+          "type": "string"
+        },
+        "control_envelope_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Control Envelope Id",
+          "type": "string"
+        },
+        "control_envelope_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Control Envelope Sha256",
+          "type": "string"
+        },
+        "execution_mode": {
+          "enum": [
+            "OBSERVE_ONLY",
+            "SIMULATION",
+            "REPLAY",
+            "SHADOW",
+            "HIL",
+            "PHYSICAL_AUTO",
+            "PHYSICAL_TELEOP",
+            "MAINTENANCE"
+          ],
+          "title": "Execution Mode",
+          "type": "string"
+        },
+        "lease_epoch": {
+          "minimum": 1,
+          "title": "Lease Epoch",
+          "type": "integer"
+        },
+        "lease_id": {
+          "format": "uuid",
+          "title": "Lease Id",
+          "type": "string"
+        },
+        "manifest_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Manifest Sha256",
+          "type": "string"
+        },
+        "not_valid_after": {
+          "format": "date-time",
+          "title": "Not Valid After",
+          "type": "string"
+        },
+        "orchestrator_boot_id": {
+          "format": "uuid",
+          "title": "Orchestrator Boot Id",
+          "type": "string"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "maxProperties": 256,
+          "title": "Parameters",
+          "type": "object"
+        },
+        "parent_grant_id": {
+          "format": "uuid",
+          "title": "Parent Grant Id",
+          "type": "string"
+        },
+        "run_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "step_instance_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Step Instance Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "command_id",
+        "run_id",
+        "step_instance_id",
+        "attempt",
+        "asset_id",
+        "capability",
+        "control_envelope_id",
+        "control_envelope_sha256",
+        "authorization_id",
+        "parent_grant_id",
+        "lease_id",
+        "lease_epoch",
+        "orchestrator_boot_id",
+        "execution_mode",
+        "manifest_sha256",
+        "not_valid_after"
+      ],
+      "title": "ExecuteSkillGoalV1",
+      "type": "object"
+    },
+    "ExecuteSkillResultV1": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "format": "uuid",
+          "title": "Command Id",
+          "type": "string"
+        },
+        "completed_at": {
+          "format": "date-time",
+          "title": "Completed At",
+          "type": "string"
+        },
+        "evidence_refs": {
+          "items": {
+            "maxLength": 2048,
+            "minLength": 3,
+            "type": "string"
+          },
+          "maxItems": 128,
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "final_observation": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "maxProperties": 256,
+          "title": "Final Observation",
+          "type": "object"
+        },
+        "outcome": {
+          "enum": [
+            "SUCCEEDED",
+            "FAILED",
+            "CANCELLED",
+            "REJECTED",
+            "UNKNOWN"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "reason_code": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "command_id",
+        "outcome",
+        "reason_code",
+        "completed_at"
+      ],
+      "title": "ExecuteSkillResultV1",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "LeaseSubjectV1": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "service",
+            "human"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "principal_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$",
+          "title": "Principal Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "principal_id"
+      ],
+      "title": "LeaseSubjectV1",
+      "type": "object"
+    },
+    "PolicyDemandV1": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "format": "uuid",
+          "title": "Command Id",
+          "type": "string"
+        },
+        "demand": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "maxProperties": 256,
+          "minProperties": 1,
+          "title": "Demand",
+          "type": "object"
+        },
+        "frame_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Frame Id",
+          "type": "string"
+        },
+        "lease_epoch": {
+          "minimum": 1,
+          "title": "Lease Epoch",
+          "type": "integer"
+        },
+        "lease_id": {
+          "format": "uuid",
+          "title": "Lease Id",
+          "type": "string"
+        },
+        "policy_session_id": {
+          "format": "uuid",
+          "title": "Policy Session Id",
+          "type": "string"
+        },
+        "policy_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Policy Sha256",
+          "type": "string"
+        },
+        "sampled_at": {
+          "format": "date-time",
+          "title": "Sampled At",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "sequence": {
+          "minimum": 0,
+          "title": "Sequence",
+          "type": "integer"
+        },
+        "units": {
+          "maxProperties": 64,
+          "minProperties": 1,
+          "patternProperties": {
+            "^[A-Za-z0-9][A-Za-z0-9._-]*$": {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+              "type": "string"
+            }
+          },
+          "propertyNames": {
+            "maxLength": 64,
+            "minLength": 1
+          },
+          "title": "Units",
+          "type": "object"
+        }
+      },
+      "required": [
+        "policy_session_id",
+        "command_id",
+        "sequence",
+        "sampled_at",
+        "policy_sha256",
+        "lease_id",
+        "lease_epoch",
+        "frame_id",
+        "units",
+        "demand"
+      ],
+      "title": "PolicyDemandV1",
+      "type": "object"
+    },
+    "RegistryRefV1": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "object_id",
+        "version",
+        "sha256"
+      ],
+      "title": "RegistryRefV1",
+      "type": "object"
+    }
+  },
+  "$id": "https://sang.local/contracts/orchestration/execution-contracts-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Delegated execution, lease, skill, group, envelope, and policy-demand messages.",
+  "properties": {
+    "control_envelope": {
+      "$ref": "#/$defs/ControlEnvelopeV1"
+    },
+    "control_sublease": {
+      "$ref": "#/$defs/ControlSubleaseV1"
+    },
+    "coordinated_group": {
+      "$ref": "#/$defs/CoordinatedGroupV1"
+    },
+    "delegation_grant": {
+      "$ref": "#/$defs/DelegationGrantV1"
+    },
+    "execute_skill_feedback": {
+      "$ref": "#/$defs/ExecuteSkillFeedbackV1"
+    },
+    "execute_skill_goal": {
+      "$ref": "#/$defs/ExecuteSkillGoalV1"
+    },
+    "execute_skill_result": {
+      "$ref": "#/$defs/ExecuteSkillResultV1"
+    },
+    "policy_demand": {
+      "$ref": "#/$defs/PolicyDemandV1"
+    }
+  },
+  "required": [
+    "control_envelope",
+    "coordinated_group",
+    "delegation_grant",
+    "control_sublease",
+    "execute_skill_goal",
+    "execute_skill_feedback",
+    "execute_skill_result",
+    "policy_demand"
+  ],
+  "title": "ExecutionContractBundleV1",
+  "type": "object"
+}

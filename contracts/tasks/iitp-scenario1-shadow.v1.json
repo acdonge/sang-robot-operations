@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "bundle_id": "iitp-scenario1-shadow-v1",
+  "source_project": "unity_IITP/100.Whole_integration/Scenario1_app",
+  "unity_editor_version": "6000.5.6f1",
+  "processing_node_id": "processing-lab1",
+  "assets": [
+    {
+      "asset_id": "iitp-s1-mobile-sim",
+      "asset_type": "mobile_robot",
+      "display_name": "IITP Scenario 1 Mobile Carrier (Unity)",
+      "runtime_kind": "simulation",
+      "node_id": "processing-lab1",
+      "capabilities": ["material-transport", "shadow-observation"]
+    },
+    {
+      "asset_id": "iitp-s1-omy-sim",
+      "asset_type": "robot",
+      "display_name": "IITP Scenario 1 OMY (Unity)",
+      "runtime_kind": "simulation",
+      "node_id": "processing-lab1",
+      "capabilities": ["manipulation", "shadow-observation"]
+    },
+    {
+      "asset_id": "iitp-s1-rb5-sim",
+      "asset_type": "robot",
+      "display_name": "IITP Scenario 1 RB5-850E (Unity)",
+      "runtime_kind": "simulation",
+      "node_id": "processing-lab1",
+      "capabilities": ["waam-motion", "shadow-observation"]
+    },
+    {
+      "asset_id": "iitp-s1-human-tracker-sim",
+      "asset_type": "sensor",
+      "display_name": "IITP Scenario 1 XR Human Tracker",
+      "runtime_kind": "simulation",
+      "node_id": "processing-lab1",
+      "capabilities": ["human-tracking", "distance-observation"]
+    },
+    {
+      "asset_id": "iitp-s1-workspace-camera-sim",
+      "asset_type": "camera",
+      "display_name": "IITP Scenario 1 Workspace Camera (Unity)",
+      "runtime_kind": "simulation",
+      "node_id": "processing-lab1",
+      "capabilities": ["rgb-stream", "workspace-view"]
+    },
+    {
+      "asset_id": "iitp-s1-close-camera-sim",
+      "asset_type": "camera",
+      "display_name": "IITP Scenario 1 Close Camera (Unity)",
+      "runtime_kind": "simulation",
+      "node_id": "processing-lab1",
+      "capabilities": ["rgb-stream", "close-range-view"]
+    },
+    {
+      "asset_id": "iitp-s1-welding-camera-sim",
+      "asset_type": "camera",
+      "display_name": "IITP Scenario 1 Welding Camera (Unity)",
+      "runtime_kind": "simulation",
+      "node_id": "processing-lab1",
+      "capabilities": ["rgb-stream", "welding-view"]
+    }
+  ],
+  "workcell": {
+    "workcell_id": "workcell-iitp-scenario1-unity",
+    "display_name": "IITP Scenario 1 Unity Shadow Cell",
+    "description": "Command-free Unity simulation cell for coordinated OMY material handling and RB5 WAAM Safety Shadow development.",
+    "asset_ids": [
+      "iitp-s1-mobile-sim",
+      "iitp-s1-omy-sim",
+      "iitp-s1-rb5-sim",
+      "iitp-s1-human-tracker-sim",
+      "iitp-s1-workspace-camera-sim",
+      "iitp-s1-close-camera-sim",
+      "iitp-s1-welding-camera-sim"
+    ]
+  },
+  "task_definition": {
+    "task_definition_id": "iitp-scenario1-coordinated-waam-shadow",
+    "version": 1,
+    "display_name": "IITP Scenario 1 Coordinated WAAM Shadow",
+    "description": "Mobile delivery -> OMY pre pick/place -> RB5 WAAM -> OMY post pick/place -> mobile return. Version 1 is observation-only and emits no equipment commands.",
+    "roles": [
+      {"role": "mobile_carrier", "asset_type": "mobile_robot", "access_mode": "exclusive"},
+      {"role": "omy_material_handling", "asset_type": "robot", "access_mode": "exclusive"},
+      {"role": "rb5_waam_motion", "asset_type": "robot", "access_mode": "exclusive"},
+      {"role": "human_tracking", "asset_type": "sensor", "access_mode": "shared_read"},
+      {"role": "workspace_vision", "asset_type": "camera", "access_mode": "shared_read"},
+      {"role": "close_range_vision", "asset_type": "camera", "access_mode": "shared_read"},
+      {"role": "welding_vision", "asset_type": "camera", "access_mode": "shared_read"}
+    ]
+  },
+  "task_run": {
+    "run_id": "iitp-scenario1-shadow-dev-20260827",
+    "task_definition_id": "iitp-scenario1-coordinated-waam-shadow",
+    "task_version": 1,
+    "workcell_id": "workcell-iitp-scenario1-unity",
+    "display_name": "IITP Scenario 1 Unity Shadow Development",
+    "state": "READY",
+    "assignments": [
+      {"role": "mobile_carrier", "asset_id": "iitp-s1-mobile-sim", "access_mode": "exclusive"},
+      {"role": "omy_material_handling", "asset_id": "iitp-s1-omy-sim", "access_mode": "exclusive"},
+      {"role": "rb5_waam_motion", "asset_id": "iitp-s1-rb5-sim", "access_mode": "exclusive"},
+      {"role": "human_tracking", "asset_id": "iitp-s1-human-tracker-sim", "access_mode": "shared_read"},
+      {"role": "workspace_vision", "asset_id": "iitp-s1-workspace-camera-sim", "access_mode": "shared_read"},
+      {"role": "close_range_vision", "asset_id": "iitp-s1-close-camera-sim", "access_mode": "shared_read"},
+      {"role": "welding_vision", "asset_id": "iitp-s1-welding-camera-sim", "access_mode": "shared_read"}
+    ]
+  },
+  "workflow": [
+    {
+      "step_id": "mobile_delivery",
+      "display_name": "Mobile carrier delivers the base plate",
+      "actor_roles": ["mobile_carrier"],
+      "unity_scenes": ["SampleScene"]
+    },
+    {
+      "step_id": "omy_pre_pick_place",
+      "display_name": "OMY transfers the plate to the welding table",
+      "actor_roles": ["omy_material_handling"],
+      "unity_scenes": ["SampleScene"]
+    },
+    {
+      "step_id": "rb5_waam",
+      "display_name": "RB5 follows the simulated WAAM path",
+      "actor_roles": ["rb5_waam_motion", "welding_vision"],
+      "unity_scenes": ["WAAM_pre_danger", "WAAM_post_danger"]
+    },
+    {
+      "step_id": "omy_post_pick_place",
+      "display_name": "OMY returns the processed plate to the carrier",
+      "actor_roles": ["omy_material_handling"],
+      "unity_scenes": ["PostPickPlaceScene"]
+    },
+    {
+      "step_id": "mobile_return",
+      "display_name": "Mobile carrier returns with the plate",
+      "actor_roles": ["mobile_carrier"],
+      "unity_scenes": ["PostPickPlaceScene"]
+    }
+  ],
+  "safety_policy": {
+    "schema_version": 1,
+    "policy_id": "iitp-scenario1-shadow",
+    "version": 1,
+    "warning_distance_m": 1.0,
+    "unsafe_distance_m": 0.5,
+    "max_signal_age_ms": 1000,
+    "future_tolerance_ms": 2000,
+    "minimum_tracking_confidence": 0.6,
+    "require_human_distance": true,
+    "task_sequence_mismatch_state": "UNSAFE",
+    "degraded_clock_state": "WARNING"
+  }
+}

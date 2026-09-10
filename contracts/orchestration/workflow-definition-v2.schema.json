@@ -1,0 +1,952 @@
+{
+  "$defs": {
+    "ActionLifetimeV1": {
+      "additionalProperties": false,
+      "properties": {
+        "on_unreachable": {
+          "enum": [
+            "cancel",
+            "complete"
+          ],
+          "title": "On Unreachable",
+          "type": "string"
+        },
+        "start_on": {
+          "maxLength": 96,
+          "minLength": 11,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*:(?:SUCCEEDED|FAILED|CANCELLED|TERMINAL)$",
+          "title": "Start On",
+          "type": "string"
+        },
+        "stop_on": {
+          "maxLength": 96,
+          "minLength": 11,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*:(?:SUCCEEDED|FAILED|CANCELLED|TERMINAL)$",
+          "title": "Stop On",
+          "type": "string"
+        }
+      },
+      "required": [
+        "start_on",
+        "stop_on",
+        "on_unreachable"
+      ],
+      "title": "ActionLifetimeV1",
+      "type": "object"
+    },
+    "ActionStepV2": {
+      "additionalProperties": false,
+      "properties": {
+        "binding_ordinals": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 512,
+          "title": "Binding Ordinals",
+          "type": "array"
+        },
+        "capability": {
+          "maxLength": 96,
+          "minLength": 3,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*@[1-9][0-9]*$",
+          "title": "Capability",
+          "type": "string"
+        },
+        "compensation_step": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Compensation Step"
+        },
+        "depends_on": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+            "type": "string"
+          },
+          "maxItems": 512,
+          "title": "Depends On",
+          "type": "array"
+        },
+        "fan_out": {
+          "anyOf": [
+            {
+              "enum": [
+                "all_bound_assets",
+                "first_n",
+                "explicit_binding_set"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fan Out"
+        },
+        "fan_out_count": {
+          "anyOf": [
+            {
+              "maximum": 512,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fan Out Count"
+        },
+        "join": {
+          "anyOf": [
+            {
+              "enum": [
+                "all",
+                "any"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Join"
+        },
+        "kind": {
+          "const": "action",
+          "default": "action",
+          "title": "Kind",
+          "type": "string"
+        },
+        "lifetime": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActionLifetimeV1"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "on_hold": {
+          "default": "capability_default",
+          "enum": [
+            "controlled_hold",
+            "controlled_cancel",
+            "finish_if_bounded",
+            "capability_default"
+          ],
+          "title": "On Hold",
+          "type": "string"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "maxProperties": 256,
+          "title": "Parameters",
+          "type": "object"
+        },
+        "retry": {
+          "$ref": "#/$defs/RetryPolicyV1"
+        },
+        "role": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Role",
+          "type": "string"
+        },
+        "step_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Step Id",
+          "type": "string"
+        },
+        "timeout_s": {
+          "exclusiveMinimum": 0.0,
+          "maximum": 86400.0,
+          "title": "Timeout S",
+          "type": "number"
+        }
+      },
+      "required": [
+        "step_id",
+        "role",
+        "capability",
+        "timeout_s"
+      ],
+      "title": "ActionStepV2",
+      "type": "object"
+    },
+    "BarrierStepV2": {
+      "additionalProperties": false,
+      "properties": {
+        "depends_on": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+            "type": "string"
+          },
+          "maxItems": 512,
+          "title": "Depends On",
+          "type": "array"
+        },
+        "join": {
+          "default": "all",
+          "enum": [
+            "all",
+            "any"
+          ],
+          "title": "Join",
+          "type": "string"
+        },
+        "kind": {
+          "const": "barrier",
+          "default": "barrier",
+          "title": "Kind",
+          "type": "string"
+        },
+        "step_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Step Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "step_id"
+      ],
+      "title": "BarrierStepV2",
+      "type": "object"
+    },
+    "CompensationStepV2": {
+      "additionalProperties": false,
+      "properties": {
+        "binding_ordinals": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 512,
+          "title": "Binding Ordinals",
+          "type": "array"
+        },
+        "capability": {
+          "maxLength": 96,
+          "minLength": 3,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*@[1-9][0-9]*$",
+          "title": "Capability",
+          "type": "string"
+        },
+        "depends_on": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+            "type": "string"
+          },
+          "maxItems": 512,
+          "title": "Depends On",
+          "type": "array"
+        },
+        "fan_out": {
+          "anyOf": [
+            {
+              "enum": [
+                "all_bound_assets",
+                "first_n",
+                "explicit_binding_set"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fan Out"
+        },
+        "fan_out_count": {
+          "anyOf": [
+            {
+              "maximum": 512,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fan Out Count"
+        },
+        "join": {
+          "anyOf": [
+            {
+              "enum": [
+                "all",
+                "any"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Join"
+        },
+        "kind": {
+          "const": "compensation",
+          "default": "compensation",
+          "title": "Kind",
+          "type": "string"
+        },
+        "on_failure": {
+          "default": "HOLD",
+          "enum": [
+            "HOLD",
+            "FAIL"
+          ],
+          "title": "On Failure",
+          "type": "string"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "maxProperties": 256,
+          "title": "Parameters",
+          "type": "object"
+        },
+        "role": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Role",
+          "type": "string"
+        },
+        "step_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Step Id",
+          "type": "string"
+        },
+        "timeout_s": {
+          "exclusiveMinimum": 0.0,
+          "maximum": 86400.0,
+          "title": "Timeout S",
+          "type": "number"
+        }
+      },
+      "required": [
+        "step_id",
+        "role",
+        "capability",
+        "timeout_s"
+      ],
+      "title": "CompensationStepV2",
+      "type": "object"
+    },
+    "ConditionalCaseV2": {
+      "additionalProperties": false,
+      "properties": {
+        "next": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Next",
+          "type": "string"
+        },
+        "when": {
+          "$ref": "#/$defs/PredicateV1"
+        }
+      },
+      "required": [
+        "when",
+        "next"
+      ],
+      "title": "ConditionalCaseV2",
+      "type": "object"
+    },
+    "ConditionalStepV2": {
+      "additionalProperties": false,
+      "properties": {
+        "cases": {
+          "items": {
+            "$ref": "#/$defs/ConditionalCaseV2"
+          },
+          "maxItems": 64,
+          "minItems": 2,
+          "title": "Cases",
+          "type": "array"
+        },
+        "depends_on": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+            "type": "string"
+          },
+          "maxItems": 512,
+          "title": "Depends On",
+          "type": "array"
+        },
+        "join": {
+          "default": "all",
+          "enum": [
+            "all",
+            "any"
+          ],
+          "title": "Join",
+          "type": "string"
+        },
+        "kind": {
+          "const": "conditional",
+          "default": "conditional",
+          "title": "Kind",
+          "type": "string"
+        },
+        "step_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Step Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "step_id",
+        "cases"
+      ],
+      "title": "ConditionalStepV2",
+      "type": "object"
+    },
+    "HumanApprovalStepV2": {
+      "additionalProperties": false,
+      "properties": {
+        "authority": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Authority",
+          "type": "string"
+        },
+        "depends_on": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+            "type": "string"
+          },
+          "maxItems": 512,
+          "title": "Depends On",
+          "type": "array"
+        },
+        "kind": {
+          "const": "human_approval",
+          "default": "human_approval",
+          "title": "Kind",
+          "type": "string"
+        },
+        "on_timeout": {
+          "default": "HOLD",
+          "enum": [
+            "HOLD",
+            "FAIL"
+          ],
+          "title": "On Timeout",
+          "type": "string"
+        },
+        "step_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Step Id",
+          "type": "string"
+        },
+        "timeout_s": {
+          "exclusiveMinimum": 0.0,
+          "maximum": 86400.0,
+          "title": "Timeout S",
+          "type": "number"
+        }
+      },
+      "required": [
+        "step_id",
+        "authority",
+        "timeout_s"
+      ],
+      "title": "HumanApprovalStepV2",
+      "type": "object"
+    },
+    "HumanTaskStepV2": {
+      "additionalProperties": false,
+      "properties": {
+        "authority": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Authority",
+          "type": "string"
+        },
+        "completion_predicate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PredicateV1"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "depends_on": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+            "type": "string"
+          },
+          "maxItems": 512,
+          "title": "Depends On",
+          "type": "array"
+        },
+        "instruction": {
+          "maxLength": 2048,
+          "minLength": 1,
+          "title": "Instruction",
+          "type": "string"
+        },
+        "kind": {
+          "const": "human_task",
+          "default": "human_task",
+          "title": "Kind",
+          "type": "string"
+        },
+        "on_timeout": {
+          "default": "HOLD",
+          "enum": [
+            "HOLD",
+            "FAIL"
+          ],
+          "title": "On Timeout",
+          "type": "string"
+        },
+        "step_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Step Id",
+          "type": "string"
+        },
+        "timeout_s": {
+          "exclusiveMinimum": 0.0,
+          "maximum": 86400.0,
+          "title": "Timeout S",
+          "type": "number"
+        }
+      },
+      "required": [
+        "step_id",
+        "authority",
+        "instruction",
+        "timeout_s"
+      ],
+      "title": "HumanTaskStepV2",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "PredicateV1": {
+      "additionalProperties": false,
+      "properties": {
+        "all": {
+          "items": {
+            "$ref": "#/$defs/PredicateV1"
+          },
+          "maxItems": 64,
+          "title": "All",
+          "type": "array"
+        },
+        "any": {
+          "items": {
+            "$ref": "#/$defs/PredicateV1"
+          },
+          "maxItems": 64,
+          "title": "Any",
+          "type": "array"
+        },
+        "not": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PredicateV1"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "op": {
+          "anyOf": [
+            {
+              "enum": [
+                "eq",
+                "ne",
+                "lt",
+                "lte",
+                "gt",
+                "gte",
+                "in",
+                "default"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Op"
+        },
+        "path": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "minLength": 14,
+              "pattern": "^steps\\.[A-Za-z0-9][A-Za-z0-9._-]*\\.result(?:\\.[A-Za-z0-9][A-Za-z0-9._-]*)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Path"
+        },
+        "value": {
+          "$ref": "#/$defs/JsonValue",
+          "default": null
+        }
+      },
+      "title": "PredicateV1",
+      "type": "object"
+    },
+    "RetryPolicyV1": {
+      "additionalProperties": false,
+      "properties": {
+        "max_total_attempts": {
+          "default": 1,
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Max Total Attempts",
+          "type": "integer"
+        }
+      },
+      "title": "RetryPolicyV1",
+      "type": "object"
+    },
+    "RoleSelectorV2": {
+      "additionalProperties": false,
+      "properties": {
+        "requires": {
+          "items": {
+            "maxLength": 96,
+            "minLength": 3,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*@[1-9][0-9]*$",
+            "type": "string"
+          },
+          "maxItems": 256,
+          "minItems": 1,
+          "title": "Requires",
+          "type": "array"
+        },
+        "zone_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Zone Id"
+        }
+      },
+      "required": [
+        "requires"
+      ],
+      "title": "RoleSelectorV2",
+      "type": "object"
+    },
+    "WaitForObservationStepV2": {
+      "additionalProperties": false,
+      "properties": {
+        "binding_ordinals": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 512,
+          "title": "Binding Ordinals",
+          "type": "array"
+        },
+        "capability": {
+          "maxLength": 96,
+          "minLength": 3,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*@[1-9][0-9]*$",
+          "title": "Capability",
+          "type": "string"
+        },
+        "depends_on": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+            "type": "string"
+          },
+          "maxItems": 512,
+          "title": "Depends On",
+          "type": "array"
+        },
+        "fan_out": {
+          "anyOf": [
+            {
+              "enum": [
+                "all_bound_assets",
+                "first_n",
+                "explicit_binding_set"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fan Out"
+        },
+        "fan_out_count": {
+          "anyOf": [
+            {
+              "maximum": 512,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fan Out Count"
+        },
+        "join": {
+          "anyOf": [
+            {
+              "enum": [
+                "all",
+                "any"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Join"
+        },
+        "kind": {
+          "const": "wait_for_observation",
+          "default": "wait_for_observation",
+          "title": "Kind",
+          "type": "string"
+        },
+        "on_timeout": {
+          "default": "HOLD",
+          "enum": [
+            "HOLD",
+            "FAIL"
+          ],
+          "title": "On Timeout",
+          "type": "string"
+        },
+        "predicate": {
+          "$ref": "#/$defs/PredicateV1"
+        },
+        "role": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Role",
+          "type": "string"
+        },
+        "step_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Step Id",
+          "type": "string"
+        },
+        "timeout_s": {
+          "exclusiveMinimum": 0.0,
+          "maximum": 86400.0,
+          "title": "Timeout S",
+          "type": "number"
+        }
+      },
+      "required": [
+        "step_id",
+        "role",
+        "capability",
+        "predicate",
+        "timeout_s"
+      ],
+      "title": "WaitForObservationStepV2",
+      "type": "object"
+    },
+    "WorkflowRoleV2": {
+      "additionalProperties": false,
+      "properties": {
+        "access": {
+          "enum": [
+            "exclusive",
+            "shared_read"
+          ],
+          "title": "Access",
+          "type": "string"
+        },
+        "cardinality": {
+          "maxLength": 16,
+          "minLength": 1,
+          "pattern": "^(?:[1-9][0-9]*|[1-9][0-9]*\\.\\.(?:[1-9][0-9]*|n))$",
+          "title": "Cardinality",
+          "type": "string"
+        },
+        "role": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Role",
+          "type": "string"
+        },
+        "selector": {
+          "$ref": "#/$defs/RoleSelectorV2"
+        }
+      },
+      "required": [
+        "role",
+        "cardinality",
+        "selector",
+        "access"
+      ],
+      "title": "WorkflowRoleV2",
+      "type": "object"
+    }
+  },
+  "$id": "https://sang.local/contracts/orchestration/workflow-definition-v2.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Vendor-neutral capability DAG with role cardinality and structured predicates.",
+  "properties": {
+    "roles": {
+      "items": {
+        "$ref": "#/$defs/WorkflowRoleV2"
+      },
+      "maxItems": 128,
+      "minItems": 1,
+      "title": "Roles",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": 2,
+      "default": 2,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "steps": {
+      "items": {
+        "discriminator": {
+          "mapping": {
+            "action": "#/$defs/ActionStepV2",
+            "barrier": "#/$defs/BarrierStepV2",
+            "compensation": "#/$defs/CompensationStepV2",
+            "conditional": "#/$defs/ConditionalStepV2",
+            "human_approval": "#/$defs/HumanApprovalStepV2",
+            "human_task": "#/$defs/HumanTaskStepV2",
+            "wait_for_observation": "#/$defs/WaitForObservationStepV2"
+          },
+          "propertyName": "kind"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/ActionStepV2"
+          },
+          {
+            "$ref": "#/$defs/WaitForObservationStepV2"
+          },
+          {
+            "$ref": "#/$defs/BarrierStepV2"
+          },
+          {
+            "$ref": "#/$defs/ConditionalStepV2"
+          },
+          {
+            "$ref": "#/$defs/HumanApprovalStepV2"
+          },
+          {
+            "$ref": "#/$defs/HumanTaskStepV2"
+          },
+          {
+            "$ref": "#/$defs/CompensationStepV2"
+          }
+        ]
+      },
+      "maxItems": 512,
+      "minItems": 1,
+      "title": "Steps",
+      "type": "array"
+    },
+    "version": {
+      "minimum": 1,
+      "title": "Version",
+      "type": "integer"
+    },
+    "workflow_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "title": "Workflow Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "workflow_id",
+    "version",
+    "roles",
+    "steps"
+  ],
+  "title": "WorkflowDefinitionV2",
+  "type": "object"
+}

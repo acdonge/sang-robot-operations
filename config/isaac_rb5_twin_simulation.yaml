@@ -1,0 +1,10 @@
+schema_version: 1
+scenario_id: isaac-rb5-twin-pilot
+workflow_path: contracts/tasks/isaac-rb5-twin-workflow.v1.json
+bridge_root: /tmp/sang-isaac-rb5-twin
+heartbeat_max_age_s: 3
+result_timeout_s: 25
+roles:
+  virtual-robot:
+    asset_id: isaac-twin-rb5
+    agent_id: isaac-twin-rb5-agent

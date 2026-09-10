@@ -1,0 +1,12 @@
+string event_id
+string command_id
+string run_id
+string step_id
+string agent_id
+string agent_boot_id
+string state
+uint64 sequence
+builtin_interfaces/Time occurred_at
+string details_json
+string signing_key_id
+string signature

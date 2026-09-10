@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "asset_package_id": "omy-f3m-unity",
+  "version": 1,
+  "compatible_asset_profile": "omy-f3m",
+  "runtime": {
+    "kind": "UNITY",
+    "version": "6000.5.6f1",
+    "ros_distribution": "jazzy",
+    "controller_contract": "sang-unity-robot-controller@1"
+  },
+  "artifacts": [
+    {
+      "role": "unity_prefab",
+      "object_id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "media_type": "application/vnd.unity.prefab",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "size_bytes": 1048576,
+      "file_name": "OMY_F3M.prefab"
+    },
+    {
+      "role": "urdf",
+      "object_id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "media_type": "application/xml",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "size_bytes": 32768,
+      "file_name": "omy_f3m.urdf"
+    }
+  ],
+  "dependencies": [
+    {
+      "kind": "contract",
+      "ref": "sang-unity-robot-controller@1",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    }
+  ],
+  "frames_contract_ref": {
+    "object_id": "omy-f3m-frames",
+    "version": 1,
+    "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  },
+  "device_manifest_ref": {
+    "manifest_id": "omy-f3m-sim-manifest",
+    "version": 1,
+    "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  },
+  "build_attestation_ref": {
+    "object_id": "omy-unity-build-attestation",
+    "version": 1,
+    "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+  }
+}

@@ -1,5 +1,13 @@
 # SANG Task-Scoped Operations Architecture
 
+> **Document status (2026-09-01):** This is a mixed-era architecture and implementation history, not
+> the current whole-program roadmap. Current status, priorities and deferrals are defined only in
+> [`SANG_MASTER_IMPLEMENTATION_PLAN.md`](SANG_MASTER_IMPLEMENTATION_PLAN.md). The OPC UA Robotics,
+> Machine Vision and AAS corrections in
+> [`docs/OPCUA_ROBOTICS_AAS_ARCHITECTURE_AUDIT_2026-09-01.md`](docs/OPCUA_ROBOTICS_AAS_ARCHITECTURE_AUDIT_2026-09-01.md)
+> override earlier standards assumptions in this record. Dated phase statements below are preserved
+> as implementation history unless explicitly updated.
+
 ## 1. 목표
 
 랩의 SO-101, OMY, RB5-850E와 이후 추가될 로봇·카메라·EEF·공정 장비를 ROS 2 기반으로 관측하고,
@@ -301,8 +309,8 @@ flowchart LR
   UAC -->|"compare, no snapshot write"| CP
   CP --> ADMIN["Admin / Operator UI"]
   CP -.-> MXR["Manager XR - monitor / Task Pause"]
-  REC -.-> OBJ["Object storage - planned"]
-  OBJ -.-> ML["LeRobot / VLA / Vision AI - planned"]
+  REC --> OBJ["Immutable Object Store - implemented"]
+  OBJ --> ML["LeRobot observation derivation - implemented; VLA / Vision AI - planned"]
   ML -.-> CP
   CP -.-> DT["Isaac Sim / Digital Twin"]
 ```
@@ -332,14 +340,17 @@ flowchart LR
   parity를 보장할 수 없음이 확인됐다. tolerance로 차이를 숨기지 않고 versioned normalized local
   health snapshot contract를 채택했다. gateway의 독립 subscription은 raw value/data-quality에만
   사용하며 snapshot link가 stale이면 자체 health 계산으로 fallback하지 않는다.
-- 현재 Central OPC UA 구성요소는 Client only다. 기존 Admin/Operator는 HTTP/WS를 유지하며
-  브라우저가 Edge OPC UA Server에 직접 접속하지 않는다.
+- 현재 Central OPC UA에는 Edge/native endpoint를 읽는 Client/shadow 역할과, Registry·health·Task
+  Run·recording summary를 노출하는 별도 read-only aggregate Server가 모두 구현돼 있다. 기존
+  Admin/Operator는 HTTP/WS를 유지하며 브라우저가 Edge나 Central OPC UA Server에 직접 접속하지 않는다.
 - ROS 관측 자산의 최신 snapshot과 health event는 기존 heartbeat/reconcile 경로만 write한다.
   Central OPC UA Client는 shadow 비교만 수행하고 OPC UA 값을 이 원장에 쓰지 않는다. Native
   OPC UA 장비의 live 상태는 Phase 4까지 shadow report에만 남기며 snapshot/health 원장 편입은
   Phase 2 evidence 이후 heartbeat 대체 여부와 함께 결정한다.
-- Robot/Camera v1의 northbound OPC UA 소비 요구가 확정됐으므로 Phase 5에 중앙 read-only aggregate
-  Server를 포함한다. Admin/Operator 브라우저는 계속 HTTP/WS를 사용하고 OPC UA에 직접 접속하지 않는다.
+- Robot/Camera v1의 중앙 read-only aggregate Server는 구현됐다. 다만 현재 트리는 custom SANG
+  projection이며 OPC UA Robotics 1.02 conformance를 주장하지 않는다. stale entity reconciliation,
+  unknown/null quality, 명시적 AccessLevel과 refresh 후 read-only audit을 먼저 보완한 뒤 official
+  Robotics dual projection을 추가한다. Admin/Operator 브라우저는 계속 HTTP/WS를 사용한다.
 
 ### 8.3 장비 연결 3+1 분류
 
@@ -381,8 +392,10 @@ Native 장비의 vendor model을 SANG model로 다시 투영할지는 중앙 agg
 
 ### 8.5 Information Model 정책
 
-- Robotics, Machine Vision, Joining Systems와 필요한 경우 Additive Manufacturing Companion
-  Specification의 타입 구조를 우선 재사용한다.
+- Robotics는 완전하고 진실한 필수 정보를 제공할 수 있는 robot profile에서 official NodeSet 타입을
+  우선 재사용한다. Machine Vision은 mode·job/recipe·result·event lifecycle을 가진 완전한 vision
+  processing system에만 적용하며 D405/D455/OTOS/MJPEG 원본 카메라에는 적용하지 않는다. Joining
+  Systems와 Additive Manufacturing은 실제 공정 요구와 장비 계약이 확정된 뒤 별도 profile로 검토한다.
 - MVP는 필요한 subset과 지원 profile을 명시하며 전체 conformance나 인증을 주장하지 않는다.
 - SANG model namespace에는 Workcell, TaskDefinition/Run reference, Dataset/Policy reference,
   stream reference와 clock 상태처럼 공식 모델에 없는 항목만 둔다.
@@ -450,23 +463,30 @@ gate가 모두 구현된 뒤에만 검토한다. 허용하더라도 raw actuator
 
 ### 8.9 저장소 배치 계획
 
-현재 `v2_ws`를 제품 monorepo로 유지하고 로봇별 Git 저장소를 만들지 않는다. 기존 파일을 즉시
-이동하지 않고 다음 경계만 단계적으로 추가한다.
+현재 `v2_ws`를 제품 monorepo로 유지하고 로봇별 Git 저장소를 만들지 않는다. 현재 경계는 다음과
+같다.
 
 ```text
-contracts/opcua/              NodeSet imports, SANG model, NodeIds, mapping tables (implemented)
+contracts/opcua/              frozen custom SANG model, NodeIds, mappings and security contracts
+contracts/orchestration/      generic workflow, grant, lease, mode and fixture contracts
+contracts/assets/             A0 internal asset/package/binding/qualification contracts
 src/sang_opcua_gateway/       read-only ROS -> OPC UA Edge sidecar (SO-101 Phase 1 implemented)
 src/sang_mcap_recorder/       allowlisted ROS -> immutable local MCAP worker (Phase 3.5 implemented)
-src/fleet_control_plane/      existing; Central OPC UA Client/shadow module 추가 (Phase 2)
+src/fleet_control_plane/      Central registry/API, OPC UA Client/shadow and read-only aggregate
 manifests/                    existing local interface contracts
-ui-admin/, ui-operator/       existing HTTP/WS clients; direct OPC UA client가 아님
-docs/architecture/            decisions, threat model, conformance evidence (planned)
+frontend/admin/               React/TypeScript/Ant Design source
+ui-admin/, ui-operator/       built HTTP/WS clients; direct OPC UA client가 아님
+docs/                         subsystem designs, runbooks, dated evidence and authority index
 ```
 
 USD/URDF, MCAP, 영상, dataset와 checkpoint 같은 대용량 artifact는 Git에 넣지 않는다. LeRobot,
 LeIsaac와 vendor driver는 외부 저장소/fork의 commit을 고정하고 SANG 연동 코드만 이 monorepo에 둔다.
 
 ### 8.10 단계별 구현과 Acceptance Criteria
+
+이 절의 Phase 번호는 OPC UA 초기 구현 이력이다. 현재 전체 우선순위나 standards migration 상태는
+`SANG_MASTER_IMPLEMENTATION_PLAN.md`를 따른다. 특히 Phase 0의 custom SANG model 검증은 official
+OPC UA Robotics 1.02 instance conformance가 아니다.
 
 #### Phase 0 - Model contract, 코드 없음
 
@@ -599,13 +619,17 @@ critical 3건을 수정한 뒤 focused Opus 재검토가 `PASS`를 반환했다.
 
 #### Phase 5 - Robot/Camera 중앙 OPC UA aggregate
 
-- 등록된 robot/camera Asset과 Workcell/TaskRun reference를 중앙 read-only address space로 투영
-- Edge identity를 Registry의 stable `asset_id`와 join하고 source server provenance를 보존
-- SANG writable application node와 control Method는 계속 0개로 유지
-- 실제 query/retention 요구가 확인된 경우에만 historian/시계열 파생 index 검토
+- 상태: **CUSTOM SANG AGGREGATE IMPLEMENTED WITH CORRECTNESS DEBT**. 등록된 robot/camera Asset,
+  Workcell/TaskRun과 recording summary의 read-only address space가 구현됐고 SANG writable
+  application node와 control Method는 0개다.
+- 이 구현은 official OPC UA Robotics 1.02 aggregate conformance가 아니다. Edge identity와 Registry
+  `asset_id` join/provenance를 유지하되, stale node 제거, unknown/null StatusCode, 명시적 AccessLevel과
+  refresh 후 read-only audit을 보완해야 한다.
+- historian/시계열 파생 index는 실제 query/retention 요구가 확인된 경우에만 검토한다.
 
-통과 기준: aggregate view가 요청한 Workcell/TaskRun scope와 동일한 자산 범위를 노출하고,
-TaskRun 예약 상태가 SQLite `assignments`와 일치하며 원장 DB에 역방향 write하지 않는다.
+현재 완료 기준: aggregate view가 Workcell/TaskRun scope와 동일한 자산 범위를 노출하고 TaskRun 예약
+상태가 SQLite와 일치하며 원장 DB에 역방향 write하지 않는다. 위 correctness debt 해결은 통합 계획의
+다음 Wave 1 gate다.
 
 #### Phase 6 - Control Mode Manager 이후의 제어
 
@@ -627,9 +651,17 @@ safety-rated stop 경로에 포함되지 않음이 시험으로 입증된다.
 
 ## 9. AAS 호환성
 
-AAS는 지금 구현하지 않는다. 내용이 정해지기 전에 빈 server/package를 만들지 않으며, 이후 Asset
-identity를 다음 Submodel로 매핑할 수 있게 현재 stable ID, approved capability와 OPC UA mapping
-boundary를 보존한다.
+AAS Repository와 runtime mapping은 아직 구현하지 않는다. Phase A0는 빈 server를 만들지 않고
+read-only global/AAS identity, immutable Asset Package, Scene Binding, Simulation Qualification
+계약만 `contracts/assets/`에 동결했다. 기존 SQLite Registry가 운영 원장으로 남고, 이후 Asset
+identity를 다음 Submodel로 투영할 수 있게 stable ID, approved capability와 OPC UA mapping boundary를
+보존한다.
+
+AAS 자산 identity, Unity/URDF artifact package, Scene Binding Manifest, Dynamic Unity Adapter,
+ROS 2 실행 경로와 저장소 원장 분리는
+`docs/AAS_ASSET_PACKAGE_DYNAMIC_UNITY_ADAPTER_DESIGN.md`를 목표 설계로 따른다. 이 문서는 목표
+contract와 A0 machine-readable schema를 확정한 것이며 AAS Repository, Dynamic Unity runtime 또는
+물리 command path가 구현됐다는 의미는 아니다.
 
 - Identification and technical data
 - Operational state and health
@@ -641,7 +673,12 @@ AAS는 공장/기업 상호운용을 위한 semantic layer다. ROS 2 고주파 t
 safety gate를 대체하지 않는다. 따라서 runtime 내부 모델을 먼저 안정화한 뒤 read-oriented AAS mapping
 adapter를 추가한다.
 
-## 10. 구현 상태와 다음 단계
+## 10. 당시 구현 상태와 다음 단계 (보관 기록)
+
+이 절은 작성 당시의 Robot/Camera v1 우선순위 기록이다. 이후 recording upload/catalog/playback,
+LeRobot observation derivation, Workflow/Action Library, Unity simulation, G1-G6a와 Central aggregate가
+구현됐다. 현재 상태와 다음 작업에는 이 목록을 사용하지 말고
+[`SANG_MASTER_IMPLEMENTATION_PLAN.md`](SANG_MASTER_IMPLEMENTATION_PLAN.md)를 사용한다.
 
 ### Robot/Camera v1 완료 범위
 

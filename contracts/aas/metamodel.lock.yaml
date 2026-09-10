@@ -1,0 +1,12 @@
+schema_version: "1.0.0"
+specification: IDTA-01001-3-1-2
+repository: https://github.com/admin-shell-io/aas-specs-metamodel.git
+release_tag: v3.1.2
+commit: a93e41c07c4018e864cba6016b760b9c7e0d849f
+license: CC-BY-4.0
+json_schema:
+  id: https://admin-shell.io/aas/3/1
+  source_path: schemas/json/aas.json
+  path: contracts/aas/official/aas-3.1.2.schema.json
+  sha256: 9a8a005e303634f5041b9a2eac2e19c5cca05b9dd54c4bd20afbc7ab809d411e
+

@@ -10,6 +10,8 @@
   <buildtool_depend>ament_python</buildtool_depend>
 
   <exec_depend>python3-fastapi</exec_depend>
+  <exec_depend>python3-jsonschema</exec_depend>
+  <exec_depend>python3-cryptography</exec_depend>
   <exec_depend>python3-pydantic</exec_depend>
   <exec_depend>python3-yaml</exec_depend>
   <exec_depend>robot_agent</exec_depend>

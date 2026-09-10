@@ -1,0 +1,10 @@
+string command_id
+# Canonical JSON for CancelExecutionRequestV1, including its short validity
+# window, Agent/Run scope, signer identity, and detached signature.
+string cancel_execution_request_json
+string cancel_execution_request_sha256
+---
+bool accepted
+string state
+string error_code
+string error_message

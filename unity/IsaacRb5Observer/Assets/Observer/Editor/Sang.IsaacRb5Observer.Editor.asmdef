@@ -1,0 +1,8 @@
+{
+  "name": "Sang.IsaacRb5Observer.Editor",
+  "rootNamespace": "Sang.IsaacRb5Observer.Editor",
+  "references": ["Sang.IsaacRb5Observer"],
+  "includePlatforms": ["Editor"],
+  "allowUnsafeCode": false,
+  "autoReferenced": false
+}

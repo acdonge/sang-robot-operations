@@ -37,10 +37,20 @@ from fleet_control_plane.recording_storage import (
     RECORDING_MIGRATION,
     RECORDING_QUALITY_MIGRATION,
 )
+from fleet_control_plane.safety_shadow import SAFETY_SHADOW_MIGRATION
+from fleet_control_plane.safety_v2 import SAFETY_V2_MIGRATION
+from fleet_control_plane.control_authority import CONTROL_AUTHORITY_MIGRATION
+from fleet_control_plane.orchestration_store import ORCHESTRATION_MIGRATION
+from fleet_control_plane.workflow_authoring import (
+    WORKFLOW_AUTHORING_MIGRATION,
+    WORKFLOW_SIMULATION_OPERATIONS_MIGRATION,
+    WORKFLOW_SIMULATION_RECONCILIATION_COLUMN_MIGRATION,
+    WORKFLOW_SIMULATION_VALIDATION_MIGRATION,
+)
 
 
 MAX_HEALTH_EVENTS = 10_000
-CURRENT_SCHEMA_VERSION = 11
+CURRENT_SCHEMA_VERSION = 19
 
 
 PHASE3_MIGRATION = (
@@ -938,6 +948,325 @@ class FleetStore:
                     if connection.in_transaction:
                         connection.rollback()
                     raise
+                versions.append(11)
+            if 12 not in versions:
+                try:
+                    connection.executescript(
+                        "BEGIN IMMEDIATE;\n"
+                        + SAFETY_SHADOW_MIGRATION
+                        + """
+                        INSERT INTO schema_migrations (version, name, applied_at)
+                        VALUES (
+                            12,
+                            'unity_safety_shadow',
+                            strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                        );
+                        COMMIT;
+                        """
+                    )
+                except BaseException:
+                    if connection.in_transaction:
+                        connection.rollback()
+                    raise
+                versions.append(12)
+            if 13 not in versions:
+                try:
+                    connection.executescript(
+                        "BEGIN IMMEDIATE;\n"
+                        + ORCHESTRATION_MIGRATION
+                        + """
+                        INSERT INTO schema_migrations (version, name, applied_at)
+                        VALUES (
+                            13,
+                            'g1_orchestration_registry_runtime',
+                            strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                        );
+                        COMMIT;
+                        """
+                    )
+                except BaseException:
+                    if connection.in_transaction:
+                        connection.rollback()
+                    raise
+                versions.append(13)
+            if 14 not in versions:
+                connection.execute("PRAGMA foreign_keys = OFF")
+                try:
+                    connection.executescript(
+                        """
+                        BEGIN IMMEDIATE;
+
+                        CREATE TABLE assets_v14 (
+                            asset_id TEXT PRIMARY KEY,
+                            asset_type TEXT NOT NULL CHECK (
+                                asset_type IN (
+                                    'robot', 'camera', 'eef', 'welder', 'feeder',
+                                    'mobile_robot', 'sensor', 'other'
+                                )
+                            ),
+                            display_name TEXT NOT NULL,
+                            node_id TEXT REFERENCES processing_nodes(node_id)
+                                ON DELETE RESTRICT,
+                            agent_id TEXT REFERENCES agents(agent_id)
+                                ON DELETE RESTRICT,
+                            robot_id TEXT,
+                            source_key TEXT,
+                            capabilities_json TEXT NOT NULL,
+                            created_at TEXT NOT NULL,
+                            runtime_kind TEXT CHECK (
+                                runtime_kind IN ('physical', 'simulation', 'replay')
+                            ),
+                            revision INTEGER NOT NULL DEFAULT 1 CHECK (revision >= 1),
+                            lifecycle_state TEXT NOT NULL DEFAULT 'active' CHECK (
+                                lifecycle_state IN ('active', 'decommissioned')
+                            ),
+                            updated_at TEXT NOT NULL DEFAULT '',
+                            decommissioned_at TEXT,
+                            decommission_reason TEXT,
+                            CHECK (
+                                (agent_id IS NULL AND robot_id IS NULL AND source_key IS NULL)
+                                OR (agent_id IS NOT NULL AND robot_id IS NOT NULL)
+                            ),
+                            CHECK (
+                                (asset_type = 'camera' AND (
+                                    agent_id IS NULL OR source_key IS NOT NULL
+                                ))
+                                OR (asset_type = 'robot' AND source_key IS NULL)
+                                OR (asset_type NOT IN ('camera', 'robot') AND
+                                    agent_id IS NULL AND robot_id IS NULL AND source_key IS NULL)
+                            )
+                        );
+
+                        INSERT INTO assets_v14 (
+                            asset_id, asset_type, display_name, node_id, agent_id,
+                            robot_id, source_key, capabilities_json, created_at,
+                            runtime_kind, revision, lifecycle_state, updated_at,
+                            decommissioned_at, decommission_reason
+                        )
+                        SELECT
+                            asset_id, asset_type, display_name, node_id, agent_id,
+                            robot_id, source_key, capabilities_json, created_at,
+                            runtime_kind, revision, lifecycle_state, updated_at,
+                            decommissioned_at, decommission_reason
+                        FROM assets;
+
+                        DROP TABLE assets;
+                        ALTER TABLE assets_v14 RENAME TO assets;
+
+                        CREATE UNIQUE INDEX assets_observed_binding
+                            ON assets (agent_id, robot_id, COALESCE(source_key, ''))
+                            WHERE agent_id IS NOT NULL;
+
+                        CREATE TRIGGER assets_runtime_kind_immutable
+                        BEFORE UPDATE OF runtime_kind ON assets
+                        WHEN OLD.runtime_kind IS NOT NULL
+                             AND NEW.runtime_kind IS NOT OLD.runtime_kind
+                        BEGIN
+                            SELECT RAISE(ABORT, 'asset runtime_kind is immutable once assigned');
+                        END;
+
+                        CREATE TABLE task_runs_v14 (
+                            run_id TEXT PRIMARY KEY,
+                            task_definition_id TEXT NOT NULL,
+                            task_version INTEGER NOT NULL,
+                            workcell_id TEXT REFERENCES workcells(workcell_id)
+                                ON DELETE RESTRICT,
+                            display_name TEXT NOT NULL,
+                            execution_mode TEXT NOT NULL CHECK (
+                                execution_mode IN (
+                                    'OBSERVE_ONLY', 'SIMULATION', 'REPLAY', 'SHADOW',
+                                    'HIL', 'PHYSICAL_AUTO', 'PHYSICAL_TELEOP',
+                                    'MAINTENANCE'
+                                )
+                            ),
+                            state TEXT NOT NULL CHECK (
+                                state IN (
+                                    'DRAFT', 'READY', 'ACTIVE', 'HELD', 'ABORTING',
+                                    'ABORTED', 'RECONCILING', 'COMPLETE', 'FAILED'
+                                )
+                            ),
+                            revision INTEGER NOT NULL CHECK (revision >= 1),
+                            created_at TEXT NOT NULL,
+                            updated_at TEXT NOT NULL,
+                            started_at TEXT,
+                            finished_at TEXT,
+                            terminal_reason TEXT,
+                            FOREIGN KEY (task_definition_id, task_version)
+                                REFERENCES task_definitions(task_definition_id, version)
+                                ON DELETE RESTRICT,
+                            CHECK (
+                                (state IN ('ABORTED', 'COMPLETE', 'FAILED')
+                                    AND finished_at IS NOT NULL)
+                                OR
+                                (state NOT IN ('ABORTED', 'COMPLETE', 'FAILED')
+                                    AND finished_at IS NULL)
+                            ),
+                            CHECK (
+                                (state IN (
+                                    'HELD', 'ABORTING', 'ABORTED', 'RECONCILING', 'FAILED'
+                                ) AND terminal_reason IS NOT NULL)
+                                OR state NOT IN (
+                                    'HELD', 'ABORTING', 'ABORTED', 'RECONCILING', 'FAILED'
+                                )
+                            )
+                        );
+
+                        INSERT INTO task_runs_v14 (
+                            run_id, task_definition_id, task_version, workcell_id,
+                            display_name, execution_mode, state, revision, created_at,
+                            updated_at, started_at, finished_at, terminal_reason
+                        )
+                        SELECT
+                            run_id, task_definition_id, task_version, workcell_id,
+                            display_name, 'OBSERVE_ONLY', state, revision, created_at,
+                            updated_at, started_at, finished_at, terminal_reason
+                        FROM task_runs;
+
+                        DROP TABLE task_runs;
+                        ALTER TABLE task_runs_v14 RENAME TO task_runs;
+
+                        DROP INDEX IF EXISTS assignments_reserved_asset;
+                        DROP INDEX IF EXISTS assignments_reserved_exclusive_asset;
+                        CREATE UNIQUE INDEX assignments_reserved_exclusive_asset
+                            ON assignments (asset_id)
+                            WHERE reserved = 1 AND access_mode = 'exclusive';
+
+                        INSERT INTO schema_migrations (version, name, applied_at)
+                        VALUES (
+                            14,
+                            'g1_legacy_runtime_and_run_integrity',
+                            strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                        );
+                        """
+                    )
+                    violations = connection.execute("PRAGMA foreign_key_check").fetchall()
+                    if violations:
+                        raise RuntimeError(
+                            "G1 runtime/run migration violates foreign keys"
+                        )
+                except BaseException:
+                    connection.rollback()
+                    raise
+                else:
+                    connection.commit()
+                finally:
+                    connection.execute("PRAGMA foreign_keys = ON")
+                versions.append(14)
+            if 15 not in versions:
+                try:
+                    connection.executescript(
+                        "BEGIN IMMEDIATE;\n"
+                        + SAFETY_V2_MIGRATION
+                        + """
+                        INSERT INTO schema_migrations (version, name, applied_at)
+                        VALUES (
+                            15,
+                            'g2_safety_evidence_v2',
+                            strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                        );
+                        COMMIT;
+                        """
+                    )
+                except BaseException:
+                    if connection.in_transaction:
+                        connection.rollback()
+                    raise
+                versions.append(15)
+            if 16 not in versions:
+                try:
+                    connection.executescript(
+                        "BEGIN IMMEDIATE;\n"
+                        + CONTROL_AUTHORITY_MIGRATION
+                        + """
+                        INSERT INTO schema_migrations (version, name, applied_at)
+                        VALUES (
+                            16,
+                            'g5_control_authority_and_xr_latches',
+                            strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                        );
+                        COMMIT;
+                        """
+                    )
+                except BaseException:
+                    if connection.in_transaction:
+                        connection.rollback()
+                    raise
+                versions.append(16)
+            if 17 not in versions:
+                try:
+                    connection.executescript(
+                        "BEGIN IMMEDIATE;\n"
+                        + WORKFLOW_AUTHORING_MIGRATION
+                        + """
+                        INSERT INTO schema_migrations (version, name, applied_at)
+                        VALUES (
+                            17,
+                            'workflow_authoring_and_simulation_queue',
+                            strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                        );
+                        COMMIT;
+                        """
+                    )
+                except BaseException:
+                    if connection.in_transaction:
+                        connection.rollback()
+                    raise
+                versions.append(17)
+            if 18 not in versions:
+                try:
+                    connection.execute("BEGIN IMMEDIATE")
+                    already_applied = connection.execute(
+                        "SELECT 1 FROM schema_migrations WHERE version = 18"
+                    ).fetchone()
+                    if already_applied is None:
+                        run_columns = {
+                            row["name"]
+                            for row in connection.execute(
+                                "PRAGMA table_info(workflow_simulation_runs)"
+                            ).fetchall()
+                        }
+                        if "reconciliation_required" not in run_columns:
+                            connection.execute(
+                                WORKFLOW_SIMULATION_RECONCILIATION_COLUMN_MIGRATION
+                            )
+                        for statement in WORKFLOW_SIMULATION_OPERATIONS_MIGRATION:
+                            connection.execute(statement)
+                        connection.execute(
+                            """
+                            INSERT INTO schema_migrations (version, name, applied_at)
+                            VALUES (
+                                18,
+                                'simulation_operations_and_reconciliation',
+                                strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                            )
+                            """
+                        )
+                    connection.commit()
+                except BaseException:
+                    if connection.in_transaction:
+                        connection.rollback()
+                    raise
+                versions.append(18)
+            if 19 not in versions:
+                try:
+                    connection.executescript(
+                        "BEGIN IMMEDIATE;\n"
+                        + WORKFLOW_SIMULATION_VALIDATION_MIGRATION
+                        + """
+                        INSERT INTO schema_migrations (version, name, applied_at)
+                        VALUES (
+                            19,
+                            'simulation_validation_and_commissioning_gate',
+                            strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                        );
+                        COMMIT;
+                        """
+                    )
+                except BaseException:
+                    if connection.in_transaction:
+                        connection.rollback()
+                    raise
+                versions.append(19)
 
     @staticmethod
     def _insert_event(
@@ -2498,8 +2827,9 @@ class FleetStore:
                     INSERT INTO assets (
                         asset_id, asset_type, display_name, node_id,
                         agent_id, robot_id, source_key, capabilities_json,
-                        created_at, runtime_kind
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        created_at, runtime_kind, revision, lifecycle_state,
+                        updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'active', ?)
                     """,
                     (
                         body.asset_id,
@@ -2512,6 +2842,7 @@ class FleetStore:
                         self._encoded_json(body.capabilities),
                         created_at,
                         body.runtime_kind,
+                        created_at,
                     ),
                 )
                 self._insert_configuration_audit(
@@ -2560,6 +2891,10 @@ class FleetStore:
                 )
             if row["lifecycle_state"] != "active":
                 raise ConfigurationInvalid(f"asset {asset_id} is decommissioned")
+            if row["runtime_kind"] is not None and body.runtime_kind != row["runtime_kind"]:
+                raise ConfigurationInvalid(
+                    "asset runtime_kind is immutable once assigned; create a new asset identity"
+                )
             if body.runtime_kind is not None and row["agent_id"] is not None:
                 robot = self._find_observed_robot(
                     connection,
@@ -2626,6 +2961,11 @@ class FleetStore:
                     )
                 if row["lifecycle_state"] != "active":
                     raise ConfigurationInvalid(f"asset {asset_id} is decommissioned")
+                if row["runtime_kind"] is not None and body.runtime_kind != row["runtime_kind"]:
+                    raise ConfigurationInvalid(
+                        "asset runtime_kind is immutable once assigned; "
+                        "create a new asset identity"
+                    )
                 reservation = connection.execute(
                     """
                     SELECT run_id FROM assignments
@@ -2858,7 +3198,9 @@ class FleetStore:
                 active_run = connection.execute(
                     """
                     SELECT run_id FROM task_runs
-                    WHERE workcell_id = ? AND state IN ('DRAFT', 'READY', 'ACTIVE')
+                    WHERE workcell_id = ? AND state NOT IN (
+                        'ABORTED', 'COMPLETE', 'FAILED'
+                    )
                     ORDER BY created_at LIMIT 1
                     """,
                     (workcell_id,),
@@ -2932,7 +3274,9 @@ class FleetStore:
             active_run = connection.execute(
                 """
                 SELECT run_id FROM task_runs
-                WHERE workcell_id = ? AND state IN ('DRAFT', 'READY', 'ACTIVE')
+                WHERE workcell_id = ? AND state NOT IN (
+                    'ABORTED', 'COMPLETE', 'FAILED'
+                )
                 ORDER BY created_at LIMIT 1
                 """,
                 (workcell_id,),
@@ -2977,6 +3321,25 @@ class FleetStore:
         try:
             with self._connect() as connection:
                 connection.execute("BEGIN IMMEDIATE")
+                publication_table = connection.execute(
+                    """
+                    SELECT 1 FROM sqlite_master
+                    WHERE type = 'table' AND name = 'task_workflow_publications'
+                    """
+                ).fetchone()
+                if publication_table is not None:
+                    managed = connection.execute(
+                        """
+                        SELECT 1 FROM task_workflow_publications
+                        WHERE task_definition_id = ? LIMIT 1
+                        """,
+                        (body.task_definition_id,),
+                    ).fetchone()
+                    if managed is not None:
+                        raise ConfigurationConflict(
+                            f"Task {body.task_definition_id} is managed by Workflow Studio; "
+                            "create its next version from a Draft"
+                        )
                 row = connection.execute(
                     """
                     SELECT MAX(version) AS latest_version
@@ -3123,6 +3486,26 @@ class FleetStore:
                     "access_mode": assignment.access_mode,
                 }
             )
+            if require_complete:
+                reservations = connection.execute(
+                    """
+                    SELECT run_id, access_mode FROM assignments
+                    WHERE asset_id = ? AND reserved = 1
+                    """,
+                    (assignment.asset_id,),
+                ).fetchall()
+                incompatible = [
+                    item
+                    for item in reservations
+                    if assignment.access_mode == "exclusive"
+                    or item["access_mode"] == "exclusive"
+                ]
+                if incompatible:
+                    holders = sorted({item["run_id"] for item in incompatible})
+                    raise ConfigurationConflict(
+                        f"asset {assignment.asset_id} is reserved by task run(s) "
+                        f"{holders}"
+                    )
         return resolved
 
     def create_task_run(
@@ -3151,9 +3534,9 @@ class FleetStore:
                     """
                     INSERT INTO task_runs (
                         run_id, task_definition_id, task_version,
-                        workcell_id, display_name, state, revision,
+                        workcell_id, display_name, execution_mode, state, revision,
                         created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
                     """,
                     (
                         body.run_id,
@@ -3161,6 +3544,7 @@ class FleetStore:
                         body.task_version,
                         body.workcell_id,
                         body.display_name,
+                        body.execution_mode,
                         body.state,
                         created_at,
                         created_at,
@@ -3191,6 +3575,7 @@ class FleetStore:
                     entity_id=body.run_id,
                     details={
                         "state": body.state,
+                        "execution_mode": body.execution_mode,
                         "task_definition": (
                             f"{body.task_definition_id}@{body.task_version}"
                         ),
@@ -3304,9 +3689,13 @@ class FleetStore:
         occurred_at: datetime,
     ) -> dict[str, Any]:
         allowed = {
-            "DRAFT": {"READY"},
-            "READY": {"ACTIVE"},
-            "ACTIVE": {"COMPLETE", "FAILED"},
+            "DRAFT": {"READY", "ABORTING", "FAILED"},
+            "READY": {"ACTIVE", "ABORTING", "FAILED"},
+            "ACTIVE": {"HELD", "ABORTING", "RECONCILING", "COMPLETE", "FAILED"},
+            "HELD": {"ACTIVE", "ABORTING", "RECONCILING", "FAILED"},
+            "RECONCILING": {"HELD", "ABORTING", "FAILED"},
+            "ABORTING": {"ABORTED", "FAILED"},
+            "ABORTED": set(),
             "COMPLETE": set(),
             "FAILED": set(),
         }
@@ -3357,17 +3746,21 @@ class FleetStore:
                         "UPDATE assignments SET reserved = 1 WHERE run_id = ?",
                         (run_id,),
                     )
-                elif body.state in {"COMPLETE", "FAILED"}:
+                elif body.state in {"ABORTED", "COMPLETE", "FAILED"}:
                     connection.execute(
                         "UPDATE assignments SET reserved = 0 WHERE run_id = ?",
                         (run_id,),
                     )
 
                 timestamp = isoformat_z(occurred_at)
-                started_at = timestamp if body.state == "ACTIVE" else row["started_at"]
+                started_at = (
+                    timestamp
+                    if body.state == "ACTIVE" and row["started_at"] is None
+                    else row["started_at"]
+                )
                 finished_at = (
                     timestamp
-                    if body.state in {"COMPLETE", "FAILED"}
+                    if body.state in {"ABORTED", "COMPLETE", "FAILED"}
                     else row["finished_at"]
                 )
                 connection.execute(
@@ -3553,6 +3946,7 @@ class FleetStore:
             "task_version": row["task_version"],
             "workcell_id": row["workcell_id"],
             "display_name": row["display_name"],
+            "execution_mode": row["execution_mode"],
             "state": row["state"],
             "revision": row["revision"],
             "assignments": assignments,

@@ -1,0 +1,161 @@
+schema_version: "1.0.0"
+
+official_models:
+  core:
+    uri: http://opcfoundation.org/UA/
+    version: "1.05.05"
+    path: contracts/opcua/official/Opc.Ua.NodeSet2.xml
+    sha256: 43bf17df9811903639a29d10bef6a4ee05609ef98c64981cf745ac0e5a0b1515
+  di:
+    uri: http://opcfoundation.org/UA/DI/
+    version: "1.04.0"
+    path: contracts/opcua/official/Opc.Ua.Di.NodeSet2.xml
+    sha256: ec376a3992f38740fd9263ec06e7560af2d56adb8ffdbd5f7ebc813ae0273fe5
+  ia:
+    uri: http://opcfoundation.org/UA/IA/
+    version: "1.01.4"
+    path: contracts/opcua/official/Opc.Ua.IA.NodeSet2.xml
+    sha256: 8ac55e581540258ee8de67617c2d3ef26e9d828dfceabb10f6ba5704c476357d
+  robotics:
+    uri: http://opcfoundation.org/UA/Robotics/
+    version: "1.02"
+    path: contracts/opcua/official/Opc.Ua.Robotics.NodeSet2.xml
+    sha256: 487243c1ec85e0b747c087ed96c0e1d824629789055e74854f07d19099c08803
+
+profiles:
+  - profile_id: so101-dual-physical-v1
+    robot_id: bi_so101_01
+    runtime_kind: physical
+    support_status: partial
+    conformance_claim: false
+    identities:
+      processing_node_id: processing-central-01
+      cell_agent_id: cell-so101-01
+      runtime_agent_id: workcell-soarm-01
+      asset_id: asset-so101-dual-01
+      motion_device_system_id: mds-so101-dual-01
+    manufacturer: null
+    model: SO-101-dual
+    product_code: null
+    serial_number: null
+    controller: null
+    motion_devices: []
+    safety_states: []
+    evidence_refs:
+      - contracts/opcua/bi_so101_01.mapping.v2.yaml
+      - manifests/bi_so101_01.yaml
+    coverage:
+      - {element: motion_device_system, mandatory: true, state: available, source: asset-registry, opcua_type: MotionDeviceSystemType, quality_policy: static-verified, update_rate_hz: null, provenance: profile-contract}
+      - {element: identification, mandatory: true, state: missing, source: null, opcua_type: IVendorNameplateType, quality_policy: null, update_rate_hz: null, provenance: manufacturer-and-serial-not-verified}
+      - {element: motion_devices, mandatory: true, state: missing, source: null, opcua_type: MotionDeviceType, quality_policy: null, update_rate_hz: null, provenance: follower-system-boundary-not-qualified}
+      - {element: controllers, mandatory: true, state: missing, source: null, opcua_type: ControllerType, quality_policy: null, update_rate_hz: null, provenance: controller-nameplate-not-verified}
+      - {element: axes, mandatory: true, state: missing, source: observation.state, opcua_type: AxisType, quality_policy: source-status, update_rate_hz: 18, provenance: normalized-values-are-not-physical-axis-values}
+      - {element: power_trains, mandatory: true, state: missing, source: null, opcua_type: PowerTrainType, quality_policy: null, update_rate_hz: null, provenance: motor-and-gear-data-not-verified}
+      - {element: safety_states, mandatory: true, state: missing, source: null, opcua_type: SafetyStateType, quality_policy: null, update_rate_hz: null, provenance: no-safety-controller-source}
+      - {element: actual_position, mandatory: true, state: missing, source: observation.state, opcua_type: AnalogUnitType, quality_policy: source-status, update_rate_hz: 18, provenance: lerobot-normalized-only}
+
+  - profile_id: omy-physical-v1
+    robot_id: omy_01
+    runtime_kind: physical
+    support_status: partial
+    conformance_claim: false
+    identities:
+      processing_node_id: processing-omy-01
+      cell_agent_id: cell-omy-01
+      runtime_agent_id: workcell-omy-01
+      asset_id: asset-omy-01
+      motion_device_system_id: mds-omy-01
+    manufacturer: ROBOTIS
+    model: OMY-F3M
+    product_code: null
+    serial_number: null
+    controller: null
+    motion_devices: []
+    safety_states: []
+    evidence_refs:
+      - contracts/opcua/omy_01.mapping.v2.yaml
+      - manifests/omy_01.yaml
+    coverage:
+      - {element: motion_device_system, mandatory: true, state: available, source: asset-registry, opcua_type: MotionDeviceSystemType, quality_policy: static-verified, update_rate_hz: null, provenance: profile-contract}
+      - {element: identification, mandatory: true, state: missing, source: null, opcua_type: IVendorNameplateType, quality_policy: null, update_rate_hz: null, provenance: product-code-and-serial-not-verified}
+      - {element: motion_devices, mandatory: true, state: missing, source: null, opcua_type: MotionDeviceType, quality_policy: null, update_rate_hz: null, provenance: system-boundary-not-qualified}
+      - {element: controllers, mandatory: true, state: missing, source: null, opcua_type: ControllerType, quality_policy: null, update_rate_hz: null, provenance: controller-nameplate-not-verified}
+      - {element: axes, mandatory: true, state: missing, source: observation.state, opcua_type: AxisType, quality_policy: source-status, update_rate_hz: 10, provenance: joint-values-known-but-power-train-dependency-missing}
+      - {element: power_trains, mandatory: true, state: missing, source: null, opcua_type: PowerTrainType, quality_policy: null, update_rate_hz: null, provenance: motor-and-gear-data-not-verified}
+      - {element: safety_states, mandatory: true, state: missing, source: null, opcua_type: SafetyStateType, quality_policy: null, update_rate_hz: null, provenance: no-safety-controller-source}
+      - {element: actual_position, mandatory: true, state: available, source: observation.state, opcua_type: AnalogUnitType, quality_policy: source-status, update_rate_hz: 10, provenance: contracts/opcua/omy_01.mapping.v2.yaml}
+
+  - profile_id: rb5-physical-v1
+    robot_id: rb5_850e_01
+    runtime_kind: physical
+    support_status: partial
+    conformance_claim: false
+    identities:
+      processing_node_id: processing-lab1
+      cell_agent_id: cell-rb5-01
+      runtime_agent_id: workcell-rb5-01
+      asset_id: asset-rb5-850e-01
+      motion_device_system_id: mds-rb5-850e-01
+    manufacturer: Rainbow-Robotics
+    model: RB5-850E
+    product_code: null
+    serial_number: null
+    controller: null
+    motion_devices: []
+    safety_states: []
+    evidence_refs:
+      - contracts/opcua/rb5_850e_01.mapping.v2.yaml
+      - manifests/rb5_850e_01.yaml
+    coverage:
+      - {element: motion_device_system, mandatory: true, state: available, source: asset-registry, opcua_type: MotionDeviceSystemType, quality_policy: static-verified, update_rate_hz: null, provenance: profile-contract}
+      - {element: identification, mandatory: true, state: missing, source: null, opcua_type: IVendorNameplateType, quality_policy: null, update_rate_hz: null, provenance: product-code-and-serial-not-verified}
+      - {element: motion_devices, mandatory: true, state: missing, source: null, opcua_type: MotionDeviceType, quality_policy: null, update_rate_hz: null, provenance: vendor-information-model-not-obtained}
+      - {element: controllers, mandatory: true, state: missing, source: null, opcua_type: ControllerType, quality_policy: null, update_rate_hz: null, provenance: vendor-opcua-contract-not-obtained}
+      - {element: axes, mandatory: true, state: missing, source: observation.state, opcua_type: AxisType, quality_policy: source-status, update_rate_hz: 20, provenance: joint-values-known-but-power-train-dependency-missing}
+      - {element: power_trains, mandatory: true, state: missing, source: null, opcua_type: PowerTrainType, quality_policy: null, update_rate_hz: null, provenance: motor-and-gear-data-not-verified}
+      - {element: safety_states, mandatory: true, state: missing, source: null, opcua_type: SafetyStateType, quality_policy: null, update_rate_hz: null, provenance: native-safety-nodes-not-obtained}
+      - {element: actual_position, mandatory: true, state: available, source: observation.state, opcua_type: AnalogUnitType, quality_policy: source-status, update_rate_hz: 20, provenance: contracts/opcua/rb5_850e_01.mapping.v2.yaml}
+
+  - profile_id: robotics-reference-fixture-v1
+    robot_id: robotics_fixture_01
+    runtime_kind: reference_fixture
+    support_status: base_candidate
+    conformance_claim: false
+    identities:
+      processing_node_id: processing-robotics-fixture
+      cell_agent_id: cell-robotics-fixture
+      runtime_agent_id: agent-robotics-fixture
+      asset_id: asset-robotics-fixture
+      motion_device_system_id: mds-robotics-fixture
+    manufacturer: SANG-Test-Lab
+    model: Robotics-Reference-Fixture
+    product_code: SANG-RF-2AXIS
+    serial_number: FIXTURE-0001
+    controller:
+      controller_id: controller-robotics-fixture
+      manufacturer: SANG-Test-Lab
+      model: Fixture-Controller
+      product_code: SANG-RFC-01
+      serial_number: FIXTURE-CONTROLLER-0001
+    motion_devices:
+      - motion_device_id: motion-device-fixture
+        display_name: Two Axis Reference Fixture
+        power_trains:
+          - {power_train_id: power-train-axis-1}
+          - {power_train_id: power-train-axis-2}
+        axes:
+          - {axis_id: axis-1, feature_name: axis_1, source_key: observation.state, engineering_unit: rad, valid_range: [-3.141592653589793, 3.141592653589793], minimum_rate_hz: 20, power_train_id: power-train-axis-1}
+          - {axis_id: axis-2, feature_name: axis_2, source_key: observation.state, engineering_unit: rad, valid_range: [-1.5707963267948966, 1.5707963267948966], minimum_rate_hz: 20, power_train_id: power-train-axis-2}
+    safety_states:
+      - {safety_state_id: safety-state-fixture, source: fixture.safety_state}
+    evidence_refs:
+      - contracts/opcua/robotics-profiles.v1.yaml#robotics-reference-fixture-v1
+    coverage:
+      - {element: motion_device_system, mandatory: true, state: available, source: fixture.profile, opcua_type: MotionDeviceSystemType, quality_policy: fixture-good, update_rate_hz: null, provenance: reference-fixture}
+      - {element: identification, mandatory: true, state: available, source: fixture.profile, opcua_type: IVendorNameplateType, quality_policy: fixture-good, update_rate_hz: null, provenance: reference-fixture}
+      - {element: motion_devices, mandatory: true, state: available, source: fixture.profile, opcua_type: MotionDeviceType, quality_policy: fixture-good, update_rate_hz: null, provenance: reference-fixture}
+      - {element: controllers, mandatory: true, state: available, source: fixture.profile, opcua_type: ControllerType, quality_policy: fixture-good, update_rate_hz: 1, provenance: reference-fixture}
+      - {element: axes, mandatory: true, state: available, source: fixture.observation.state, opcua_type: AxisType, quality_policy: fixture-good, update_rate_hz: 20, provenance: reference-fixture}
+      - {element: power_trains, mandatory: true, state: available, source: fixture.profile, opcua_type: PowerTrainType, quality_policy: fixture-good, update_rate_hz: null, provenance: reference-fixture}
+      - {element: safety_states, mandatory: true, state: available, source: fixture.safety_state, opcua_type: SafetyStateType, quality_policy: fixture-good, update_rate_hz: 10, provenance: reference-fixture}
+      - {element: actual_position, mandatory: true, state: available, source: fixture.observation.state, opcua_type: AnalogUnitType, quality_policy: fixture-good, update_rate_hz: 20, provenance: reference-fixture}

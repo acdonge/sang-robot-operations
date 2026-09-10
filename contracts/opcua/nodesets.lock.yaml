@@ -1,82 +1,43 @@
 schema_version: "1.0.0"
-resolved_at: "2026-08-04"
+repository: https://github.com/OPCFoundation/UA-Nodeset.git
+release_tag: Robotics-1.02-2025-09-08
+commit: c8368defcd51d96a74c557f992cb7b54b93a1773
 
-source:
-  repository: https://github.com/OPCFoundation/UA-Nodeset.git
-  branch: latest
-  commit: 6e0ef84e81ba7889fc7964cb4a20f01072be99f7
+# The Core file is retained for provenance and dependency verification. asyncua
+# already initializes the Core address space, so only DI, IA, and Robotics are
+# imported at runtime, in this order.
+runtime_import_order: [di, ia, robotics]
 
-model_compiler:
-  package: OPCFoundation.Opc.Ua.ModelCompiler.Tool
-  version: 2.8.15
-  source: https://github.com/OPCFoundation/UA-ModelCompiler
-
-files:
-  - id: uanodeset-schema
-    role: structural_validation_schema
-    path: Schema/UANodeSet.xsd
-    version: "1.05.04"
-    publication_date: "2024-12-01T00:00:00Z"
-    sha256: c7ac09ea7504d54174e1eb4c5a8123c0cc491040703dfcd6bfe085bf6c53f9f0
-
-  - id: opcua-core-runtime-minimum
-    role: required_model
-    path: Schema/Opc.Ua.NodeSet2.xml
-    source_commit: a79c1255d59cf3468d8083d3b97800db3e9b6827
-    model_uri: http://opcfoundation.org/UA/
-    version: "1.05.07"
-    model_version: "1.5.7"
-    publication_date: "2026-05-01T00:00:00Z"
-    sha256: a749678b5c4f2381fffdfc0e9514ec3315f36b1bdb31af402d3741a2db54f889
-
-  - id: opcua-core-validation
-    role: semantic_validation_reference
-    path: Schema/Opc.Ua.NodeSet2.xml
-    source_commit: 6e0ef84e81ba7889fc7964cb4a20f01072be99f7
-    model_uri: http://opcfoundation.org/UA/
-    version: "1.05.07"
-    model_version: "1.5.7"
-    publication_date: "2026-07-30T00:00:00Z"
-    sha256: d29ad5eb20884935a6b7ef8f9b70a6ad72417411a3fd3e4e704dac5762d394c8
-
-  - id: opcua-status-codes
-    role: normative_lookup
-    path: Schema/StatusCode.csv
-    sha256: 69912ec2b15955d9264ea5bc5c511c90c524ec59c7fe55d70e952d35777503cc
-
-  - id: device-integration
-    role: companion_transitive_reference
-    path: DI/Opc.Ua.Di.NodeSet2.xml
-    model_uri: http://opcfoundation.org/UA/DI/
-    version: "1.05.0"
-    model_version: "1.5.0"
-    publication_date: "2025-11-15T00:00:00Z"
-    sha256: 40a02d98a8b2a014ec9f961625a422df3566d4dd783151ec6ae55b47296199de
-
-  - id: industrial-automation
-    role: companion_transitive_reference
-    path: IA/Opc.Ua.IA.NodeSet2.xml
-    model_uri: http://opcfoundation.org/UA/IA/
+models:
+  core:
+    uri: http://opcfoundation.org/UA/
+    version: "1.05.05"
+    publication_date: "2025-06-30T00:00:00Z"
+    source_path: Schema/Opc.Ua.NodeSet2.xml
+    path: contracts/opcua/official/Opc.Ua.NodeSet2.xml
+    sha256: 43bf17df9811903639a29d10bef6a4ee05609ef98c64981cf745ac0e5a0b1515
+    runtime_import: false
+  di:
+    uri: http://opcfoundation.org/UA/DI/
+    version: "1.04.0"
+    publication_date: "2022-11-03T00:00:00Z"
+    source_path: DI/Opc.Ua.Di.NodeSet2.xml
+    path: contracts/opcua/official/Opc.Ua.Di.NodeSet2.xml
+    sha256: ec376a3992f38740fd9263ec06e7560af2d56adb8ffdbd5f7ebc813ae0273fe5
+    runtime_import: true
+  ia:
+    uri: http://opcfoundation.org/UA/IA/
     version: "1.01.4"
-    model_version: "1.1.4"
     publication_date: "2025-05-23T00:00:00Z"
+    source_path: IA/Opc.Ua.IA.NodeSet2.xml
+    path: contracts/opcua/official/Opc.Ua.IA.NodeSet2.xml
     sha256: 8ac55e581540258ee8de67617c2d3ef26e9d828dfceabb10f6ba5704c476357d
-
-  - id: robotics
-    role: alignment_reference
-    path: Robotics/Opc.Ua.Robotics.NodeSet2.xml
-    model_uri: http://opcfoundation.org/UA/Robotics/
+    runtime_import: true
+  robotics:
+    uri: http://opcfoundation.org/UA/Robotics/
     version: "1.02"
-    model_version: "1.2"
     publication_date: "2025-09-08T00:00:00Z"
+    source_path: Robotics/Opc.Ua.Robotics.NodeSet2.xml
+    path: contracts/opcua/official/Opc.Ua.Robotics.NodeSet2.xml
     sha256: 487243c1ec85e0b747c087ed96c0e1d824629789055e74854f07d19099c08803
-    conformance_claim: false
-
-  - id: machine-vision
-    role: future_alignment_reference
-    path: MachineVision/Opc.Ua.MachineVision.NodeSet2.xml
-    model_uri: http://opcfoundation.org/UA/MachineVision
-    version: "1.0.0"
-    publication_date: "2019-07-11T10:18:27Z"
-    sha256: 3e67454155a9618e0981aa8b3ee248f7a9ee216f9f915b53eb26a69533c0cc62
-    conformance_claim: false
+    runtime_import: true

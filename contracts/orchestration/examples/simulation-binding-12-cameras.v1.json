@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "binding_id": "binding-12-cameras",
+  "run_id": "run-12-cameras",
+  "workflow_ref": {
+    "workflow_id": "generic-position-and-observe",
+    "version": 1
+  },
+  "execution_mode": "SIMULATION",
+  "assets": [
+    {
+      "asset_id": "arm-01",
+      "runtime_class": "simulation",
+      "manifest_ref": {"manifest_id": "arm-01-manifest", "version": 1, "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+      "connection_ref": {"object_id": "arm-01-connection", "version": 1, "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+      "calibration_refs": [],
+      "capabilities": ["execute-registered-joint-plan@1"],
+      "supported_modes": ["SIMULATION"],
+      "command_sink_present": false,
+      "commissioned_capabilities": []
+    },
+    {
+      "asset_id": "camera-01",
+      "runtime_class": "simulation",
+      "manifest_ref": {"manifest_id": "camera-01-manifest", "version": 1, "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+      "connection_ref": {"object_id": "camera-01-connection", "version": 1, "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+      "calibration_refs": [], "capabilities": ["record-compressed-video@1"], "supported_modes": ["SIMULATION"], "command_sink_present": false, "commissioned_capabilities": []
+    },
+    {
+      "asset_id": "camera-02",
+      "runtime_class": "simulation",
+      "manifest_ref": {"manifest_id": "camera-02-manifest", "version": 1, "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+      "connection_ref": {"object_id": "camera-02-connection", "version": 1, "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+      "calibration_refs": [], "capabilities": ["record-compressed-video@1"], "supported_modes": ["SIMULATION"], "command_sink_present": false, "commissioned_capabilities": []
+    },
+    {
+      "asset_id": "camera-03",
+      "runtime_class": "simulation",
+      "manifest_ref": {"manifest_id": "camera-03-manifest", "version": 1, "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+      "connection_ref": {"object_id": "camera-03-connection", "version": 1, "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+      "calibration_refs": [], "capabilities": ["record-compressed-video@1"], "supported_modes": ["SIMULATION"], "command_sink_present": false, "commissioned_capabilities": []
+    },
+    {
+      "asset_id": "camera-04",
+      "runtime_class": "simulation",
+      "manifest_ref": {"manifest_id": "camera-04-manifest", "version": 1, "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+      "connection_ref": {"object_id": "camera-04-connection", "version": 1, "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+      "calibration_refs": [], "capabilities": ["record-compressed-video@1"], "supported_modes": ["SIMULATION"], "command_sink_present": false, "commissioned_capabilities": []
+    },
+    {
+      "asset_id": "camera-05",
+      "runtime_class": "simulation",
+      "manifest_ref": {"manifest_id": "camera-05-manifest", "version": 1, "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+      "connection_ref": {"object_id": "camera-05-connection", "version": 1, "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+      "calibration_refs": [], "capabilities": ["record-compressed-video@1"], "supported_modes": ["SIMULATION"], "command_sink_present": false, "commissioned_capabilities": []
+    },
+    {
+      "asset_id": "camera-06",
+      "runtime_class": "simulation",
+      "manifest_ref": {"manifest_id": "camera-06-manifest", "version": 1, "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+      "connection_ref": {"object_id": "camera-06-connection", "version": 1, "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+      "calibration_refs": [], "capabilities": ["record-compressed-video@1"], "supported_modes": ["SIMULATION"], "command_sink_present": false, "commissioned_capabilities": []
+    },
+    {
+      "asset_id": "camera-07",
+      "runtime_class": "simulation",
+      "manifest_ref": {"manifest_id": "camera-07-manifest", "version": 1, "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+      "connection_ref": {"object_id": "camera-07-connection", "version": 1, "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+      "calibration_refs": [], "capabilities": ["record-compressed-video@1"], "supported_modes": ["SIMULATION"], "command_sink_present": false, "commissioned_capabilities": []
+    },
+    {
+      "asset_id": "camera-08",
+      "runtime_class": "simulation",
+      "manifest_ref": {"manifest_id": "camera-08-manifest", "version": 1, "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+      "connection_ref": {"object_id": "camera-08-connection", "version": 1, "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+      "calibration_refs": [], "capabilities": ["record-compressed-video@1"], "supported_modes": ["SIMULATION"], "command_sink_present": false, "commissioned_capabilities": []
+    },
+    {
+      "asset_id": "camera-09",
+      "runtime_class": "simulation",
+      "manifest_ref": {"manifest_id": "camera-09-manifest", "version": 1, "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+      "connection_ref": {"object_id": "camera-09-connection", "version": 1, "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+      "calibration_refs": [], "capabilities": ["record-compressed-video@1"], "supported_modes": ["SIMULATION"], "command_sink_present": false, "commissioned_capabilities": []
+    },
+    {
+      "asset_id": "camera-10",
+      "runtime_class": "simulation",
+      "manifest_ref": {"manifest_id": "camera-10-manifest", "version": 1, "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+      "connection_ref": {"object_id": "camera-10-connection", "version": 1, "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+      "calibration_refs": [], "capabilities": ["record-compressed-video@1"], "supported_modes": ["SIMULATION"], "command_sink_present": false, "commissioned_capabilities": []
+    },
+    {
+      "asset_id": "camera-11",
+      "runtime_class": "simulation",
+      "manifest_ref": {"manifest_id": "camera-11-manifest", "version": 1, "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+      "connection_ref": {"object_id": "camera-11-connection", "version": 1, "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+      "calibration_refs": [], "capabilities": ["record-compressed-video@1"], "supported_modes": ["SIMULATION"], "command_sink_present": false, "commissioned_capabilities": []
+    },
+    {
+      "asset_id": "camera-12",
+      "runtime_class": "simulation",
+      "manifest_ref": {"manifest_id": "camera-12-manifest", "version": 1, "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+      "connection_ref": {"object_id": "camera-12-connection", "version": 1, "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+      "calibration_refs": [], "capabilities": ["record-compressed-video@1"], "supported_modes": ["SIMULATION"], "command_sink_present": false, "commissioned_capabilities": []
+    }
+  ],
+  "role_bindings": [
+    {"role": "handler", "asset_ids": ["arm-01"]},
+    {
+      "role": "cell-view",
+      "asset_ids": [
+        "camera-01", "camera-02", "camera-03", "camera-04", "camera-05", "camera-06",
+        "camera-07", "camera-08", "camera-09", "camera-10", "camera-11", "camera-12"
+      ]
+    }
+  ]
+}

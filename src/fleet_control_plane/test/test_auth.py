@@ -46,6 +46,7 @@ def test_authentication_is_required_when_enabled(tmp_path):
     client, _ = authenticated_client(tmp_path / "configured")
     assert client.get("/api/v1/healthz").status_code == 200
     assert client.get("/api/v1/agents").status_code == 401
+    assert client.post("/api/v2/safety/evidence", json={}).status_code == 401
     assert login(client, "lab-admin", "wrong password value").status_code == 401
 
     signed_in = login(client, "lab-admin", "correct horse battery staple")

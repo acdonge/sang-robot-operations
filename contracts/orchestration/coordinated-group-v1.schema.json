@@ -1,0 +1,76 @@
+{
+  "$id": "https://sang.local/contracts/orchestration/coordinated-group-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Transitive, all-or-nothing coordinated multi-asset group contract.",
+  "properties": {
+    "cancel_scope": {
+      "const": "all_or_nothing",
+      "default": "all_or_nothing",
+      "title": "Cancel Scope",
+      "type": "string"
+    },
+    "capabilities": {
+      "items": {
+        "maxLength": 96,
+        "minLength": 3,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*@[1-9][0-9]*$",
+        "type": "string"
+      },
+      "maxItems": 256,
+      "minItems": 1,
+      "title": "Capabilities",
+      "type": "array"
+    },
+    "group_asset_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "title": "Group Asset Id",
+      "type": "string"
+    },
+    "max_command_skew_ms": {
+      "exclusiveMinimum": 0.0,
+      "title": "Max Command Skew Ms",
+      "type": "number"
+    },
+    "member_asset_ids": {
+      "items": {
+        "maxLength": 64,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+        "type": "string"
+      },
+      "maxItems": 64,
+      "minItems": 2,
+      "title": "Member Asset Ids",
+      "type": "array"
+    },
+    "reservation_mode": {
+      "const": "transitive_exclusive",
+      "default": "transitive_exclusive",
+      "title": "Reservation Mode",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "version": {
+      "minimum": 1,
+      "title": "Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "group_asset_id",
+    "version",
+    "member_asset_ids",
+    "capabilities",
+    "max_command_skew_ms"
+  ],
+  "title": "CoordinatedGroupV1",
+  "type": "object"
+}

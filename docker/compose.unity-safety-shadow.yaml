@@ -1,0 +1,24 @@
+services:
+  unity-safety-edge:
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    user: "${SANG_UID:-1000}:${SANG_GID:-1000}"
+    init: true
+    network_mode: host
+    restart: unless-stopped
+    working_dir: /ws
+    environment:
+      PYTHONPATH: /ws/src/fleet_control_plane
+    volumes:
+      - ${SANG_WORKSPACE:?set SANG_WORKSPACE}:/ws:ro
+    command:
+      - python3
+      - -m
+      - fleet_control_plane.safety_edge
+      - --policy
+      - /ws/contracts/safety/policies/iitp-scenario1-shadow.v1.json
+      - --control-plane-url
+      - http://127.0.0.1:${CENTRAL_ADMIN_PORT:-18091}
+      - --host
+      - 127.0.0.1
+      - --port
+      - ${UNITY_SAFETY_EDGE_PORT:-18092}

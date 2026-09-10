@@ -1,0 +1,278 @@
+{
+  "$defs": {
+    "CapabilityDefinitionV1": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_execution_modes": {
+          "items": {
+            "enum": [
+              "OBSERVE_ONLY",
+              "SIMULATION",
+              "REPLAY",
+              "SHADOW",
+              "HIL",
+              "PHYSICAL_AUTO",
+              "PHYSICAL_TELEOP",
+              "MAINTENANCE"
+            ],
+            "type": "string"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Allowed Execution Modes",
+          "type": "array"
+        },
+        "cancellation_contract_ref": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 3,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cancellation Contract Ref"
+        },
+        "capability_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Capability Id",
+          "type": "string"
+        },
+        "completion_contract_ref": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 3,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Completion Contract Ref"
+        },
+        "control_envelope_schema_ref": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 3,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Control Envelope Schema Ref"
+        },
+        "effect": {
+          "enum": [
+            "observation",
+            "actuation",
+            "process_output"
+          ],
+          "title": "Effect",
+          "type": "string"
+        },
+        "evidence_contract_ref": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 3,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Evidence Contract Ref"
+        },
+        "max_clock_uncertainty_ms": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Clock Uncertainty Ms"
+        },
+        "max_demand_age_ms": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Demand Age Ms"
+        },
+        "on_agent_restart_with_motion_in_flight": {
+          "anyOf": [
+            {
+              "enum": [
+                "vendor_state_reconcile",
+                "safe_state",
+                "inhibit_until_reconciled"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "On Agent Restart With Motion In Flight"
+        },
+        "on_lease_expiry": {
+          "anyOf": [
+            {
+              "enum": [
+                "controlled_hold",
+                "controlled_cancel",
+                "safe_state"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "On Lease Expiry"
+        },
+        "parameter_schema_ref": {
+          "maxLength": 2048,
+          "minLength": 3,
+          "title": "Parameter Schema Ref",
+          "type": "string"
+        },
+        "recovery_contract_ref": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 3,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recovery Contract Ref"
+        },
+        "required_frames": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+            "type": "string"
+          },
+          "maxItems": 64,
+          "title": "Required Frames",
+          "type": "array"
+        },
+        "required_limits": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+            "type": "string"
+          },
+          "maxItems": 64,
+          "title": "Required Limits",
+          "type": "array"
+        },
+        "required_units": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+            "type": "string"
+          },
+          "maxItems": 64,
+          "title": "Required Units",
+          "type": "array"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "capability_id",
+        "version",
+        "effect",
+        "parameter_schema_ref",
+        "allowed_execution_modes"
+      ],
+      "title": "CapabilityDefinitionV1",
+      "type": "object"
+    }
+  },
+  "$id": "https://sang.local/contracts/orchestration/capability-profile-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Semantic capability profile for heterogeneous assets.",
+  "properties": {
+    "capabilities": {
+      "items": {
+        "$ref": "#/$defs/CapabilityDefinitionV1"
+      },
+      "maxItems": 256,
+      "minItems": 1,
+      "title": "Capabilities",
+      "type": "array"
+    },
+    "kind_tags": {
+      "items": {
+        "maxLength": 64,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+        "type": "string"
+      },
+      "maxItems": 64,
+      "title": "Kind Tags",
+      "type": "array"
+    },
+    "profile_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "version": {
+      "minimum": 1,
+      "title": "Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "profile_id",
+    "version",
+    "capabilities"
+  ],
+  "title": "CapabilityProfileV1",
+  "type": "object"
+}

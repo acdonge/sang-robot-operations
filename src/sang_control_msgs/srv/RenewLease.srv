@@ -1,0 +1,9 @@
+string command_id
+# Canonical JSON for the replacement ExecuteSkillRequestV1. The Agent validates
+# every nested signature, identity fence, epoch, and expiry before accepting it.
+string renewed_execute_skill_request_json
+string renewed_execute_skill_request_sha256
+---
+bool accepted
+string error_code
+string error_message

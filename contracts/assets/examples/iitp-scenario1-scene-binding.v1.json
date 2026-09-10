@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "scene_id": "iitp-scenario1",
+  "version": 1,
+  "scene_artifact": {
+    "role": "unity_scene_package",
+    "object_id": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "media_type": "application/vnd.sang.unity-scene",
+    "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+    "size_bytes": 524288000,
+    "file_name": "SangScenario1Simulation.tar"
+  },
+  "unity_version": "6000.5.6f1",
+  "world": {
+    "frame_id": "cell_world",
+    "length_unit": "m",
+    "angle_unit": "rad",
+    "handedness": "left",
+    "up_axis": "+y",
+    "forward_axis": "+z",
+    "fixed_timestep_s": 0.01
+  },
+  "time_source": "unity_simulation_clock",
+  "required_packages": [
+    {
+      "asset_package_id": "omy-f3m-unity",
+      "version": 1,
+      "sha256": "b18236dcb847d3634bb5d709781134944da4591cdc8c59b2b3d17b6bb2d99147"
+    }
+  ],
+  "environment_artifacts": [
+    {
+      "role": "collision_meshes",
+      "object_id": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      "media_type": "application/vnd.sang.asset-bundle+tar",
+      "sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "size_bytes": 8388608,
+      "file_name": "scenario1_collision_geometry.tar"
+    }
+  ],
+  "bindings": [
+    {
+      "identity": {
+        "asset_id": "omy_sim_01",
+        "global_asset_id": "urn:sang:asset:simulation:omy:scenario1",
+        "aas_id": "urn:sang:aas:simulation:omy:scenario1",
+        "identity_revision": 1,
+        "runtime_class": "simulation"
+      },
+      "asset_type": "robot",
+      "expected_asset_profile": "omy-f3m",
+      "package_ref": {
+        "asset_package_id": "omy-f3m-unity",
+        "version": 1,
+        "sha256": "b18236dcb847d3634bb5d709781134944da4591cdc8c59b2b3d17b6bb2d99147"
+      },
+      "unity_binding_id": "scenario1.omy.material-handler",
+      "diagnostic_hierarchy_path": "Scenario1/Robots/OMY",
+      "articulation": {
+        "root_binding_id": "scenario1.omy.articulation",
+        "ordered_joints": [
+          "joint1",
+          "joint2",
+          "joint3",
+          "joint4",
+          "joint5",
+          "joint6"
+        ]
+      },
+      "controller": {
+        "component_binding_id": "scenario1.omy.controller",
+        "contract_ref": "sang-unity-robot-controller@1"
+      },
+      "frames": {
+        "base": "omy_base",
+        "flange": "omy_flange",
+        "tool": "omy_tool0"
+      },
+      "collider_group": "omy_collision_group",
+      "workspace_refs": [
+        {
+          "object_id": "scenario1-omy-workspace",
+          "version": 1,
+          "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+        }
+      ],
+      "reset_contract_ref": {
+        "object_id": "omy-scenario1-home",
+        "version": 1,
+        "sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+      },
+      "outcome_contract_ref": {
+        "object_id": "omy-pick-place-result",
+        "version": 1,
+        "sha256": "6666666666666666666666666666666666666666666666666666666666666666"
+      },
+      "signals": [
+        {
+          "semantic": "ready",
+          "component_binding_id": "scenario1.omy.controller",
+          "member": "IsReady"
+        },
+        {
+          "semantic": "success",
+          "component_binding_id": "scenario1.omy.controller",
+          "member": "DidSucceed"
+        },
+        {
+          "semantic": "failure",
+          "component_binding_id": "scenario1.omy.controller",
+          "member": "DidFail"
+        },
+        {
+          "semantic": "fault",
+          "component_binding_id": "scenario1.omy.controller",
+          "member": "HasFault"
+        }
+      ],
+      "sensors": []
+    }
+  ],
+  "output_isolation": {
+    "physical_output_connected": false,
+    "evidence_ref": {
+      "object_id": "scenario1-output-isolation",
+      "version": 1,
+      "sha256": "7777777777777777777777777777777777777777777777777777777777777777"
+    }
+  },
+  "build_attestation_ref": {
+    "object_id": "scenario1-unity-build",
+    "version": 1,
+    "sha256": "8888888888888888888888888888888888888888888888888888888888888888"
+  }
+}

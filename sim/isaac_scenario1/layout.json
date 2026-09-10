@@ -1,0 +1,2460 @@
+{
+  "schema_version": 1,
+  "contract_kind": "scenario1-source-layout",
+  "source_project": "/home/sa08050/app developer/unity_IITP/unity_IITP/100.Whole_integration/Scenario1_app",
+  "source_scene": "Assets/Scenes/SampleScene.unity",
+  "scope": "Saved visual geometry and frame inventory only; not a motion plan, telemetry schema, or safety qualification.",
+  "coordinate_system": {
+    "units": "meters",
+    "unity_axes": "left-handed: +X right, +Y up, +Z forward",
+    "ros_axes": "right-handed: +X forward, +Y left, +Z up",
+    "ros_to_unity_position": "(-y, z, x)",
+    "unity_to_ros_position": "(z, -x, y)",
+    "unity_to_ros_matrix": [
+      [
+        0,
+        0,
+        1
+      ],
+      [
+        -1,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ]
+    ],
+    "rotation_conversion": "R_ros = C * R_unity * transpose(C); do not swap Euler angles.",
+    "axis_conversion": "Revolute angular axes are pseudovectors: Unity axis = -C_inverse * ROS axis. Serialized articulation anchor * local +X is recorded below.",
+    "registration_note": "Defines a source-aligned ROS/Isaac frame. Does not assert that an existing USD world or imported robot root already uses that frame."
+  },
+  "frames": [
+    {
+      "path": "Isaac PC Preview Layout",
+      "source_transform_file_id": 510292515,
+      "parent_transform_file_id": 0,
+      "position_local_m": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_unity_world_m": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation_unity_world_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_world": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_ros_world_m": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    },
+    {
+      "path": "Main Camera",
+      "source_transform_file_id": 330585546,
+      "parent_transform_file_id": 0,
+      "position_local_m": [
+        0.0,
+        1.45,
+        -3.2
+      ],
+      "rotation_local_xyzw": [
+        0.08715574,
+        0.0,
+        0.0,
+        0.9961947
+      ],
+      "scale_local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_unity_world_m": [
+        0.0,
+        1.45,
+        -3.2
+      ],
+      "rotation_unity_world_xyzw": [
+        0.08715574,
+        0.0,
+        0.0,
+        0.9961947
+      ],
+      "scale_world": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_ros_world_m": [
+        -3.2,
+        -0.0,
+        1.45
+      ]
+    },
+    {
+      "path": "MobileRobot",
+      "source_transform_file_id": 1418606159,
+      "parent_transform_file_id": 0,
+      "position_local_m": [
+        -1.283,
+        0.0,
+        -0.818
+      ],
+      "rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_unity_world_m": [
+        -1.283,
+        0.0,
+        -0.818
+      ],
+      "rotation_unity_world_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_world": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_ros_world_m": [
+        -0.818,
+        1.283,
+        0.0
+      ]
+    },
+    {
+      "path": "MobileRobot/base_plate_attach_point",
+      "source_transform_file_id": 803598302,
+      "parent_transform_file_id": 1418606159,
+      "position_local_m": [
+        0.0,
+        0.90999997,
+        0.0
+      ],
+      "rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_unity_world_m": [
+        -1.283,
+        0.90999997,
+        -0.818
+      ],
+      "rotation_unity_world_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_world": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_ros_world_m": [
+        -0.818,
+        1.283,
+        0.90999997
+      ]
+    },
+    {
+      "path": "MobileRobot/base_plate_attach_point/BasePlate",
+      "source_transform_file_id": 1088478273,
+      "parent_transform_file_id": 803598302,
+      "position_local_m": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_local": [
+        0.07,
+        0.01,
+        0.07
+      ],
+      "position_unity_world_m": [
+        -1.283,
+        0.90999997,
+        -0.818
+      ],
+      "rotation_unity_world_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_world": [
+        0.07,
+        0.01,
+        0.07
+      ],
+      "position_ros_world_m": [
+        -0.818,
+        1.283,
+        0.90999997
+      ]
+    },
+    {
+      "path": "omy_f3m",
+      "source_transform_file_id": 1209941637,
+      "parent_transform_file_id": 0,
+      "position_local_m": [
+        -1.3183875,
+        0.90700036,
+        -0.38640898
+      ],
+      "rotation_local_xyzw": [
+        -0.0,
+        -0.7071068,
+        -0.0,
+        -0.7071068
+      ],
+      "scale_local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_unity_world_m": [
+        -1.3183875,
+        0.90700036,
+        -0.38640898
+      ],
+      "rotation_unity_world_xyzw": [
+        -0.0,
+        -0.7071068,
+        -0.0,
+        -0.7071068
+      ],
+      "scale_world": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_ros_world_m": [
+        -0.38640898,
+        1.3183875,
+        0.90700036
+      ]
+    },
+    {
+      "path": "omy_f3m/world/link0",
+      "source_transform_file_id": 1730387161,
+      "parent_transform_file_id": 1981658822,
+      "position_local_m": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_unity_world_m": [
+        -1.3183875,
+        0.90700036,
+        -0.38640898
+      ],
+      "rotation_unity_world_xyzw": [
+        0.0,
+        -0.7071068,
+        0.0,
+        -0.7071068
+      ],
+      "scale_world": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_ros_world_m": [
+        -0.38640898,
+        1.3183875,
+        0.90700036
+      ]
+    },
+    {
+      "path": "omy_f3m/world/link0/link1",
+      "source_transform_file_id": 89822183,
+      "parent_transform_file_id": 1730387161,
+      "position_local_m": [
+        0.0,
+        0.1715,
+        0.0
+      ],
+      "rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_unity_world_m": [
+        -1.3183875,
+        1.07850036,
+        -0.38640898
+      ],
+      "rotation_unity_world_xyzw": [
+        0.0,
+        -0.7071068,
+        0.0,
+        -0.7071068
+      ],
+      "scale_world": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_ros_world_m": [
+        -0.38640898,
+        1.3183875,
+        1.07850036
+      ]
+    },
+    {
+      "path": "omy_f3m/world/link0/link1/link2",
+      "source_transform_file_id": 401158436,
+      "parent_transform_file_id": 89822183,
+      "position_local_m": [
+        0.1215,
+        0.0,
+        0.0
+      ],
+      "rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_unity_world_m": [
+        -1.3183875,
+        1.07850036,
+        -0.5079089800000001
+      ],
+      "rotation_unity_world_xyzw": [
+        0.0,
+        -0.7071068,
+        0.0,
+        -0.7071068
+      ],
+      "scale_world": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_ros_world_m": [
+        -0.5079089800000001,
+        1.3183875,
+        1.07850036
+      ]
+    },
+    {
+      "path": "omy_f3m/world/link0/link1/link2/link3",
+      "source_transform_file_id": 218462496,
+      "parent_transform_file_id": 401158436,
+      "position_local_m": [
+        0.0,
+        0.24700001,
+        0.0
+      ],
+      "rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_unity_world_m": [
+        -1.3183875,
+        1.32550037,
+        -0.5079089800000001
+      ],
+      "rotation_unity_world_xyzw": [
+        0.0,
+        -0.7071068,
+        0.0,
+        -0.7071068
+      ],
+      "scale_world": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_ros_world_m": [
+        -0.5079089800000001,
+        1.3183875,
+        1.32550037
+      ]
+    },
+    {
+      "path": "omy_f3m/world/link0/link1/link2/link3/link4",
+      "source_transform_file_id": 484913641,
+      "parent_transform_file_id": 218462496,
+      "position_local_m": [
+        -0.1215,
+        0.2195,
+        0.0
+      ],
+      "rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_unity_world_m": [
+        -1.3183875,
+        1.5450003700000001,
+        -0.38640898000000007
+      ],
+      "rotation_unity_world_xyzw": [
+        0.0,
+        -0.7071068,
+        0.0,
+        -0.7071068
+      ],
+      "scale_world": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_ros_world_m": [
+        -0.38640898000000007,
+        1.3183875,
+        1.5450003700000001
+      ]
+    },
+    {
+      "path": "omy_f3m/world/link0/link1/link2/link3/link4/link5",
+      "source_transform_file_id": 640351569,
+      "parent_transform_file_id": 484913641,
+      "position_local_m": [
+        0.113,
+        0.0,
+        0.0
+      ],
+      "rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_unity_world_m": [
+        -1.3183875,
+        1.5450003700000001,
+        -0.4994089800000001
+      ],
+      "rotation_unity_world_xyzw": [
+        0.0,
+        -0.7071068,
+        0.0,
+        -0.7071068
+      ],
+      "scale_world": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_ros_world_m": [
+        -0.4994089800000001,
+        1.3183875,
+        1.5450003700000001
+      ]
+    },
+    {
+      "path": "omy_f3m/world/link0/link1/link2/link3/link4/link5/link6",
+      "source_transform_file_id": 1963127925,
+      "parent_transform_file_id": 640351569,
+      "position_local_m": [
+        0.0,
+        0.1155,
+        0.0
+      ],
+      "rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_unity_world_m": [
+        -1.3183875,
+        1.66050037,
+        -0.4994089800000001
+      ],
+      "rotation_unity_world_xyzw": [
+        0.0,
+        -0.7071068,
+        0.0,
+        -0.7071068
+      ],
+      "scale_world": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_ros_world_m": [
+        -0.4994089800000001,
+        1.3183875,
+        1.66050037
+      ]
+    },
+    {
+      "path": "omy_f3m/world/link0/link1/link2/link3/link4/link5/link6/camera_bottom_screw_frame",
+      "source_transform_file_id": 1050423074,
+      "parent_transform_file_id": 1963127925,
+      "position_local_m": [
+        0.07385,
+        0.08029997,
+        -0.021
+      ],
+      "rotation_local_xyzw": [
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "scale_local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_unity_world_m": [
+        -1.3393875,
+        1.74080034,
+        -0.5732589800000001
+      ],
+      "rotation_unity_world_xyzw": [
+        -0.7071068,
+        -0.7071068,
+        0.0,
+        0.0
+      ],
+      "scale_world": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_ros_world_m": [
+        -0.5732589800000001,
+        1.3393875,
+        1.74080034
+      ]
+    },
+    {
+      "path": "omy_f3m/world/link0/link1/link2/link3/link4/link5/link6/camera_bottom_screw_frame/camera_link",
+      "source_transform_file_id": 1560954396,
+      "parent_transform_file_id": 1050423074,
+      "position_local_m": [
+        -0.009000063,
+        0.021,
+        0.010849996
+      ],
+      "rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_unity_world_m": [
+        -1.3183875,
+        1.731800277,
+        -0.5841089760000001
+      ],
+      "rotation_unity_world_xyzw": [
+        -0.7071068,
+        -0.7071068,
+        0.0,
+        0.0
+      ],
+      "scale_world": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_ros_world_m": [
+        -0.5841089760000001,
+        1.3183875,
+        1.731800277
+      ]
+    },
+    {
+      "path": "omy_f3m/world/link0/link1/link2/link3/link4/link5/link6/end_effector_flange_link",
+      "source_transform_file_id": 1869547044,
+      "parent_transform_file_id": 1963127925,
+      "position_local_m": [
+        0.10299999,
+        0.0,
+        0.0
+      ],
+      "rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_unity_world_m": [
+        -1.3183875,
+        1.66050037,
+        -0.6024089700000002
+      ],
+      "rotation_unity_world_xyzw": [
+        0.0,
+        -0.7071068,
+        0.0,
+        -0.7071068
+      ],
+      "scale_world": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_ros_world_m": [
+        -0.6024089700000002,
+        1.3183875,
+        1.66050037
+      ]
+    },
+    {
+      "path": "omy_f3m/world/link0/link1/link2/link3/link4/link5/link6/end_effector_flange_link/end_effector_link",
+      "source_transform_file_id": 2134298952,
+      "parent_transform_file_id": 1869547044,
+      "position_local_m": [
+        0.141,
+        0.0,
+        0.0
+      ],
+      "rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_unity_world_m": [
+        -1.3183875,
+        1.66050037,
+        -0.7434089700000002
+      ],
+      "rotation_unity_world_xyzw": [
+        0.0,
+        -0.7071068,
+        0.0,
+        -0.7071068
+      ],
+      "scale_world": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_ros_world_m": [
+        -0.7434089700000002,
+        1.3183875,
+        1.66050037
+      ]
+    },
+    {
+      "path": "omy_f3m/world/link0/link1/link2/link3/link4/link5/link6/end_effector_flange_link/rh_p12_rn_base",
+      "source_transform_file_id": 342653848,
+      "parent_transform_file_id": 1869547044,
+      "position_local_m": [
+        0.0059999973,
+        0.0,
+        0.0
+      ],
+      "rotation_local_xyzw": [
+        -0.49999985,
+        -0.4996019,
+        -0.49999985,
+        0.50039816
+      ],
+      "scale_local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_unity_world_m": [
+        -1.3183875,
+        1.66050037,
+        -0.6084089673000002
+      ],
+      "rotation_unity_world_xyzw": [
+        0.7071065878679601,
+        -0.0005630408605680204,
+        0.0,
+        -0.7071068424264081
+      ],
+      "scale_world": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_ros_world_m": [
+        -0.6084089673000002,
+        1.3183875,
+        1.66050037
+      ]
+    },
+    {
+      "path": "omy_f3m/world/link0/link1/link2/link3/link4/link5/link6/end_effector_flange_link/rh_p12_rn_base/rh_p12_rn_l1",
+      "source_transform_file_id": 1795067626,
+      "parent_transform_file_id": 342653848,
+      "position_local_m": [
+        0.0079999985,
+        0.04800001,
+        1.9557774e-08
+      ],
+      "rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_local": [
+        0.9999999,
+        0.9999999,
+        0.9999999
+      ],
+      "position_unity_world_m": [
+        -1.3104257270302184,
+        1.6604940519780857,
+        -0.6564153321619717
+      ],
+      "rotation_unity_world_xyzw": [
+        0.7071065878679601,
+        -0.0005630408605680204,
+        0.0,
+        -0.7071068424264081
+      ],
+      "scale_world": [
+        0.9999999,
+        0.9999999,
+        0.9999999
+      ],
+      "position_ros_world_m": [
+        -0.6564153321619717,
+        1.3104257270302184,
+        1.6604940519780857
+      ]
+    },
+    {
+      "path": "omy_f3m/world/link0/link1/link2/link3/link4/link5/link6/end_effector_flange_link/rh_p12_rn_base/rh_p12_rn_l1/rh_p12_rn_l2",
+      "source_transform_file_id": 90477238,
+      "parent_transform_file_id": 1795067626,
+      "position_local_m": [
+        0.049363412,
+        0.028500013,
+        -5.6810684e-08
+      ],
+      "rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_local": [
+        1.0,
+        1.0,
+        1.0000001
+      ],
+      "position_unity_world_m": [
+        -1.2610850447192,
+        1.6604547083706673,
+        -0.6849546393828808
+      ],
+      "rotation_unity_world_xyzw": [
+        0.7071065878679601,
+        -0.0005630408605680204,
+        0.0,
+        -0.7071068424264081
+      ],
+      "scale_world": [
+        0.9999999,
+        0.9999999,
+        0.9999999999999901
+      ],
+      "position_ros_world_m": [
+        -0.6849546393828808,
+        1.2610850447192,
+        1.6604547083706673
+      ]
+    },
+    {
+      "path": "omy_f3m/world/link0/link1/link2/link3/link4/link5/link6/end_effector_flange_link/rh_p12_rn_base/rh_p12_rn_r1",
+      "source_transform_file_id": 1777242589,
+      "parent_transform_file_id": 342653848,
+      "position_local_m": [
+        -0.008,
+        0.047999997,
+        -8.381903e-08
+      ],
+      "rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_local": [
+        0.9999999,
+        0.9999999,
+        0.9999999
+      ],
+      "position_unity_world_m": [
+        -1.3264257154577037,
+        1.6605066887553082,
+        -0.6564025790033915
+      ],
+      "rotation_unity_world_xyzw": [
+        0.7071065878679601,
+        -0.0005630408605680204,
+        0.0,
+        -0.7071068424264081
+      ],
+      "scale_world": [
+        0.9999999,
+        0.9999999,
+        0.9999999
+      ],
+      "position_ros_world_m": [
+        -0.6564025790033915,
+        1.3264257154577037,
+        1.6605066887553082
+      ]
+    },
+    {
+      "path": "omy_f3m/world/link0/link1/link2/link3/link4/link5/link6/end_effector_flange_link/rh_p12_rn_base/rh_p12_rn_r1/rh_p12_rn_r2",
+      "source_transform_file_id": 833273060,
+      "parent_transform_file_id": 1777242589,
+      "position_local_m": [
+        -0.049363416,
+        0.028500006,
+        1.6763808e-08
+      ],
+      "rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_local": [
+        1.0,
+        1.0,
+        1.0000001
+      ],
+      "position_unity_world_m": [
+        -1.3758117886140857,
+        1.6605460309089104,
+        -0.6848632670094359
+      ],
+      "rotation_unity_world_xyzw": [
+        0.7071065878679601,
+        -0.0005630408605680204,
+        0.0,
+        -0.7071068424264081
+      ],
+      "scale_world": [
+        0.9999999,
+        0.9999999,
+        0.9999999999999901
+      ],
+      "position_ros_world_m": [
+        -0.6848632670094359,
+        1.3758117886140857,
+        1.6605460309089104
+      ]
+    },
+    {
+      "path": "rb5_850e",
+      "source_transform_file_id": 853100514,
+      "parent_transform_file_id": 0,
+      "position_local_m": [
+        -0.31799996,
+        0.904,
+        -0.348
+      ],
+      "rotation_local_xyzw": [
+        0.0,
+        -0.7071068,
+        0.0,
+        0.7071068
+      ],
+      "scale_local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_unity_world_m": [
+        -0.31799996,
+        0.904,
+        -0.348
+      ],
+      "rotation_unity_world_xyzw": [
+        0.0,
+        -0.7071068,
+        0.0,
+        0.7071068
+      ],
+      "scale_world": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_ros_world_m": [
+        -0.348,
+        0.31799996,
+        0.904
+      ]
+    },
+    {
+      "path": "rb5_850e/link0/link1",
+      "source_transform_file_id": 765526768,
+      "parent_transform_file_id": 299922934,
+      "position_local_m": [
+        0.0,
+        0.1692,
+        0.0
+      ],
+      "rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_unity_world_m": [
+        -0.31799996,
+        1.0732,
+        -0.348
+      ],
+      "rotation_unity_world_xyzw": [
+        0.0,
+        -0.7071068,
+        0.0,
+        0.7071068
+      ],
+      "scale_world": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_ros_world_m": [
+        -0.348,
+        0.31799996,
+        1.0732
+      ]
+    },
+    {
+      "path": "rb5_850e/link0/link1/link2",
+      "source_transform_file_id": 2007071965,
+      "parent_transform_file_id": 765526768,
+      "position_local_m": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_unity_world_m": [
+        -0.31799996,
+        1.0732,
+        -0.348
+      ],
+      "rotation_unity_world_xyzw": [
+        0.0,
+        -0.7071068,
+        0.0,
+        0.7071068
+      ],
+      "scale_world": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_ros_world_m": [
+        -0.348,
+        0.31799996,
+        1.0732
+      ]
+    },
+    {
+      "path": "rb5_850e/link0/link1/link2/link3",
+      "source_transform_file_id": 169759119,
+      "parent_transform_file_id": 2007071965,
+      "position_local_m": [
+        0.0,
+        0.425,
+        0.0
+      ],
+      "rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_unity_world_m": [
+        -0.31799996,
+        1.4982,
+        -0.348
+      ],
+      "rotation_unity_world_xyzw": [
+        0.0,
+        -0.7071068,
+        0.0,
+        0.7071068
+      ],
+      "scale_world": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_ros_world_m": [
+        -0.348,
+        0.31799996,
+        1.4982
+      ]
+    },
+    {
+      "path": "rb5_850e/link0/link1/link2/link3/link4",
+      "source_transform_file_id": 329646567,
+      "parent_transform_file_id": 169759119,
+      "position_local_m": [
+        0.0,
+        0.39199996,
+        0.0
+      ],
+      "rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_unity_world_m": [
+        -0.31799996,
+        1.89019996,
+        -0.348
+      ],
+      "rotation_unity_world_xyzw": [
+        0.0,
+        -0.7071068,
+        0.0,
+        0.7071068
+      ],
+      "scale_world": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_ros_world_m": [
+        -0.348,
+        0.31799996,
+        1.89019996
+      ]
+    },
+    {
+      "path": "rb5_850e/link0/link1/link2/link3/link4/link5",
+      "source_transform_file_id": 1517925354,
+      "parent_transform_file_id": 329646567,
+      "position_local_m": [
+        0.1107,
+        0.11070001,
+        0.0
+      ],
+      "rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_unity_world_m": [
+        -0.31799996,
+        2.00089997,
+        -0.23729999999999996
+      ],
+      "rotation_unity_world_xyzw": [
+        0.0,
+        -0.7071068,
+        0.0,
+        0.7071068
+      ],
+      "scale_world": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_ros_world_m": [
+        -0.23729999999999996,
+        0.31799996,
+        2.00089997
+      ]
+    },
+    {
+      "path": "rb5_850e/link0/link1/link2/link3/link4/link5/link6",
+      "source_transform_file_id": 58516814,
+      "parent_transform_file_id": 1517925354,
+      "position_local_m": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_unity_world_m": [
+        -0.31799996,
+        2.00089997,
+        -0.23729999999999996
+      ],
+      "rotation_unity_world_xyzw": [
+        0.0,
+        -0.7071068,
+        0.0,
+        0.7071068
+      ],
+      "scale_world": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_ros_world_m": [
+        -0.23729999999999996,
+        0.31799996,
+        2.00089997
+      ]
+    },
+    {
+      "path": "rb5_850e/link0/link1/link2/link3/link4/link5/link6/tcp",
+      "source_transform_file_id": 865205760,
+      "parent_transform_file_id": 58516814,
+      "position_local_m": [
+        0.0967,
+        0.0,
+        0.0
+      ],
+      "rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_local": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_unity_world_m": [
+        -0.31799996,
+        2.00089997,
+        -0.14059999999999995
+      ],
+      "rotation_unity_world_xyzw": [
+        0.0,
+        -0.7071068,
+        0.0,
+        0.7071068
+      ],
+      "scale_world": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "position_ros_world_m": [
+        -0.14059999999999995,
+        0.31799996,
+        2.00089997
+      ]
+    }
+  ],
+  "joints": [
+    {
+      "joint_name": "world_fixed",
+      "frame_path": "omy_f3m/world/link0",
+      "source_component": "UrdfJointFixed",
+      "anchor_rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.70710677,
+        0.70710677
+      ],
+      "axis_local_unity": [
+        0.0,
+        1.0,
+        0.0
+      ]
+    },
+    {
+      "joint_name": "joint1",
+      "frame_path": "omy_f3m/world/link0/link1",
+      "source_component": "UrdfJointRevolute",
+      "anchor_rotation_local_xyzw": [
+        0.0,
+        0.0,
+        -0.70710677,
+        0.70710677
+      ],
+      "axis_local_unity": [
+        0.0,
+        -1.0,
+        0.0
+      ]
+    },
+    {
+      "joint_name": "joint2",
+      "frame_path": "omy_f3m/world/link0/link1/link2",
+      "source_component": "UrdfJointRevolute",
+      "anchor_rotation_local_xyzw": [
+        0.0,
+        0.0,
+        -0.0,
+        1.0
+      ],
+      "axis_local_unity": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "joint_name": "joint3",
+      "frame_path": "omy_f3m/world/link0/link1/link2/link3",
+      "source_component": "UrdfJointRevolute",
+      "anchor_rotation_local_xyzw": [
+        0.0,
+        0.0,
+        -0.0,
+        1.0
+      ],
+      "axis_local_unity": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "joint_name": "joint4",
+      "frame_path": "omy_f3m/world/link0/link1/link2/link3/link4",
+      "source_component": "UrdfJointRevolute",
+      "anchor_rotation_local_xyzw": [
+        0.0,
+        0.0,
+        -0.0,
+        1.0
+      ],
+      "axis_local_unity": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "joint_name": "joint5",
+      "frame_path": "omy_f3m/world/link0/link1/link2/link3/link4/link5",
+      "source_component": "UrdfJointRevolute",
+      "anchor_rotation_local_xyzw": [
+        0.0,
+        0.0,
+        -0.70710677,
+        0.70710677
+      ],
+      "axis_local_unity": [
+        0.0,
+        -1.0,
+        0.0
+      ]
+    },
+    {
+      "joint_name": "joint6",
+      "frame_path": "omy_f3m/world/link0/link1/link2/link3/link4/link5/link6",
+      "source_component": "UrdfJointRevolute",
+      "anchor_rotation_local_xyzw": [
+        0.0,
+        0.0,
+        -0.0,
+        1.0
+      ],
+      "axis_local_unity": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "joint_name": "camera_joint",
+      "frame_path": "omy_f3m/world/link0/link1/link2/link3/link4/link5/link6/camera_bottom_screw_frame",
+      "source_component": "UrdfJointFixed",
+      "anchor_rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.70710677,
+        0.70710677
+      ],
+      "axis_local_unity": [
+        0.0,
+        1.0,
+        0.0
+      ]
+    },
+    {
+      "joint_name": "camera_link_joint",
+      "frame_path": "omy_f3m/world/link0/link1/link2/link3/link4/link5/link6/camera_bottom_screw_frame/camera_link",
+      "source_component": "UrdfJointFixed",
+      "anchor_rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.70710677,
+        0.70710677
+      ],
+      "axis_local_unity": [
+        0.0,
+        1.0,
+        0.0
+      ]
+    },
+    {
+      "joint_name": "end_effector_flange_joint",
+      "frame_path": "omy_f3m/world/link0/link1/link2/link3/link4/link5/link6/end_effector_flange_link",
+      "source_component": "UrdfJointFixed",
+      "anchor_rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.70710677,
+        0.70710677
+      ],
+      "axis_local_unity": [
+        0.0,
+        1.0,
+        0.0
+      ]
+    },
+    {
+      "joint_name": "end_effector_joint",
+      "frame_path": "omy_f3m/world/link0/link1/link2/link3/link4/link5/link6/end_effector_flange_link/end_effector_link",
+      "source_component": "UrdfJointFixed",
+      "anchor_rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.70710677,
+        0.70710677
+      ],
+      "axis_local_unity": [
+        0.0,
+        1.0,
+        0.0
+      ]
+    },
+    {
+      "joint_name": "gripper_fixed",
+      "frame_path": "omy_f3m/world/link0/link1/link2/link3/link4/link5/link6/end_effector_flange_link/rh_p12_rn_base",
+      "source_component": "UrdfJointFixed",
+      "anchor_rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.70710677,
+        0.70710677
+      ],
+      "axis_local_unity": [
+        0.0,
+        1.0,
+        0.0
+      ]
+    },
+    {
+      "joint_name": "rh_l1",
+      "frame_path": "omy_f3m/world/link0/link1/link2/link3/link4/link5/link6/end_effector_flange_link/rh_p12_rn_base/rh_p12_rn_l1",
+      "source_component": "UrdfJointRevolute",
+      "anchor_rotation_local_xyzw": [
+        0.0,
+        -0.70710677,
+        -0.0,
+        0.70710677
+      ],
+      "axis_local_unity": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mimic": {
+        "joint_name": "rh_r1_joint",
+        "multiplier": 1.0,
+        "offset_rad": 0.0,
+        "source": "Assets/IsaacSource/OMY/omy_f3m_unity.urdf"
+      }
+    },
+    {
+      "joint_name": "rh_l2",
+      "frame_path": "omy_f3m/world/link0/link1/link2/link3/link4/link5/link6/end_effector_flange_link/rh_p12_rn_base/rh_p12_rn_l1/rh_p12_rn_l2",
+      "source_component": "UrdfJointRevolute",
+      "anchor_rotation_local_xyzw": [
+        0.0,
+        0.70710677,
+        -0.0,
+        0.70710677
+      ],
+      "axis_local_unity": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "mimic": {
+        "joint_name": "rh_r1_joint",
+        "multiplier": 1.0,
+        "offset_rad": 0.0,
+        "source": "Assets/IsaacSource/OMY/omy_f3m_unity.urdf"
+      }
+    },
+    {
+      "joint_name": "rh_r1_joint",
+      "frame_path": "omy_f3m/world/link0/link1/link2/link3/link4/link5/link6/end_effector_flange_link/rh_p12_rn_base/rh_p12_rn_r1",
+      "source_component": "UrdfJointRevolute",
+      "anchor_rotation_local_xyzw": [
+        0.0,
+        0.70710677,
+        -0.0,
+        0.70710677
+      ],
+      "axis_local_unity": [
+        0.0,
+        0.0,
+        -1.0
+      ]
+    },
+    {
+      "joint_name": "rh_r2",
+      "frame_path": "omy_f3m/world/link0/link1/link2/link3/link4/link5/link6/end_effector_flange_link/rh_p12_rn_base/rh_p12_rn_r1/rh_p12_rn_r2",
+      "source_component": "UrdfJointRevolute",
+      "anchor_rotation_local_xyzw": [
+        0.0,
+        -0.70710677,
+        -0.0,
+        0.70710677
+      ],
+      "axis_local_unity": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "mimic": {
+        "joint_name": "rh_r1_joint",
+        "multiplier": 1.0,
+        "offset_rad": 0.0,
+        "source": "Assets/IsaacSource/OMY/omy_f3m_unity.urdf"
+      }
+    },
+    {
+      "joint_name": "base",
+      "frame_path": "rb5_850e/link0/link1",
+      "source_component": "UrdfJointRevolute",
+      "anchor_rotation_local_xyzw": [
+        0.0,
+        0.0,
+        -0.70710677,
+        0.70710677
+      ],
+      "axis_local_unity": [
+        0.0,
+        -1.0,
+        0.0
+      ]
+    },
+    {
+      "joint_name": "shoulder",
+      "frame_path": "rb5_850e/link0/link1/link2",
+      "source_component": "UrdfJointRevolute",
+      "anchor_rotation_local_xyzw": [
+        0.0,
+        0.0,
+        -0.0,
+        1.0
+      ],
+      "axis_local_unity": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "joint_name": "elbow",
+      "frame_path": "rb5_850e/link0/link1/link2/link3",
+      "source_component": "UrdfJointRevolute",
+      "anchor_rotation_local_xyzw": [
+        0.0,
+        0.0,
+        -0.0,
+        1.0
+      ],
+      "axis_local_unity": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "joint_name": "wrist1",
+      "frame_path": "rb5_850e/link0/link1/link2/link3/link4",
+      "source_component": "UrdfJointRevolute",
+      "anchor_rotation_local_xyzw": [
+        0.0,
+        0.0,
+        -0.0,
+        1.0
+      ],
+      "axis_local_unity": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "joint_name": "wrist2",
+      "frame_path": "rb5_850e/link0/link1/link2/link3/link4/link5",
+      "source_component": "UrdfJointRevolute",
+      "anchor_rotation_local_xyzw": [
+        0.0,
+        0.0,
+        -0.70710677,
+        0.70710677
+      ],
+      "axis_local_unity": [
+        0.0,
+        -1.0,
+        0.0
+      ]
+    },
+    {
+      "joint_name": "wrist3",
+      "frame_path": "rb5_850e/link0/link1/link2/link3/link4/link5/link6",
+      "source_component": "UrdfJointRevolute",
+      "anchor_rotation_local_xyzw": [
+        0.0,
+        0.0,
+        -0.0,
+        1.0
+      ],
+      "axis_local_unity": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "joint_name": "tcp_joint",
+      "frame_path": "rb5_850e/link0/link1/link2/link3/link4/link5/link6/tcp",
+      "source_component": "UrdfJointFixed",
+      "anchor_rotation_local_xyzw": [
+        0.0,
+        0.0,
+        0.70710677,
+        0.70710677
+      ],
+      "axis_local_unity": [
+        0.0,
+        1.0,
+        0.0
+      ]
+    }
+  ],
+  "tables": [
+    {
+      "name": "OMY_welding_table",
+      "source_prefab_instance_file_id": 175587047,
+      "source_asset": "Assets/IsaacSource/WeldingTable/Klutch_mobile_welding_workstation_isaac_meters.obj",
+      "source_guid": "739d213af4c9f563d978f3590e18fb40",
+      "position_unity_world_m": [
+        -1.654,
+        0.0,
+        -0.571
+      ],
+      "rotation_unity_world_xyzw": [
+        0.0,
+        0.7071068,
+        0.7071068,
+        0.0
+      ],
+      "scale_local": [
+        0.9088864,
+        0.9946191,
+        0.9892871
+      ],
+      "position_ros_world_m": [
+        -0.571,
+        1.654,
+        0.0
+      ],
+      "note": "Imported mesh origin, not geometric tabletop center. Parent is identity."
+    },
+    {
+      "name": "RB5_welding_table",
+      "source_prefab_instance_file_id": 535650719,
+      "source_asset": "Assets/IsaacSource/WeldingTable/Klutch_mobile_welding_workstation_isaac_meters.obj",
+      "source_guid": "739d213af4c9f563d978f3590e18fb40",
+      "position_unity_world_m": [
+        -0.015,
+        -0.001,
+        -0.649
+      ],
+      "rotation_unity_world_xyzw": [
+        0.5,
+        -0.5,
+        -0.5,
+        -0.5
+      ],
+      "scale_local": [
+        0.9088864,
+        0.9946191,
+        0.9892871
+      ],
+      "position_ros_world_m": [
+        -0.649,
+        0.015,
+        -0.001
+      ],
+      "note": "Imported mesh origin, not geometric tabletop center. Parent is identity."
+    }
+  ],
+  "carrier": {
+    "source": "Assets/Scripts/XrMobileBasePlateCarrier.cs",
+    "serialized_pose_note": "Saved MobileRobot x=-1.283 differs from runtime dock x=-1.25.",
+    "start_unity_world_m": [
+      -2.5,
+      0,
+      -0.818
+    ],
+    "dock_unity_world_m": [
+      -1.25,
+      0,
+      -0.818
+    ],
+    "return_unity_world_m": [
+      -2.5,
+      0,
+      -0.818
+    ],
+    "path_unity_world_m": [
+      [
+        -2.5,
+        0,
+        -0.818
+      ],
+      [
+        -1.25,
+        0,
+        -0.818
+      ]
+    ],
+    "path_geometry": "straight segment parallel to Unity +X; return reverses the endpoints",
+    "start_ros_world_m": [
+      -0.818,
+      2.5,
+      0
+    ],
+    "dock_ros_world_m": [
+      -0.818,
+      1.25,
+      0
+    ],
+    "rotation_unity_world_xyzw": [
+      0,
+      0,
+      0,
+      1
+    ],
+    "tray_top_height_m": 0.905,
+    "plate_attach_local_m": [
+      0,
+      0.91,
+      0
+    ],
+    "plate_size_m": [
+      0.07,
+      0.01,
+      0.07
+    ],
+    "plate_table_target_unity_world_m": [
+      -0.819,
+      0.91,
+      -0.24
+    ],
+    "plate_table_target_ros_world_m": [
+      -0.24,
+      0.819,
+      0.91
+    ],
+    "note": "Endpoint and visual dimensions only; no timing/controller logic is implemented by observer."
+  },
+  "visual_assets": [
+    {
+      "guid": "003aa25991bb8e1faa488c93ad471c61",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link5.prefab"
+    },
+    {
+      "guid": "05b3e51207d896619b6cbd5f992eefb4",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link1.prefab"
+    },
+    {
+      "guid": "0bb141cbcad4fb70ca4d7b5721ea7ef5",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link5_0.asset"
+    },
+    {
+      "guid": "1f9221a9e187bfd76beae0f967f37c0f",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/l1.prefab"
+    },
+    {
+      "guid": "2775a32817d261416afaf2b6182a6552",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/base_unit.prefab"
+    },
+    {
+      "guid": "35ae1c786a94ec4f9bc1e1b72223d2db",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link6_2.asset"
+    },
+    {
+      "guid": "38ea9ce538b19748ea315d7d80a8e93c",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link6_3.asset"
+    },
+    {
+      "guid": "4a6e9008821b336ecac1fd519ec1ec9b",
+      "source_asset": "Assets/IsaacSource/RB5Official/rbpodo_description/meshes/rb5_850e/visual/link6.dae"
+    },
+    {
+      "guid": "4fef79aeb3b1fc7048c8bd7b4f97e737",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/l2.prefab"
+    },
+    {
+      "guid": "4ff7bc38099244496bfb97a39de34759",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link2_2.asset"
+    },
+    {
+      "guid": "53fd0afe9352be760b75129c977baaa4",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/base_unit_4.asset"
+    },
+    {
+      "guid": "546276618f3d231bd9382b17fa29743a",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/base_0.asset"
+    },
+    {
+      "guid": "57827db897747766b99c51790051a4b2",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link3_0.asset"
+    },
+    {
+      "guid": "5a60fcdf7ff563cc2aabdc73cc21ed06",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link6_4.asset"
+    },
+    {
+      "guid": "60748e26dd67186ccb2765802007b399",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link6_0.asset"
+    },
+    {
+      "guid": "608e6d252a826993598768ce30d56bea",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link1_2.asset"
+    },
+    {
+      "guid": "62248d01415cf667db345360fa5acfe5",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/r1.prefab"
+    },
+    {
+      "guid": "624be7efe460c9118a52191221077628",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link2_3.asset"
+    },
+    {
+      "guid": "6441fc822b8ca06379a5defc2eda451f",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link6_1.asset"
+    },
+    {
+      "guid": "661381b8184cbaec8b5a2113974beda6",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/base.prefab"
+    },
+    {
+      "guid": "69481a15f8dffcca69d0895540dfa55e",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link3_2.asset"
+    },
+    {
+      "guid": "6c98584084e337d74b3081ae04621c5e",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link3.prefab"
+    },
+    {
+      "guid": "739d213af4c9f563d978f3590e18fb40",
+      "source_asset": "Assets/IsaacSource/WeldingTable/Klutch_mobile_welding_workstation_isaac_meters.obj"
+    },
+    {
+      "guid": "814ce19c2d58de03788d2043b47f1d78",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/r2.prefab"
+    },
+    {
+      "guid": "891e2c0a887c0610f8c61865cf15fb79",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/r1_0.asset"
+    },
+    {
+      "guid": "8d73ce1c88fff1d048c7db81bd0c4716",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/flange.prefab"
+    },
+    {
+      "guid": "8e81dc5c55e84369db3f88c62344a03a",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link1_0.asset"
+    },
+    {
+      "guid": "9642a00769ba0036caece658187b101a",
+      "source_asset": "Assets/IsaacSource/RB5Official/rbpodo_description/meshes/rb5_850e/visual/link5.dae"
+    },
+    {
+      "guid": "a2a407f78c7ed6db1a265266cfeeee06",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link1_1.asset"
+    },
+    {
+      "guid": "a8f2847c8087fa0cbb8618c321d7d3dd",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/l2_0.asset"
+    },
+    {
+      "guid": "ae70463546017b918add1068d6bb27d2",
+      "source_asset": "Assets/IsaacSource/RB5Official/rbpodo_description/meshes/rb5_850e/visual/link2.dae"
+    },
+    {
+      "guid": "b17985a6661a84ea68dc04a04f9f3585",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link2_1.asset"
+    },
+    {
+      "guid": "ba920d2b74efe32e793fd7768445d49b",
+      "source_asset": "Assets/IsaacSource/RB5Official/rbpodo_description/meshes/rb5_850e/visual/link0.dae"
+    },
+    {
+      "guid": "bae9b5f04f23bb75e86be4b9a9068263",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link4_1.asset"
+    },
+    {
+      "guid": "bbfa3ea8664ba3f9d9f01571ba6fd64c",
+      "source_asset": "Assets/IsaacSource/RB5Official/rbpodo_description/meshes/rb5_850e/visual/link1.dae"
+    },
+    {
+      "guid": "bfe19cdf315c7f41f854fa8d9cc4b46f",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/l1_0.asset"
+    },
+    {
+      "guid": "c31970ca5936e0850a9cba780086a00d",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/base_unit_3.asset"
+    },
+    {
+      "guid": "c9f777ae37fcf5b9682b95392e1733a7",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/base_unit_2.asset"
+    },
+    {
+      "guid": "ccfa996fdc59373179a5f36142d70ada",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link2.prefab"
+    },
+    {
+      "guid": "cf2cede7bda17059bab033acda6f2a4e",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/base_unit_1.asset"
+    },
+    {
+      "guid": "da538f44668aa56cbb9314fe2223ad5f",
+      "source_asset": "Assets/IsaacSource/RB5Official/rbpodo_description/meshes/rb5_850e/visual/link4.dae"
+    },
+    {
+      "guid": "db0eec5183238b740b9b4afee8e46db2",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link4.prefab"
+    },
+    {
+      "guid": "dc7228164904d68318922e287f094b0b",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link2_0.asset"
+    },
+    {
+      "guid": "e15bb07856354f910848b32349b06d6d",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link3_1.asset"
+    },
+    {
+      "guid": "e31d42606dad5da4a9be44df23fe46be",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link6_5.asset"
+    },
+    {
+      "guid": "e43ff053eae3c395a85e76ebec741fae",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/flange_0.asset"
+    },
+    {
+      "guid": "e535393f114f75e6fa22a78d1c56d294",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link4_0.asset"
+    },
+    {
+      "guid": "e72ba5e51edbfcffda3dba77667aabfc",
+      "source_asset": "Assets/IsaacSource/RB5Official/rbpodo_description/meshes/rb5_850e/visual/link3.dae"
+    },
+    {
+      "guid": "ec2c6220aeb36bd1b88e912f8adf8b8c",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link5_1.asset"
+    },
+    {
+      "guid": "f0bd6f7c96a34abef807eb292100cbc9",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link6.prefab"
+    },
+    {
+      "guid": "f511983dff6411a24849d3dd825c8a96",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/base_unit_0.asset"
+    },
+    {
+      "guid": "fb782f9c5ee3b5e7382053ee49d1e2c8",
+      "source_asset": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/r2_0.asset"
+    }
+  ],
+  "source_hashes": [
+    {
+      "path": "Assets/IsaacSource/OMY/omy_f3m_unity.urdf",
+      "sha256": "aa66839b5234d069d8f54c42deb537c83af928733f6ebad389183fcbf5ee7d48"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/base_unit.prefab",
+      "sha256": "b45804cf80877f1e5517a23e926bc8a451b07e437883d6d18041a063db4e607a"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/base_unit.prefab.meta",
+      "sha256": "1a1994a4594669603805fce7e20e5997cb2f547431e2c91ce51d456954cb6caa"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/base_unit_0.asset",
+      "sha256": "72abac9bccdae1492bf87f33d55c6af8538fd0d297af09d063f7647a2e6ff0b9"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/base_unit_0.asset.meta",
+      "sha256": "3bd491faf47d3134996d52e4c91307424a26a1cf9219b1215da4afe00172bba9"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/base_unit_1.asset",
+      "sha256": "8bf98f67781ce1613911135b54d9526de97a70d6ccd549eb6ae75d316075f6f9"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/base_unit_1.asset.meta",
+      "sha256": "6add45be03b86465f6c5ce02b215c72ae25966531467e032a4af0fc12e8d00d8"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/base_unit_2.asset",
+      "sha256": "a42d9bb1f7edb71f87f9c4e061aa55c4621ce0627d0bbe61fe6912ca7b588183"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/base_unit_2.asset.meta",
+      "sha256": "b538e458d4d02b581e112c9cc650df8b94168e8bd3a8beb46c6f1840b0df409f"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/base_unit_3.asset",
+      "sha256": "8f00bec7d04aa01a924e0ab91ab48ff690dc1007ea4ed4541607fd686928a824"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/base_unit_3.asset.meta",
+      "sha256": "dbc874fabba692f9174e2db2943b53b9a687a533b4c02d1ec5b9be2aa20d7a0f"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/base_unit_4.asset",
+      "sha256": "e029fe52e3ce1633e48d91d1af4de34adabf9cb8b0333aa7dbee10c93df85884"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/base_unit_4.asset.meta",
+      "sha256": "2f7e6ef86faf936a6ab3bc00e6b9e47b74ec05b7a4a6bc190c5945bbc5f4a6c6"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/flange.prefab",
+      "sha256": "87abac058381e16aa3573c95aa277f3378ee23b23715a553eb92a3128b4d6246"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/flange.prefab.meta",
+      "sha256": "eb67998360ba049ca1ff976aecb49352cd858d018fc6c863e25bb68669c0ecac"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/flange_0.asset",
+      "sha256": "893c337ff6fed1562d686d509d2b2bb30bc96f807441eecb2e3f1e5bd403934f"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/flange_0.asset.meta",
+      "sha256": "b6f4cc0557429d9f024918c232082a2e38e66ea6301a5a5261bf934df185e2f3"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link1.prefab",
+      "sha256": "d5caa0a06102e30658e648fde3049868fc8349b313e7cf9a4e7b712f971aa5b2"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link1.prefab.meta",
+      "sha256": "e94b514623807e679bf468a8d2fcc8695205fdf9cdf40cf2008c2ec89af90155"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link1_0.asset",
+      "sha256": "645720baf0d02363a859520e0f241eca990ac28096ba32a1a8bd286d5b709347"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link1_0.asset.meta",
+      "sha256": "fdfae0eac939ee8e003a229df63f38bc590b156ad7c13a0e8aee68bf2edf31e0"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link1_1.asset",
+      "sha256": "bcad8129b402aae9bf7a11f27d63cc07b031c737c7a06bd7a6aa48d958eff861"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link1_1.asset.meta",
+      "sha256": "277c1238ad8b3a56e644443d88fe8e8084d5b60070578f94322274610e28e92b"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link1_2.asset",
+      "sha256": "391ebaede6ae534f28eb447fdb7e219a3dac723c86d8168794a687656ea5239a"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link1_2.asset.meta",
+      "sha256": "a1d4dbbfcf8bd63d9ae615b0ff7b17af15d475d9889ce07425a71c7f2b8fa325"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link2.prefab",
+      "sha256": "af78b8db2ee6dc2587689eef4d4e19b631965b9edce0175d20a7e774fd0456b9"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link2.prefab.meta",
+      "sha256": "246699ca6791b834d403f91bb90dbd1b141ef35a921715be9444648afee418fe"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link2_0.asset",
+      "sha256": "9b4868d8095391db6fd3744b2d50eb947b9f8f428f1d359ad0cc437fb1d30db3"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link2_0.asset.meta",
+      "sha256": "7ad8088042a0610ce56bbf31f29673ff8cc5b0f02eb95535ee092770ed17f4f1"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link2_1.asset",
+      "sha256": "5b5feb52ce14783f3f43e0e5b733920f0d545c56295d215073d7fa1b18a6c15d"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link2_1.asset.meta",
+      "sha256": "8258c65c47d5c114b2bf35106ba45dcfc17c2d557d7ea2aa38d05018883f6493"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link2_2.asset",
+      "sha256": "8f9e95593f18dce23a365e0f7f35a87a6b692aa1c830b8a90a9da4a92301a287"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link2_2.asset.meta",
+      "sha256": "712a0b053f554638540502a8be87098120db96d3cb05377b18fe59f2b2bb9ebd"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link2_3.asset",
+      "sha256": "74c1436b680937c82a72294ff359c5151a54331e6fc0ea55e56e3dfc95ffa7ea"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link2_3.asset.meta",
+      "sha256": "883ffce9625444241f4dcbacf570768f55ec53dc874a7042d55233603154ee36"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link3.prefab",
+      "sha256": "40e2c0b5f502c0d734703ee3563ac19e5599fc93b3dd0e686d88218beda68ddc"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link3.prefab.meta",
+      "sha256": "4a7dfb8fc8eef3a3a67989447136b382e8e948d3a3bc5efa7ed3a6b9ad5ad706"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link3_0.asset",
+      "sha256": "7e820510d278f5d35e9cfa2c063f26c176e3dff0d8c87655c7953c8f2f54033d"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link3_0.asset.meta",
+      "sha256": "695256bf2e763b30bdd3d00f84262c6f0d47e9e1819adad80b14d57d596b1825"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link3_1.asset",
+      "sha256": "f64860ffb6d9e598c7444efcc3910cedfb7cd7bc11ac88fe6bb38d40017790c8"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link3_1.asset.meta",
+      "sha256": "59e61db165a41a88d91c421c5a7f5626cca8ea9b5a4a61a6a3744e06276ee739"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link3_2.asset",
+      "sha256": "09d61184432945798ecb8494c5d847d05dff75d32ceb582676231747ac543a81"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link3_2.asset.meta",
+      "sha256": "87b8772f8c2152211445be092d8a8774ab0fe591386bc024a9f03e9651ddb720"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link4.prefab",
+      "sha256": "d6971994aef6ca798d14274d0a9eaa73896d238e02a1b1b1941e20cc7c383edf"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link4.prefab.meta",
+      "sha256": "12bab54edcc0343f32cc25a17b858cbd14efc653ce8d45de621e8fa72a15da80"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link4_0.asset",
+      "sha256": "01f9b31d95a5cbb96f1b116e52fd9ba18c08131255afed97d9154faedf9e8240"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link4_0.asset.meta",
+      "sha256": "b32fb40a4f16d7073ddca3e1346964f5729e4197cfe8c31d06b26691e21a763b"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link4_1.asset",
+      "sha256": "ad0be47833a059a89e88a6c6690edd0feb9eeee62e9ddc58ab91fb9a010bc069"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link4_1.asset.meta",
+      "sha256": "fdb580f780a9e291435d84961ded46ad9aa365e5043cc8d34ebaa3e6d9cb18bc"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link5.prefab",
+      "sha256": "cfabf91552e5ebd2e817926ded907615fffa0298848f4cb7333536ab94854e19"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link5.prefab.meta",
+      "sha256": "886a483c15edef696fd1ef6f95d8c7776951c57c230f267d1bfcb8a569046e03"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link5_0.asset",
+      "sha256": "5d8f89336495046f0963a26d8c17ba1257acd51284b58b0befa921b6b2e18095"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link5_0.asset.meta",
+      "sha256": "2232a9ce169910166184691b758d00d2195345254e91c875a7a1fc4e7e7aa4ce"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link5_1.asset",
+      "sha256": "916a3b0c2a76b5bdc53fd619ad58fcfccf155f3431605bbeda55204adca15edd"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link5_1.asset.meta",
+      "sha256": "fd101f0c916d1df7cca8f0cc73dac71524e3ef02cacc2ca7e0b42a440587dc97"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link6.prefab",
+      "sha256": "cb04d6a9f5786988bd3db68051e4eff08281bec7512ceea17b9db5f4ddbb7f61"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link6.prefab.meta",
+      "sha256": "4c31f7c651e9bf52ff3bc7145be005fded720d40f002b1efad8b1902c322ee34"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link6_0.asset",
+      "sha256": "883a01a41481e2feca22753c70be494d39e1d8ef3f423021d896b2d5e5cf0aa0"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link6_0.asset.meta",
+      "sha256": "6fd8b10ac9496914bcb3cfad934ba44858ea6ea35ededb92c02c7b7f05c878c2"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link6_1.asset",
+      "sha256": "380c676733c05579d3f492f3245566ab766a2259f2c245ac073a73c8d33fcc39"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link6_1.asset.meta",
+      "sha256": "5c8ec22a7a434e7cadce4b09b4b77a62adea7e86a0ce494f659a899bb3d68790"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link6_2.asset",
+      "sha256": "879cf54c96a058ac9c54a6bac63cb934ab60fafaa29feb6dbd9d9e35f5b601ed"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link6_2.asset.meta",
+      "sha256": "227bc876aa0e06519d680585e0f2df098d1d2439d062b6a880de0c24b2ffcfe3"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link6_3.asset",
+      "sha256": "0b34b191ac92580ecd9d98a7c6e0c0d5aac58e7cfe9adc427a7a09abd23e1a91"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link6_3.asset.meta",
+      "sha256": "c451fd90a7b38c7d3ff93526d8d67ae8ca607977d35ef02f8713b49e031d25f6"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link6_4.asset",
+      "sha256": "9f28133c08a7009dfa280fa766db77b3705c3fb3fa046617bf5a650a3661989d"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link6_4.asset.meta",
+      "sha256": "cfffce110eb11442cecbfcfebf177570af595a1e35cb7e16ffea1682e0cd458f"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link6_5.asset",
+      "sha256": "d2f8b664ffe6e229b0be473ea8415fcaaee65fb7ce394b3fbae57aa8dd9efe06"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/omy_f3m/link6_5.asset.meta",
+      "sha256": "8840913c8562956f45c23991bffc5eae9ffed250b251eb05d638e2ef2338415a"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/base.prefab",
+      "sha256": "e3588a4f2e21559d247c98351a2cfcc8af85b38905ee004e9fa20240b5232ae9"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/base.prefab.meta",
+      "sha256": "63a395f8ee71b4b2d7200e64fa067e8c8a904dc285fa53fa5f22f57418407f7c"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/base_0.asset",
+      "sha256": "6da3bc446198d7dc3a2a431955a7d162b99539a6f93849d5008d39fa310069ba"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/base_0.asset.meta",
+      "sha256": "191437c53b1d64b1a804aa6d20a14052e62a65f1dcb4c63a02da835467ee7a1e"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/l1.prefab",
+      "sha256": "c8d15a06b8bf2d442ac6ee2e980c81d023913a366db87279b1661cf7f487e9fd"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/l1.prefab.meta",
+      "sha256": "58386bef8aad14785d3c83278ec2ba290115dbd73415d43735422640322fcafb"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/l1_0.asset",
+      "sha256": "b4582e758ffe2eda6f20f51744e08ec53e0fa6e29806040babfb0deb934f1b9c"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/l1_0.asset.meta",
+      "sha256": "41cc71e262d14f2ce97b86bc9c78d4a6d20a54dbf45d4d222a05d5e24cdda5b2"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/l2.prefab",
+      "sha256": "0014e3d714b0adc84badcb8dee21e43c47c3ea75f9dc96b2eef24805eff66801"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/l2.prefab.meta",
+      "sha256": "e40a40f07a6a203c5391adfc91cc371bd6233c109e9c15fcc23e0f5213383879"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/l2_0.asset",
+      "sha256": "f4f601e5375f9d79d31c8338bda88bbfff16554d11c25e3e83e1c8547a93c7ba"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/l2_0.asset.meta",
+      "sha256": "c9cf7f10767afb6f9f6c44df6023cd609e77cab163e9d400c078a41a1bab68db"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/r1.prefab",
+      "sha256": "c3a3425998e35ba7197f7a3fe119607e19f0a54c250bd21e435ab1af44db649d"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/r1.prefab.meta",
+      "sha256": "8dd90aeab95bf6704429b6322c95abe6a1a506dde6e78e6dc1553aed2a36cb70"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/r1_0.asset",
+      "sha256": "0182f14ce710aec8cea4cf571e52d981d81c1e614278575dd2482ce8b5140466"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/r1_0.asset.meta",
+      "sha256": "cec540e624d5d32842585ee982661881f271abf75afb6a2ac9c2f34453a3c4a7"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/r2.prefab",
+      "sha256": "9ae1b959cd7b9efeac82b40d253d3b69b03fcb11742c98f3e28708317a47ff62"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/r2.prefab.meta",
+      "sha256": "9556cf0dbbdf6d7d7a5b98bb1759a8aaafa00d7f78f277a7a398a4be955b7b09"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/r2_0.asset",
+      "sha256": "7f9e255655a931bae6e320a8d905296da7f316ef3d094d2911d380024199f41b"
+    },
+    {
+      "path": "Assets/IsaacSource/OMY/open_manipulator_description/meshes/rh_p12_rn_a/r2_0.asset.meta",
+      "sha256": "ef559c624ae8611536bfeeca6e70ad9c50992ebdc995b1976e168cffe482adb0"
+    },
+    {
+      "path": "Assets/IsaacSource/RB5Official/rbpodo_description/meshes/rb5_850e/visual/link0.dae",
+      "sha256": "a33f18ff0ff594b3011446a62cfe1876c36145e3d685571c3c31eab09a5a5653"
+    },
+    {
+      "path": "Assets/IsaacSource/RB5Official/rbpodo_description/meshes/rb5_850e/visual/link0.dae.meta",
+      "sha256": "5c68930ca9c50e149b5806346a5d9bcefdbec2694fad41f92c12b97323b87254"
+    },
+    {
+      "path": "Assets/IsaacSource/RB5Official/rbpodo_description/meshes/rb5_850e/visual/link1.dae",
+      "sha256": "34657849cdbaf78e56aa87f907b095d3480826a26978a75b96d17fdbf11dd5a2"
+    },
+    {
+      "path": "Assets/IsaacSource/RB5Official/rbpodo_description/meshes/rb5_850e/visual/link1.dae.meta",
+      "sha256": "c9fd49279ec5ea6f16989b37e3a1e023139e2ee29229ddc3f56d47a2436de9c9"
+    },
+    {
+      "path": "Assets/IsaacSource/RB5Official/rbpodo_description/meshes/rb5_850e/visual/link2.dae",
+      "sha256": "f23723f582970c2bebcccb61b28c8ee1f6b5ae0ff76bbca9519e964d9b9aa365"
+    },
+    {
+      "path": "Assets/IsaacSource/RB5Official/rbpodo_description/meshes/rb5_850e/visual/link2.dae.meta",
+      "sha256": "18a9ecea37a0d37fadd19355a24085e1bbfd32aafd9b3c8ac0430800d488a740"
+    },
+    {
+      "path": "Assets/IsaacSource/RB5Official/rbpodo_description/meshes/rb5_850e/visual/link3.dae",
+      "sha256": "b068c4dbe38339c083f632b64ba7a23d6d5af4de221f81394315e76ce583d10e"
+    },
+    {
+      "path": "Assets/IsaacSource/RB5Official/rbpodo_description/meshes/rb5_850e/visual/link3.dae.meta",
+      "sha256": "30cbb5541ad0132a756bfc9d32e84ee92f234d1eb7403dc4f10f9d550b8a785d"
+    },
+    {
+      "path": "Assets/IsaacSource/RB5Official/rbpodo_description/meshes/rb5_850e/visual/link4.dae",
+      "sha256": "93af3e520e97f9c76591b86fbc77d6d040d0c7c8d1709633ef5b1b9b473a3a21"
+    },
+    {
+      "path": "Assets/IsaacSource/RB5Official/rbpodo_description/meshes/rb5_850e/visual/link4.dae.meta",
+      "sha256": "4e2b4178882d64a447ad91a9864544b3a1c6ecf0ce98e5bc6f96cd56e566608f"
+    },
+    {
+      "path": "Assets/IsaacSource/RB5Official/rbpodo_description/meshes/rb5_850e/visual/link5.dae",
+      "sha256": "0e5e1d1da151ffd61755bab5e16649f27d4925e63f5fa581d3af3f0d90b01926"
+    },
+    {
+      "path": "Assets/IsaacSource/RB5Official/rbpodo_description/meshes/rb5_850e/visual/link5.dae.meta",
+      "sha256": "6c96eeff909ade04c3bc444a7028b7ae8be51d7a117451075381cb06916bafa7"
+    },
+    {
+      "path": "Assets/IsaacSource/RB5Official/rbpodo_description/meshes/rb5_850e/visual/link6.dae",
+      "sha256": "f9641b75f7a75db9c13d23012fa20bc61595d6ea310a242a0aaf25b3b71443f6"
+    },
+    {
+      "path": "Assets/IsaacSource/RB5Official/rbpodo_description/meshes/rb5_850e/visual/link6.dae.meta",
+      "sha256": "ea0255908533284be3bf74d0557e6c11ca205cecbff6427dae3b970ec3436569"
+    },
+    {
+      "path": "Assets/IsaacSource/WeldingTable/Klutch_mobile_welding_workstation_isaac_meters.obj",
+      "sha256": "f870d4342f182d3d17bc6312c70fa3fd7b3a358023dc31e6485e26b9f2269aa8"
+    },
+    {
+      "path": "Assets/IsaacSource/WeldingTable/Klutch_mobile_welding_workstation_isaac_meters.obj.meta",
+      "sha256": "1e446ad15952b9b88378e6fe62c7e43bf63433d792ac79859b364d45c7291be9"
+    },
+    {
+      "path": "Assets/Scenes/SampleScene.unity",
+      "sha256": "9a981786f21e2cc53cbcdccb58553e7ad2d6c324a528c348b7c7e107a1cb16b9"
+    },
+    {
+      "path": "Assets/Scripts/XrMobileBasePlateCarrier.cs",
+      "sha256": "b758767f94cef7f1bb7762c41ee01f6d7c50f5aa1c6142166bf03e1a314ffbbc"
+    },
+    {
+      "path": "Library/PackageCache/com.unity.robotics.urdf-importer@4ed58f8d00fe/Runtime/Extensions/BuiltInExtensions.cs",
+      "sha256": "1014e1b1ba291b325184eddb404cd586dd64f468fabb36ee1729618a76dc97b4"
+    },
+    {
+      "path": "Library/PackageCache/com.unity.robotics.urdf-importer@4ed58f8d00fe/Runtime/UrdfComponents/UrdfJoints/UrdfJointRevolute.cs",
+      "sha256": "49d5ab0675a008604e3bf9ae9d9c933970e72f809e61f21972cb6793cbbf18ba"
+    }
+  ]
+}

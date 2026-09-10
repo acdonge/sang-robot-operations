@@ -190,7 +190,11 @@ def test_camera_worker_skips_bounded_mjpg_warmup_frames():
 
 @pytest.mark.parametrize(
     ("fourcc", "mjpg_passthrough", "fourcc_value"),
-    (("YUYV", True, 1448695129), ("MJPG", False, 1196444237)),
+    (
+        ("YUYV", True, 1448695129),
+        ("UYVY", True, 1498831189),
+        ("MJPG", False, 1196444237),
+    ),
 )
 def test_camera_worker_encodes_non_passthrough_input_as_jpeg(
     fourcc,

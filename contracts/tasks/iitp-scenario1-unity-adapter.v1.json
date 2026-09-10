@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "adapter_id": "unity-iitp-scenario1",
+  "scenario_id": "iitp-scenario1",
+  "bridge_root": "/tmp/sang-unity-scenario1",
+  "poll_interval_seconds": 0.1,
+  "roles": [
+    {
+      "role": "mobile-carrier",
+      "access": "exclusive",
+      "requires": [
+        "simulate-material-delivery@1",
+        "simulate-material-return@1"
+      ]
+    },
+    {
+      "role": "omy-material-handler",
+      "access": "exclusive",
+      "requires": ["simulate-pick-place@1"]
+    },
+    {
+      "role": "rb5-waam-path",
+      "access": "exclusive",
+      "requires": ["simulate-waam-path@1"]
+    }
+  ],
+  "steps": [
+    {
+      "step_id": "mobile_delivery",
+      "role": "mobile-carrier",
+      "capability": "simulate-material-delivery@1",
+      "depends_on": [],
+      "parameters": {"operation": "deliver-base-plate"}
+    },
+    {
+      "step_id": "omy_pre_pick_place",
+      "role": "omy-material-handler",
+      "capability": "simulate-pick-place@1",
+      "depends_on": ["mobile_delivery"],
+      "parameters": {"operation": "place-on-waam-table"}
+    },
+    {
+      "step_id": "rb5_waam",
+      "role": "rb5-waam-path",
+      "capability": "simulate-waam-path@1",
+      "depends_on": ["omy_pre_pick_place"],
+      "parameters": {"operation": "follow-simulated-waam-path"}
+    },
+    {
+      "step_id": "omy_post_pick_place",
+      "role": "omy-material-handler",
+      "capability": "simulate-pick-place@1",
+      "depends_on": ["rb5_waam"],
+      "parameters": {"operation": "return-to-carrier"}
+    },
+    {
+      "step_id": "mobile_return",
+      "role": "mobile-carrier",
+      "capability": "simulate-material-return@1",
+      "depends_on": ["omy_post_pick_place"],
+      "parameters": {"operation": "return-with-base-plate"}
+    }
+  ]
+}

@@ -305,8 +305,32 @@ def test_ready_validation_and_database_reservation_guard(tmp_path):
         "/api/v1/config/task-runs",
         json={**base, "run_id": "ready-2", "assignments": assignment},
     )
-    assert second.status_code == 409
-    assert "already reserved" in second.json()["error"]
+    assert second.status_code == 201
+
+    assert client.post(
+        "/api/v1/config/task-definitions",
+        json={
+            "task_definition_id": "inspect",
+            "version": 2,
+            "display_name": "Exclusive inspect",
+            "roles": [
+                {"role": "vision", "asset_type": "camera", "access_mode": "exclusive"}
+            ],
+        },
+    ).status_code == 201
+    exclusive = client.post(
+        "/api/v1/config/task-runs",
+        json={
+            **base,
+            "run_id": "ready-exclusive",
+            "task_version": 2,
+            "assignments": [
+                {"role": "vision", "asset_id": "camera-a", "access_mode": "exclusive"}
+            ],
+        },
+    )
+    assert exclusive.status_code == 409
+    assert "reserved" in exclusive.json()["error"]
 
 
 def test_run_scoped_fleet_returns_only_assigned_camera_source(tmp_path):
@@ -435,13 +459,8 @@ def test_asset_runtime_kind_rejects_mismatch_and_detects_later_drift(tmp_path):
         "/api/v1/config/assets/arm-a/runtime-kind",
         json={"expected_revision": 1, "runtime_kind": None},
     )
-    assert cleared.status_code == 200
-    assert cleared.json()["runtime_kind"] is None
-    restored = client.patch(
-        "/api/v1/config/assets/arm-a/runtime-kind",
-        json={"expected_revision": 2, "runtime_kind": "physical"},
-    )
-    assert restored.status_code == 200
+    assert cleared.status_code == 422
+    assert "immutable" in cleared.json()["error"]
 
     store.upsert(
         runtime_heartbeat("simulation", 2),
@@ -568,7 +587,7 @@ def test_task_run_full_lifecycle_releases_reservations(tmp_path):
         },
     )
     assert second.status_code == 201, second.text
-    assert FleetStore(store.path).schema_versions() == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    assert FleetStore(store.path).schema_versions() == list(range(1, 20))
 
 
 def test_failed_task_run_requires_reason_and_is_terminal(tmp_path):

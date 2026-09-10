@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "binding_id": "binding-3-cameras",
+  "run_id": "run-3-cameras",
+  "workflow_ref": {
+    "workflow_id": "generic-position-and-observe",
+    "version": 1
+  },
+  "execution_mode": "SIMULATION",
+  "assets": [
+    {
+      "asset_id": "arm-01",
+      "runtime_class": "simulation",
+      "manifest_ref": {"manifest_id": "arm-01-manifest", "version": 1, "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+      "connection_ref": {"object_id": "arm-01-connection", "version": 1, "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+      "calibration_refs": [],
+      "capabilities": ["execute-registered-joint-plan@1"],
+      "supported_modes": ["SIMULATION"],
+      "command_sink_present": false,
+      "commissioned_capabilities": []
+    },
+    {
+      "asset_id": "camera-01",
+      "runtime_class": "simulation",
+      "manifest_ref": {"manifest_id": "camera-01-manifest", "version": 1, "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+      "connection_ref": {"object_id": "camera-01-connection", "version": 1, "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+      "calibration_refs": [],
+      "capabilities": ["record-compressed-video@1"],
+      "supported_modes": ["SIMULATION"],
+      "command_sink_present": false,
+      "commissioned_capabilities": []
+    },
+    {
+      "asset_id": "camera-02",
+      "runtime_class": "simulation",
+      "manifest_ref": {"manifest_id": "camera-02-manifest", "version": 1, "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+      "connection_ref": {"object_id": "camera-02-connection", "version": 1, "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+      "calibration_refs": [],
+      "capabilities": ["record-compressed-video@1"],
+      "supported_modes": ["SIMULATION"],
+      "command_sink_present": false,
+      "commissioned_capabilities": []
+    },
+    {
+      "asset_id": "camera-03",
+      "runtime_class": "simulation",
+      "manifest_ref": {"manifest_id": "camera-03-manifest", "version": 1, "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+      "connection_ref": {"object_id": "camera-03-connection", "version": 1, "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+      "calibration_refs": [],
+      "capabilities": ["record-compressed-video@1"],
+      "supported_modes": ["SIMULATION"],
+      "command_sink_present": false,
+      "commissioned_capabilities": []
+    }
+  ],
+  "role_bindings": [
+    {"role": "handler", "asset_ids": ["arm-01"]},
+    {"role": "cell-view", "asset_ids": ["camera-01", "camera-02", "camera-03"]}
+  ]
+}

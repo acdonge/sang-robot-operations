@@ -1,0 +1,8 @@
+string command_id
+---
+bool found
+string state
+string result_json
+string evidence_ref
+string error_code
+string error_message

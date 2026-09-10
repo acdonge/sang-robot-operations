@@ -16,6 +16,12 @@ from asyncua import Server, ua
 from sang_security.opcua import OpcUaServerSecurity, create_secure_server
 
 from sang_opcua_gateway.contract import FeatureSpec, GatewayContract
+from sang_opcua_gateway.official_nodesets import (
+    OfficialNodeSetBundle,
+    import_official_nodesets,
+)
+from sang_opcua_gateway.robotics_contract import RoboticsProfile
+from sang_opcua_gateway.robotics_projection import RoboticsAddressSpace
 from sang_opcua_gateway.state import GatewayStore, RobotSnapshot, ValueSnapshot
 
 
@@ -27,6 +33,12 @@ UTC = timezone.utc
 class _Binding:
     node_id: ua.NodeId
     variant_type: ua.VariantType
+
+
+@dataclass(frozen=True)
+class RoboticsProjectionConfig:
+    bundle: OfficialNodeSetBundle
+    profile: RoboticsProfile
 
 
 class AddressSpace:
@@ -543,6 +555,7 @@ class OpcUaServerThread:
         publish_interval_s: float = 0.05,
         security: OpcUaServerSecurity | None = None,
         trust_reload_interval_s: float = 5.0,
+        robotics_projection: RoboticsProjectionConfig | None = None,
     ) -> None:
         if not math.isfinite(trust_reload_interval_s) or trust_reload_interval_s <= 0.0:
             raise ValueError("trust_reload_interval_s must be positive")
@@ -551,6 +564,7 @@ class OpcUaServerThread:
         self.publish_interval_s = publish_interval_s
         self.security = security
         self.trust_reload_interval_s = trust_reload_interval_s
+        self.robotics_projection = robotics_projection
         self._stop = threading.Event()
         self._ready = threading.Event()
         self._thread: threading.Thread | None = None
@@ -615,9 +629,30 @@ class OpcUaServerThread:
         server.set_server_name("SANG Read-Only Robot Edge")
         await server.set_application_uri(self.contract.application_uri)
         await server.import_xml(str(self.contract.nodeset_path), strict_mode=True)
+        robotics_namespaces = None
+        if self.robotics_projection is not None:
+            robotics_namespaces = await import_official_nodesets(
+                server, self.robotics_projection.bundle
+            )
         address_space = AddressSpace(server, self.contract)
         await address_space.build()
-        await address_space.publish(self.store.snapshot(), include_health=True)
+        robotics_space = None
+        if self.robotics_projection is not None:
+            if self.robotics_projection.profile.robot_id != self.contract.manifest.robot.robot_id:
+                raise ValueError(
+                    "Robotics profile robot_id does not match gateway manifest"
+                )
+            robotics_space = RoboticsAddressSpace(
+                server,
+                self.robotics_projection.profile,
+                robotics_namespaces or {},
+                status_codes=self.contract.status_codes,
+            )
+            await robotics_space.build()
+        initial_snapshot = self.store.snapshot()
+        await address_space.publish(initial_snapshot, include_health=True)
+        if robotics_space is not None:
+            await robotics_space.publish_snapshot(initial_snapshot)
         await server.start()
         self._ready.set()
         next_health = time.monotonic() + 0.5
@@ -626,10 +661,10 @@ class OpcUaServerThread:
             while not self._stop.is_set():
                 now = time.monotonic()
                 include_health = now >= next_health
-                await address_space.publish(
-                    self.store.snapshot(),
-                    include_health=include_health,
-                )
+                snapshot = self.store.snapshot()
+                await address_space.publish(snapshot, include_health=include_health)
+                if robotics_space is not None:
+                    await robotics_space.publish_snapshot(snapshot)
                 if include_health:
                     next_health = now + 0.5
                 if trust_store is not None and now >= next_trust_reload:

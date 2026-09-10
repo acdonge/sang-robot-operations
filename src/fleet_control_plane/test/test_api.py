@@ -324,9 +324,13 @@ def test_multiple_agents_isolate_malformed_and_offline_updates(tmp_path):
 
 def test_route_surface_contains_no_robot_command_writer(tmp_path):
     client, _, _ = make_client(tmp_path)
+    expanded_routes = []
+    for route in client.app.routes:
+        included = getattr(route, "original_router", None)
+        expanded_routes.extend(included.routes if included is not None else [route])
     routes = {
         (method, route.path)
-        for route in client.app.routes
+        for route in expanded_routes
         for method in getattr(route, "methods", set())
     }
     writers = {(method, path) for method, path in routes if method in {"POST", "PUT", "PATCH", "DELETE"}}
@@ -362,6 +366,59 @@ def test_route_surface_contains_no_robot_command_writer(tmp_path):
         ("POST", "/api/v1/task-runs/{run_id}/capture-jobs"),
         ("POST", "/api/v1/capture-jobs/{job_id}/stop"),
         ("POST", "/api/v1/recording-sessions"),
+        ("POST", "/api/v1/safety/assessments"),
+        ("POST", "/api/v2/safety/evidence"),
+        ("POST", "/api/v1/aas/projections"),
+        ("POST", "/api/v1/commissioning/g6b/cases"),
+        ("POST", "/api/v1/commissioning/g6b/artifacts"),
+        ("POST", "/api/v1/commissioning/g6b/cases/{case_id}/submissions"),
+        ("POST", "/api/v1/commissioning/g6b/submissions/{submission_id}/reviews"),
+        ("POST", "/api/v1/orchestration/capability-profiles"),
+        ("POST", "/api/v1/orchestration/device-manifests"),
+        ("POST", "/api/v1/orchestration/workflows"),
+        ("POST", "/api/v1/orchestration/safety-policies"),
+        ("POST", "/api/v1/orchestration/runtime-bindings"),
+        ("POST", "/api/v1/orchestration/coordinated-groups"),
+        ("POST", "/api/v1/orchestration/zones"),
+        ("POST", "/api/v1/orchestration/calibrations"),
+        ("POST", "/api/v1/orchestration/control-envelopes"),
+        ("POST", "/api/v1/orchestration/unity-build-attestations"),
+        ("POST", "/api/v1/orchestration/registry/{kind}"),
+        ("POST", "/api/v1/orchestration/runs"),
+        ("POST", "/api/v1/orchestration/runs/{run_id}/transition"),
+            ("POST", "/api/v1/orchestration/runs/{run_id}/producers"),
+            ("POST", "/api/v1/workflow-authoring/drafts"),
+            ("POST", "/api/v1/workflow-authoring/drafts/clone"),
+            ("PUT", "/api/v1/workflow-authoring/drafts/{draft_id}"),
+            ("POST", "/api/v1/workflow-authoring/drafts/{draft_id}/validate"),
+            ("POST", "/api/v1/workflow-authoring/drafts/{draft_id}/publish"),
+            ("POST", "/api/v1/workflow-authoring/action-library/drafts"),
+            ("PUT", "/api/v1/workflow-authoring/action-library/drafts/{draft_id}"),
+            (
+                "POST",
+                "/api/v1/workflow-authoring/action-library/drafts/{draft_id}/source-validation",
+            ),
+            (
+                "POST",
+                "/api/v1/workflow-authoring/action-library/drafts/{draft_id}/simulation-validation",
+            ),
+            (
+                "POST",
+                "/api/v1/workflow-authoring/action-library/drafts/{draft_id}/publish",
+            ),
+            ("POST", "/api/v1/workflow-authoring/simulation-profiles"),
+            ("POST", "/api/v1/workflow-authoring/commissioning-candidates"),
+            ("POST", "/api/v1/workflow-authoring/simulation-runs"),
+            ("POST", "/api/v1/workflow-authoring/runtime/start"),
+            ("POST", "/api/v1/workflow-authoring/runtime/stop"),
+            (
+                "POST",
+                "/api/v1/workflow-authoring/simulation-runs/{run_id}/controls",
+            ),
+            ("POST", "/api/v1/control/role-bindings"),
+        ("POST", "/api/v1/control/xr-sessions"),
+        ("POST", "/api/v1/orchestration/runs/{run_id}/resume-challenges"),
+        ("POST", "/api/v1/control/resume-challenges/{challenge_id}/approvals"),
         (
             "PUT",
             "/api/v1/recording-sessions/{session_id}/artifacts/{artifact_path:path}",

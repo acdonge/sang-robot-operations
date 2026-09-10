@@ -1,0 +1,16 @@
+schema_version: 1
+scenario_id: isaac-scenario1
+workflow_path: contracts/tasks/isaac-scenario1-workflow.v1.json
+bridge_root: /tmp/sang-isaac-scenario1
+heartbeat_max_age_s: 3
+result_timeout_s: 420
+roles:
+  mobile-carrier:
+    asset_id: isaac-scenario1-carrier
+    agent_id: isaac-scenario1-carrier-agent
+  omy-material-handler:
+    asset_id: isaac-scenario1-omy
+    agent_id: isaac-scenario1-omy-agent
+  rb5-waam-path:
+    asset_id: isaac-scenario1-rb5
+    agent_id: isaac-scenario1-rb5-agent

@@ -1,0 +1,593 @@
+{
+  "$defs": {
+    "AssetManifestEvidenceRefV2": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "manifest_ref": {
+          "$ref": "#/$defs/ManifestRefV1"
+        }
+      },
+      "required": [
+        "asset_id",
+        "manifest_ref"
+      ],
+      "title": "AssetManifestEvidenceRefV2",
+      "type": "object"
+    },
+    "ClockMeasurementV2": {
+      "additionalProperties": false,
+      "properties": {
+        "monitor_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Monitor Id",
+          "type": "string"
+        },
+        "offset_ms": {
+          "title": "Offset Ms",
+          "type": "number"
+        },
+        "reference_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Reference Id",
+          "type": "string"
+        },
+        "sampled_at": {
+          "format": "date-time",
+          "title": "Sampled At",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "synchronized",
+            "degraded",
+            "unknown"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "uncertainty_ms": {
+          "minimum": 0.0,
+          "title": "Uncertainty Ms",
+          "type": "number"
+        }
+      },
+      "required": [
+        "monitor_id",
+        "reference_id",
+        "sampled_at",
+        "offset_ms",
+        "uncertainty_ms",
+        "state"
+      ],
+      "title": "ClockMeasurementV2",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "ManifestRefV1": {
+      "additionalProperties": false,
+      "properties": {
+        "manifest_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Manifest Id",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "manifest_id",
+        "version",
+        "sha256"
+      ],
+      "title": "ManifestRefV1",
+      "type": "object"
+    },
+    "RegistryRefV1": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "object_id",
+        "version",
+        "sha256"
+      ],
+      "title": "RegistryRefV1",
+      "type": "object"
+    },
+    "SafetySignalV2": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_ids": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+            "type": "string"
+          },
+          "maxItems": 64,
+          "title": "Asset Ids",
+          "type": "array"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "sampled_at": {
+          "format": "date-time",
+          "title": "Sampled At",
+          "type": "string"
+        },
+        "signal_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Signal Id",
+          "type": "string"
+        },
+        "signal_type": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Signal Type",
+          "type": "string"
+        },
+        "valid": {
+          "default": true,
+          "title": "Valid",
+          "type": "boolean"
+        },
+        "value": {
+          "$ref": "#/$defs/JsonValue"
+        }
+      },
+      "required": [
+        "signal_id",
+        "signal_type",
+        "sampled_at",
+        "value"
+      ],
+      "title": "SafetySignalV2",
+      "type": "object"
+    },
+    "SeparationObservationV2": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "calibration_ref": {
+          "$ref": "#/$defs/RegistryRefV1"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "distance_m": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Distance M"
+        },
+        "frame_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Frame Id",
+          "type": "string"
+        },
+        "human_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Human Id",
+          "type": "string"
+        },
+        "observation_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Observation Id",
+          "type": "string"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "sampled_at": {
+          "format": "date-time",
+          "title": "Sampled At",
+          "type": "string"
+        },
+        "valid": {
+          "title": "Valid",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "observation_id",
+        "human_id",
+        "asset_id",
+        "sampled_at",
+        "frame_id",
+        "calibration_ref",
+        "valid"
+      ],
+      "title": "SeparationObservationV2",
+      "type": "object"
+    },
+    "WorkflowStateEvidenceV2": {
+      "additionalProperties": false,
+      "properties": {
+        "executor_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$",
+          "title": "Executor Id",
+          "type": "string"
+        },
+        "expected_by_orchestrator_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$",
+          "title": "Expected By Orchestrator Id",
+          "type": "string"
+        },
+        "expected_step": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Expected Step",
+          "type": "string"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "title": "Observed At",
+          "type": "string"
+        },
+        "observed_by_producer_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$",
+          "title": "Observed By Producer Id",
+          "type": "string"
+        },
+        "observed_step": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Observed Step",
+          "type": "string"
+        }
+      },
+      "required": [
+        "expected_step",
+        "expected_by_orchestrator_id",
+        "observed_step",
+        "observed_by_producer_id",
+        "executor_id",
+        "observed_at"
+      ],
+      "title": "WorkflowStateEvidenceV2",
+      "type": "object"
+    },
+    "ZoneOccupancyV2": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_ids": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+            "type": "string"
+          },
+          "maxItems": 64,
+          "title": "Asset Ids",
+          "type": "array"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "entity_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "observation_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Observation Id",
+          "type": "string"
+        },
+        "occupied": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Occupied"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "sampled_at": {
+          "format": "date-time",
+          "title": "Sampled At",
+          "type": "string"
+        },
+        "valid": {
+          "title": "Valid",
+          "type": "boolean"
+        },
+        "zone_ref": {
+          "$ref": "#/$defs/RegistryRefV1"
+        }
+      },
+      "required": [
+        "observation_id",
+        "entity_id",
+        "sampled_at",
+        "zone_ref",
+        "valid"
+      ],
+      "title": "ZoneOccupancyV2",
+      "type": "object"
+    }
+  },
+  "$id": "https://sang.local/contracts/orchestration/safety-snapshot-v2.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Command-free, source-ordered safety evidence payload.",
+  "properties": {
+    "asset_ids": {
+      "items": {
+        "maxLength": 64,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+        "type": "string"
+      },
+      "maxItems": 256,
+      "minItems": 1,
+      "title": "Asset Ids",
+      "type": "array"
+    },
+    "calibration_refs": {
+      "items": {
+        "$ref": "#/$defs/RegistryRefV1"
+      },
+      "maxItems": 128,
+      "title": "Calibration Refs",
+      "type": "array"
+    },
+    "captured_at": {
+      "format": "date-time",
+      "title": "Captured At",
+      "type": "string"
+    },
+    "clock": {
+      "$ref": "#/$defs/ClockMeasurementV2"
+    },
+    "command_emitted": {
+      "const": false,
+      "default": false,
+      "title": "Command Emitted",
+      "type": "boolean"
+    },
+    "evidence_refs": {
+      "items": {
+        "maxLength": 2048,
+        "minLength": 3,
+        "type": "string"
+      },
+      "maxItems": 256,
+      "title": "Evidence Refs",
+      "type": "array"
+    },
+    "manifest_refs": {
+      "items": {
+        "$ref": "#/$defs/AssetManifestEvidenceRefV2"
+      },
+      "maxItems": 256,
+      "minItems": 1,
+      "title": "Manifest Refs",
+      "type": "array"
+    },
+    "policy_ref": {
+      "$ref": "#/$defs/RegistryRefV1"
+    },
+    "producer_boot_id": {
+      "format": "uuid",
+      "title": "Producer Boot Id",
+      "type": "string"
+    },
+    "producer_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$",
+      "title": "Producer Id",
+      "type": "string"
+    },
+    "received_at": {
+      "format": "date-time",
+      "title": "Received At",
+      "type": "string"
+    },
+    "run_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 2,
+      "default": 2,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "separations": {
+      "items": {
+        "$ref": "#/$defs/SeparationObservationV2"
+      },
+      "maxItems": 512,
+      "title": "Separations",
+      "type": "array"
+    },
+    "sequence": {
+      "minimum": 0,
+      "title": "Sequence",
+      "type": "integer"
+    },
+    "signals": {
+      "items": {
+        "$ref": "#/$defs/SafetySignalV2"
+      },
+      "maxItems": 512,
+      "title": "Signals",
+      "type": "array"
+    },
+    "snapshot_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "title": "Snapshot Id",
+      "type": "string"
+    },
+    "workflow_state": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/WorkflowStateEvidenceV2"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "zone_occupancies": {
+      "items": {
+        "$ref": "#/$defs/ZoneOccupancyV2"
+      },
+      "maxItems": 512,
+      "title": "Zone Occupancies",
+      "type": "array"
+    },
+    "zone_refs": {
+      "items": {
+        "$ref": "#/$defs/RegistryRefV1"
+      },
+      "maxItems": 128,
+      "title": "Zone Refs",
+      "type": "array"
+    }
+  },
+  "required": [
+    "snapshot_id",
+    "producer_id",
+    "producer_boot_id",
+    "sequence",
+    "run_id",
+    "captured_at",
+    "received_at",
+    "clock",
+    "asset_ids",
+    "manifest_refs",
+    "policy_ref"
+  ],
+  "title": "SafetySnapshotV2",
+  "type": "object"
+}

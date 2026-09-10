@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "asset_id": "omy_01",
+  "global_asset_id": "urn:sang:asset:physical:omy:lab-serial",
+  "aas_id": "urn:sang:aas:physical:omy:lab-serial",
+  "identity_revision": 1,
+  "runtime_class": "physical",
+  "asset_type": "robot",
+  "display_name": "OMY F3M Physical",
+  "lifecycle_state": "active",
+  "projection_mode": "read_only",
+  "submodel_slots": [
+    "identification_nameplate",
+    "technical_data",
+    "capabilities_skills",
+    "simulation_model",
+    "frames_kinematics",
+    "runtime_interfaces",
+    "relationships"
+  ],
+  "relationships": [
+    {
+      "relationship": "hasDigitalTwin",
+      "target_global_asset_id": "urn:sang:asset:simulation:omy:scenario1",
+      "target_asset_id": "omy_sim_01"
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "qualification_id": "iitp-scenario1-qualification",
+  "version": 1,
+  "verdict": "PASS",
+  "run_id": "sim-contract-fixture-01",
+  "scene_ref": {
+    "scene_id": "iitp-scenario1",
+    "version": 1,
+    "sha256": "1b2ffe80dc3e2be96137425f85d8fb77dc0444efff30c6be43d6d70b09da0e15"
+  },
+  "runtime_binding_ref": {
+    "object_id": "scenario1-runtime-binding",
+    "version": 1,
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "package_refs": [
+    {
+      "asset_package_id": "omy-f3m-unity",
+      "version": 1,
+      "sha256": "b18236dcb847d3634bb5d709781134944da4591cdc8c59b2b3d17b6bb2d99147"
+    }
+  ],
+  "actions": [
+    {
+      "action_ref": "omy-place-on-waam-table@1",
+      "capability": "simulate-pick-place@1",
+      "runtime": "UNITY_CSHARP",
+      "source_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "installed_source_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "build_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    }
+  ],
+  "adapter_build_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "orchestrator_build_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+  "build_attestation_refs": [
+    {
+      "object_id": "scenario1-unity-build",
+      "version": 1,
+      "sha256": "8888888888888888888888888888888888888888888888888888888888888888"
+    },
+    {
+      "object_id": "omy-unity-build-attestation",
+      "version": 1,
+      "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    }
+  ],
+  "validation_profile_ref": {
+    "object_id": "scenario1-simulation-validation",
+    "version": 1,
+    "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+  },
+  "output_isolation_evidence_ref": {
+    "object_id": "scenario1-output-isolation",
+    "version": 1,
+    "sha256": "7777777777777777777777777777777777777777777777777777777777777777"
+  },
+  "physical_output_connected": false,
+  "time_source": "unity_simulation_clock",
+  "report_artifact": {
+    "role": "validation_report",
+    "object_id": "sha256:1212121212121212121212121212121212121212121212121212121212121212",
+    "media_type": "application/json",
+    "sha256": "1212121212121212121212121212121212121212121212121212121212121212",
+    "size_bytes": 32768,
+    "file_name": "qualification_report.json"
+  },
+  "evidence_artifacts": [
+    {
+      "role": "mcap_evidence",
+      "object_id": "sha256:1313131313131313131313131313131313131313131313131313131313131313",
+      "media_type": "application/octet-stream",
+      "sha256": "1313131313131313131313131313131313131313131313131313131313131313",
+      "size_bytes": 10485760,
+      "file_name": "scenario1_evidence.mcap"
+    }
+  ],
+  "checks": [
+    {
+      "check_id": "artifact-digests",
+      "state": "PASS",
+      "detail": "Scene, package, Action, and build digests matched.",
+      "evidence_refs": []
+    },
+    {
+      "check_id": "output-isolation",
+      "state": "PASS",
+      "detail": "The simulation build exposed no physical command sink.",
+      "evidence_refs": []
+    },
+    {
+      "check_id": "deterministic-reset",
+      "state": "PASS",
+      "detail": "The bound OMY returned to its declared home state.",
+      "evidence_refs": []
+    }
+  ],
+  "started_at": "2026-08-31T12:00:00Z",
+  "finished_at": "2026-08-31T12:05:00Z",
+  "qualified_at": "2026-08-31T12:06:00Z",
+  "qualified_by": "build-owner"
+}

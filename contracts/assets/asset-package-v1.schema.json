@@ -1,0 +1,303 @@
+{
+  "$defs": {
+    "ArtifactObjectRefV1": {
+      "additionalProperties": false,
+      "properties": {
+        "file_name": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._+ -]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "File Name"
+        },
+        "media_type": {
+          "maxLength": 160,
+          "minLength": 3,
+          "pattern": "^[a-z0-9][a-z0-9!#$&^_.+-]+/[a-z0-9][a-z0-9!#$&^_.+-]+$",
+          "title": "Media Type",
+          "type": "string"
+        },
+        "object_id": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "unity_prefab",
+            "unity_scene_package",
+            "urdf",
+            "xacro",
+            "srdf",
+            "usd",
+            "visual_meshes",
+            "collision_meshes",
+            "materials_textures",
+            "controller_assembly",
+            "reset_profile",
+            "frame_unit_contract",
+            "camera_intrinsics",
+            "camera_extrinsics",
+            "workspace_geometry",
+            "calibration",
+            "vendor_documentation",
+            "license",
+            "build_attestation",
+            "validation_report",
+            "mcap_evidence",
+            "preview_media"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size_bytes": {
+          "exclusiveMinimum": 0,
+          "title": "Size Bytes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "role",
+        "object_id",
+        "media_type",
+        "sha256",
+        "size_bytes"
+      ],
+      "title": "ArtifactObjectRefV1",
+      "type": "object"
+    },
+    "ManifestRefV1": {
+      "additionalProperties": false,
+      "properties": {
+        "manifest_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Manifest Id",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "manifest_id",
+        "version",
+        "sha256"
+      ],
+      "title": "ManifestRefV1",
+      "type": "object"
+    },
+    "PackageDependencyV1": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "contract",
+            "asset_package",
+            "runtime_component"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "ref": {
+          "maxLength": 192,
+          "minLength": 3,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*@[1-9][0-9]*$",
+          "title": "Ref",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "ref",
+        "sha256"
+      ],
+      "title": "PackageDependencyV1",
+      "type": "object"
+    },
+    "PackageRuntimeV1": {
+      "additionalProperties": false,
+      "properties": {
+        "controller_contract": {
+          "anyOf": [
+            {
+              "maxLength": 192,
+              "minLength": 3,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*@[1-9][0-9]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Controller Contract"
+        },
+        "kind": {
+          "enum": [
+            "UNITY",
+            "ISAAC_SIM",
+            "ROS2_AGENT",
+            "GENERIC"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "ros_distribution": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ros Distribution"
+        },
+        "version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "version"
+      ],
+      "title": "PackageRuntimeV1",
+      "type": "object"
+    },
+    "RegistryRefV1": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "object_id",
+        "version",
+        "sha256"
+      ],
+      "title": "RegistryRefV1",
+      "type": "object"
+    }
+  },
+  "$id": "https://sang.local/contracts/assets/asset-package-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Immutable object references and compatibility for one simulation asset package.",
+  "properties": {
+    "artifacts": {
+      "items": {
+        "$ref": "#/$defs/ArtifactObjectRefV1"
+      },
+      "maxItems": 512,
+      "minItems": 1,
+      "title": "Artifacts",
+      "type": "array"
+    },
+    "asset_package_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "title": "Asset Package Id",
+      "type": "string"
+    },
+    "build_attestation_ref": {
+      "$ref": "#/$defs/RegistryRefV1"
+    },
+    "compatible_asset_profile": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "title": "Compatible Asset Profile",
+      "type": "string"
+    },
+    "dependencies": {
+      "items": {
+        "$ref": "#/$defs/PackageDependencyV1"
+      },
+      "maxItems": 256,
+      "title": "Dependencies",
+      "type": "array"
+    },
+    "device_manifest_ref": {
+      "$ref": "#/$defs/ManifestRefV1"
+    },
+    "frames_contract_ref": {
+      "$ref": "#/$defs/RegistryRefV1"
+    },
+    "runtime": {
+      "$ref": "#/$defs/PackageRuntimeV1"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "version": {
+      "minimum": 1,
+      "title": "Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "asset_package_id",
+    "version",
+    "compatible_asset_profile",
+    "runtime",
+    "artifacts",
+    "frames_contract_ref",
+    "device_manifest_ref",
+    "build_attestation_ref"
+  ],
+  "title": "AssetPackageV1",
+  "type": "object"
+}

@@ -2,10 +2,12 @@ import asyncio
 from datetime import datetime, timezone
 import socket
 
-from asyncua import Client, ua
+from asyncua import Client, Server, ua
+from asyncua.ua.uaerrors import UaStatusCodeError
 import pytest
 
 from fleet_control_plane.central_opcua import (
+    CentralAddressSpace,
     NAMESPACE_URI,
     parse_args,
     serve,
@@ -125,6 +127,15 @@ async def _exercise_central_opcua(tmp_path):
         ),
         occurred_at=received,
     )
+    store.create_asset(
+        AssetCreate(
+            asset_id="asset-unobserved-test",
+            asset_type="robot",
+            display_name="Unobserved Robot",
+            capabilities=["telemetry"],
+        ),
+        occurred_at=received,
+    )
     port = free_port()
     endpoint = f"opc.tcp://127.0.0.1:{port}/sang/central/"
     stop = asyncio.Event()
@@ -155,6 +166,20 @@ async def _exercise_central_opcua(tmp_path):
             )
             assert await agent_count.read_value() == 1
             assert await fsm_state.read_value() == "READY"
+            with pytest.raises(UaStatusCodeError):
+                await fsm_state.write_value("CLIENT_WRITE_MUST_FAIL")
+
+            unobserved_fresh = client.get_node(
+                ua.NodeId(
+                    "central/fleet/assets/asset-unobserved-test/field/fresh",
+                    namespace,
+                )
+            )
+            unobserved_value = await unobserved_fresh.read_attribute(
+                ua.AttributeIds.Value,
+                raise_on_bad_status=False,
+            )
+            assert unobserved_value.StatusCode.is_bad()
 
             store.upsert(
                 heartbeat(fsm_state="DEGRADED", fault="observation delayed"),
@@ -186,6 +211,66 @@ async def _exercise_central_opcua(tmp_path):
     finally:
         stop.set()
         await asyncio.wait_for(task, timeout=10)
+
+
+def test_central_opcua_reconciles_removed_entities_and_reaudits(tmp_path):
+    asyncio.run(_exercise_reconciliation(tmp_path))
+
+
+async def _exercise_reconciliation(tmp_path):
+    port = free_port()
+    endpoint = f"opc.tcp://127.0.0.1:{port}/sang/central/reconcile/"
+    server = Server()
+    await server.init()
+    server.set_endpoint(endpoint)
+    address_space = CentralAddressSpace(server)
+    await address_space.build()
+    populated = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "agents": [
+            {
+                "agent_id": "agent-to-remove",
+                "agent_name": "Agent To Remove",
+                "status": "online",
+                "sw_version": "test",
+                "received_at": datetime.now(timezone.utc).isoformat(),
+                "age_s": 0.0,
+                "robots": [],
+            }
+        ],
+        "assets": [],
+        "task_runs": [],
+        "recording_sessions": [],
+    }
+    await address_space.project(populated)
+    await server.start()
+    try:
+        async with Client(endpoint, timeout=5) as client:
+            namespace = await client.get_namespace_index(NAMESPACE_URI)
+            removed_node = client.get_node(
+                ua.NodeId("central/fleet/agents/agent-to-remove", namespace)
+            )
+            assert (await removed_node.read_browse_name()).Name == "Agent To Remove"
+
+            await address_space.project(
+                {
+                    "generated_at": datetime.now(timezone.utc).isoformat(),
+                    "agents": [],
+                    "assets": [],
+                    "task_runs": [],
+                    "recording_sessions": [],
+                }
+            )
+            with pytest.raises(UaStatusCodeError):
+                await removed_node.read_browse_name()
+
+            audit = await address_space.audit_read_only()
+            assert audit["passed"] is True
+            assert audit["method_count"] == 0
+            assert audit["writable_variables"] == []
+            assert "Good" in audit["quality_status_counts"]
+    finally:
+        await server.stop()
 
 
 def test_central_opcua_cli_requires_security_for_remote_endpoint():

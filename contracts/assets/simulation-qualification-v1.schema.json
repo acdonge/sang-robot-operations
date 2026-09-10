@@ -1,0 +1,428 @@
+{
+  "$defs": {
+    "ArtifactObjectRefV1": {
+      "additionalProperties": false,
+      "properties": {
+        "file_name": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._+ -]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "File Name"
+        },
+        "media_type": {
+          "maxLength": 160,
+          "minLength": 3,
+          "pattern": "^[a-z0-9][a-z0-9!#$&^_.+-]+/[a-z0-9][a-z0-9!#$&^_.+-]+$",
+          "title": "Media Type",
+          "type": "string"
+        },
+        "object_id": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "unity_prefab",
+            "unity_scene_package",
+            "urdf",
+            "xacro",
+            "srdf",
+            "usd",
+            "visual_meshes",
+            "collision_meshes",
+            "materials_textures",
+            "controller_assembly",
+            "reset_profile",
+            "frame_unit_contract",
+            "camera_intrinsics",
+            "camera_extrinsics",
+            "workspace_geometry",
+            "calibration",
+            "vendor_documentation",
+            "license",
+            "build_attestation",
+            "validation_report",
+            "mcap_evidence",
+            "preview_media"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size_bytes": {
+          "exclusiveMinimum": 0,
+          "title": "Size Bytes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "role",
+        "object_id",
+        "media_type",
+        "sha256",
+        "size_bytes"
+      ],
+      "title": "ArtifactObjectRefV1",
+      "type": "object"
+    },
+    "AssetPackageRefV1": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_package_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Asset Package Id",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "asset_package_id",
+        "version",
+        "sha256"
+      ],
+      "title": "AssetPackageRefV1",
+      "type": "object"
+    },
+    "QualificationCheckV1": {
+      "additionalProperties": false,
+      "properties": {
+        "check_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Check Id",
+          "type": "string"
+        },
+        "detail": {
+          "maxLength": 2048,
+          "minLength": 1,
+          "title": "Detail",
+          "type": "string"
+        },
+        "evidence_refs": {
+          "items": {
+            "$ref": "#/$defs/ArtifactObjectRefV1"
+          },
+          "maxItems": 64,
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "state": {
+          "enum": [
+            "PASS",
+            "FAIL"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "check_id",
+        "state",
+        "detail"
+      ],
+      "title": "QualificationCheckV1",
+      "type": "object"
+    },
+    "QualifiedActionImplementationV1": {
+      "additionalProperties": false,
+      "properties": {
+        "action_ref": {
+          "maxLength": 96,
+          "minLength": 3,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*@[1-9][0-9]*$",
+          "title": "Action Ref",
+          "type": "string"
+        },
+        "build_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Build Sha256",
+          "type": "string"
+        },
+        "capability": {
+          "maxLength": 96,
+          "minLength": 3,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*@[1-9][0-9]*$",
+          "title": "Capability",
+          "type": "string"
+        },
+        "installed_source_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Installed Source Sha256",
+          "type": "string"
+        },
+        "runtime": {
+          "enum": [
+            "UNITY_CSHARP",
+            "ROS2_PYTHON"
+          ],
+          "title": "Runtime",
+          "type": "string"
+        },
+        "source_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Source Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action_ref",
+        "capability",
+        "runtime",
+        "source_sha256",
+        "installed_source_sha256",
+        "build_sha256"
+      ],
+      "title": "QualifiedActionImplementationV1",
+      "type": "object"
+    },
+    "RegistryRefV1": {
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "object_id",
+        "version",
+        "sha256"
+      ],
+      "title": "RegistryRefV1",
+      "type": "object"
+    },
+    "SceneRefV1": {
+      "additionalProperties": false,
+      "properties": {
+        "scene_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "title": "Scene Id",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "scene_id",
+        "version",
+        "sha256"
+      ],
+      "title": "SceneRefV1",
+      "type": "object"
+    }
+  },
+  "$id": "https://sang.local/contracts/assets/simulation-qualification-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Exact scene, package, Action, build, Run, and output-isolation evidence.",
+  "properties": {
+    "actions": {
+      "items": {
+        "$ref": "#/$defs/QualifiedActionImplementationV1"
+      },
+      "maxItems": 256,
+      "minItems": 1,
+      "title": "Actions",
+      "type": "array"
+    },
+    "adapter_build_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Adapter Build Sha256",
+      "type": "string"
+    },
+    "build_attestation_refs": {
+      "items": {
+        "$ref": "#/$defs/RegistryRefV1"
+      },
+      "maxItems": 64,
+      "minItems": 1,
+      "title": "Build Attestation Refs",
+      "type": "array"
+    },
+    "checks": {
+      "items": {
+        "$ref": "#/$defs/QualificationCheckV1"
+      },
+      "maxItems": 256,
+      "minItems": 1,
+      "title": "Checks",
+      "type": "array"
+    },
+    "evidence_artifacts": {
+      "items": {
+        "$ref": "#/$defs/ArtifactObjectRefV1"
+      },
+      "maxItems": 256,
+      "title": "Evidence Artifacts",
+      "type": "array"
+    },
+    "finished_at": {
+      "format": "date-time",
+      "title": "Finished At",
+      "type": "string"
+    },
+    "orchestrator_build_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Orchestrator Build Sha256",
+      "type": "string"
+    },
+    "output_isolation_evidence_ref": {
+      "$ref": "#/$defs/RegistryRefV1"
+    },
+    "package_refs": {
+      "items": {
+        "$ref": "#/$defs/AssetPackageRefV1"
+      },
+      "maxItems": 256,
+      "minItems": 1,
+      "title": "Package Refs",
+      "type": "array"
+    },
+    "physical_output_connected": {
+      "const": false,
+      "default": false,
+      "title": "Physical Output Connected",
+      "type": "boolean"
+    },
+    "qualification_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "title": "Qualification Id",
+      "type": "string"
+    },
+    "qualified_at": {
+      "format": "date-time",
+      "title": "Qualified At",
+      "type": "string"
+    },
+    "qualified_by": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "title": "Qualified By",
+      "type": "string"
+    },
+    "report_artifact": {
+      "$ref": "#/$defs/ArtifactObjectRefV1"
+    },
+    "run_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "runtime_binding_ref": {
+      "$ref": "#/$defs/RegistryRefV1"
+    },
+    "scene_ref": {
+      "$ref": "#/$defs/SceneRefV1"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "started_at": {
+      "format": "date-time",
+      "title": "Started At",
+      "type": "string"
+    },
+    "time_source": {
+      "const": "unity_simulation_clock",
+      "default": "unity_simulation_clock",
+      "title": "Time Source",
+      "type": "string"
+    },
+    "validation_profile_ref": {
+      "$ref": "#/$defs/RegistryRefV1"
+    },
+    "verdict": {
+      "enum": [
+        "PASS",
+        "FAIL"
+      ],
+      "title": "Verdict",
+      "type": "string"
+    },
+    "version": {
+      "minimum": 1,
+      "title": "Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "qualification_id",
+    "version",
+    "verdict",
+    "run_id",
+    "scene_ref",
+    "runtime_binding_ref",
+    "package_refs",
+    "actions",
+    "adapter_build_sha256",
+    "orchestrator_build_sha256",
+    "build_attestation_refs",
+    "validation_profile_ref",
+    "output_isolation_evidence_ref",
+    "report_artifact",
+    "checks",
+    "started_at",
+    "finished_at",
+    "qualified_at",
+    "qualified_by"
+  ],
+  "title": "SimulationQualificationV1",
+  "type": "object"
+}

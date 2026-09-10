@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "manifest_id": "example-arm-manifest",
+  "version": 1,
+  "profile_ref": {
+    "profile_id": "articulated-arm",
+    "version": 1
+  },
+  "vendor": {
+    "make": "example",
+    "model": "example-6dof"
+  },
+  "capability_refs": [
+    "execute-registered-joint-plan@1",
+    "observe-joint-state@1"
+  ],
+  "frames": {
+    "mappings": {
+      "base": "arm_base",
+      "tool": "arm_tcp"
+    },
+    "world_calibration_required": true
+  },
+  "units": {
+    "mappings": {
+      "joint-position": "rad",
+      "length": "m",
+      "angle": "rad"
+    }
+  },
+  "limits_ref": {
+    "object_id": "example-arm-limits",
+    "version": 1,
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "observation_contract": [
+    {
+      "key": "joint-state",
+      "message_type": "sensor_msgs/msg/JointState",
+      "min_rate_hz": 20.0
+    }
+  ],
+  "execution_contract": {
+    "agent_api": "sang_control_msgs/action/ExecuteSkill@1",
+    "supported_modes": ["SHADOW"],
+    "command_sink_present": false
+  },
+  "local_fail_behavior_ref": "contracts://fail-behavior/example-arm.v1"
+}

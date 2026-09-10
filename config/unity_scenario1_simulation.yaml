@@ -1,0 +1,16 @@
+schema_version: 1
+scenario_id: iitp-scenario1
+workflow_path: contracts/tasks/iitp-scenario1-orchestrated.v2.json
+bridge_root: /tmp/sang-unity-scenario1
+heartbeat_max_age_s: 5
+result_timeout_s: 480
+roles:
+  mobile-carrier:
+    asset_id: iitp-s1-mobile-sim
+    agent_id: unity-mobile-agent
+  omy-material-handler:
+    asset_id: iitp-s1-omy-sim
+    agent_id: unity-omy-agent
+  rb5-waam-path:
+    asset_id: iitp-s1-rb5-sim
+    agent_id: unity-rb5-agent

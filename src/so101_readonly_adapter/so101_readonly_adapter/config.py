@@ -173,8 +173,10 @@ def _camera(raw: Any, path: str) -> CameraConfig:
         raise HardwareConfigError(f"{path}.width and height must be positive")
     if len(fourcc) != 4:
         raise HardwareConfigError(f"{path}.fourcc must contain exactly 4 characters")
-    if fourcc not in {"MJPG", "YUYV"}:
-        raise HardwareConfigError(f"{path}.fourcc must be MJPG or YUYV")
+    if fourcc not in {"MJPG", "YUYV", "UYVY"}:
+        raise HardwareConfigError(
+            f"{path}.fourcc must be MJPG, YUYV, or UYVY"
+        )
     return CameraConfig(
         key=_string(raw, "key", path),
         device=_string(raw, "device", path),

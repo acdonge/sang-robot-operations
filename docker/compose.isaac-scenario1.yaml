@@ -1,0 +1,116 @@
+# Apply last, after central + lab1-preview + manager-secure + isaac-twin overlays.
+# Command lists replace rather than append: retain deployed HTTPS/preview options.
+services:
+  admin:
+    command:
+      - python3
+      - -m
+      - fleet_control_plane.serve
+      - --db-path
+      - /var/lib/sang/fleet.db
+      - --host
+      - 127.0.0.1
+      - --port
+      - ${CENTRAL_ADMIN_PORT:-18091}
+      - --auth-disabled
+      - --object-store-root
+      - /var/lib/sang-objects
+      - --quality-policy-root
+      - /ws/manifests
+      - --clock-sync-host
+      - 127.0.0.1
+      - --preview-secret-root
+      - /run/secrets/sang
+      - --preview-ca-bundle-ref
+      - secret://https/trust/ca-crl.pem
+      - --preview-client-certificate-ref
+      - secret://https/central/preview-client-chain.pem
+      - --preview-client-private-key-ref
+      - secret://https/central/preview-client-key.pem
+      - --workflow-adapter-profile
+      - ${SANG_UNITY_ADAPTER_PROFILE:-/ws/contracts/tasks/iitp-scenario1-unity-adapter.v3.json}
+      - --workflow-adapter-profile
+      - /ws/contracts/tasks/isaac-rb5-twin-adapter.v1.json
+      - --workflow-adapter-profile
+      - /ws/contracts/tasks/isaac-scenario1-adapter.v1.json
+      - --workflow-skill-catalog
+      - /ws/contracts/tasks/iitp-scenario1-skill-catalog.v2.json
+      - --workflow-runtime-base-url
+      - http://127.0.0.1:${UNITY_RUNTIME_PORT:-18093}
+
+  manager:
+    command:
+      - python3
+      - -m
+      - fleet_control_plane.serve
+      - --db-path
+      - /var/lib/sang/fleet.db
+      - --host
+      - 0.0.0.0
+      - --port
+      - ${MANAGER_HTTPS_PORT:-18443}
+      - --https-secret-root
+      - /run/secrets/sang
+      - --https-server-certificate-ref
+      - secret://https/server/chain.pem
+      - --https-server-private-key-ref
+      - secret://https/server/key.pem
+      - --allowed-host
+      - ${MANAGER_PUBLIC_HOST:-10.0.0.8}
+      - --allowed-host
+      - central.sang.local
+      - --object-store-root
+      - /var/lib/sang-objects
+      - --quality-policy-root
+      - /ws/manifests
+      - --clock-sync-host
+      - 127.0.0.1
+      - --preview-secret-root
+      - /run/secrets/sang
+      - --preview-ca-bundle-ref
+      - secret://https/trust/ca-crl.pem
+      - --preview-client-certificate-ref
+      - secret://https/central/preview-client-chain.pem
+      - --preview-client-private-key-ref
+      - secret://https/central/preview-client-key.pem
+      - --workflow-adapter-profile
+      - ${SANG_UNITY_ADAPTER_PROFILE:-/ws/contracts/tasks/iitp-scenario1-unity-adapter.v3.json}
+      - --workflow-adapter-profile
+      - /ws/contracts/tasks/isaac-rb5-twin-adapter.v1.json
+      - --workflow-adapter-profile
+      - /ws/contracts/tasks/isaac-scenario1-adapter.v1.json
+      - --workflow-skill-catalog
+      - /ws/contracts/tasks/iitp-scenario1-skill-catalog.v2.json
+      - --workflow-runtime-base-url
+      - http://127.0.0.1:${UNITY_RUNTIME_PORT:-18093}
+
+  isaac-scenario1-workflow-worker:
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    user: "${SANG_UID:-1000}:${SANG_GID:-1000}"
+    init: true
+    network_mode: none
+    restart: "no"
+    working_dir: /ws
+    environment:
+      HOME: /var/lib/sang
+      PYTHONPATH: /ws/src/fleet_control_plane
+      IITP_RB5_SIM_TO_REAL: "0"
+      IITP_OMY_SIM_TO_REAL: "0"
+    volumes:
+      - ${SANG_WORKSPACE:?set SANG_WORKSPACE}:/ws:ro
+      - ${SANG_CENTRAL_DATA:?set SANG_CENTRAL_DATA}:/var/lib/sang
+      - /tmp/sang-isaac-scenario1:/tmp/sang-isaac-scenario1
+    command:
+      - python3
+      - -m
+      - fleet_control_plane.workflow_simulation_worker
+      - --db-path
+      - /var/lib/sang/fleet.db
+      - --worker-id
+      - isaac-scenario1-worker
+      - --adapter-profile
+      - /ws/contracts/tasks/isaac-scenario1-adapter.v1.json
+      - --scenario-config
+      - /ws/config/isaac_scenario1_simulation.yaml
+      - --runtime-root
+      - /var/lib/sang/isaac-scenario1-workflow-simulations

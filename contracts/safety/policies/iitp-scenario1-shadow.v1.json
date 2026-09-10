@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "policy_id": "iitp-scenario1-shadow",
+  "version": 1,
+  "warning_distance_m": 1.0,
+  "unsafe_distance_m": 0.5,
+  "max_signal_age_ms": 1000,
+  "future_tolerance_ms": 2000,
+  "minimum_tracking_confidence": 0.6,
+  "require_human_distance": true,
+  "task_sequence_mismatch_state": "UNSAFE",
+  "degraded_clock_state": "WARNING"
+}

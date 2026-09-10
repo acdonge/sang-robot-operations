@@ -19,7 +19,7 @@ cameras:
     width: 640
     height: 480
     fps: 30
-    fourcc: YUYV
+    fourcc: UYVY
     fixed_fps: false
     jpeg_quality: 85
   - key: d405_color

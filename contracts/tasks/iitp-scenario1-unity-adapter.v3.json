@@ -1,0 +1,910 @@
+{
+  "schema_version": 2,
+  "adapter_id": "unity-iitp-scenario1",
+  "scenario_id": "iitp-scenario1",
+  "bridge_root": "/tmp/sang-unity-scenario1",
+  "poll_interval_seconds": 0.1,
+  "roles": [
+    {
+      "role": "mobile-carrier",
+      "access": "exclusive",
+      "requires": [
+        "simulate-material-delivery@1",
+        "simulate-material-return@1"
+      ]
+    },
+    {
+      "role": "omy-material-handler",
+      "access": "exclusive",
+      "requires": [
+        "simulate-pick-place@1"
+      ]
+    },
+    {
+      "role": "rb5-waam-path",
+      "access": "exclusive",
+      "requires": [
+        "simulate-waam-path@1"
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "step_id": "mobile_delivery",
+      "role": "mobile-carrier",
+      "capability": "simulate-material-delivery@1",
+      "depends_on": [],
+      "parameters": {
+        "operation": "deliver-base-plate"
+      }
+    },
+    {
+      "step_id": "omy_pre_pick_place",
+      "role": "omy-material-handler",
+      "capability": "simulate-pick-place@1",
+      "depends_on": [
+        "mobile_delivery"
+      ],
+      "parameters": {
+        "operation": "place-on-waam-table"
+      }
+    },
+    {
+      "step_id": "rb5_waam",
+      "role": "rb5-waam-path",
+      "capability": "simulate-waam-path@1",
+      "depends_on": [
+        "omy_pre_pick_place"
+      ],
+      "parameters": {
+        "operation": "follow-simulated-waam-path"
+      }
+    },
+    {
+      "step_id": "omy_post_pick_place",
+      "role": "omy-material-handler",
+      "capability": "simulate-pick-place@1",
+      "depends_on": [
+        "rb5_waam"
+      ],
+      "parameters": {
+        "operation": "return-to-carrier"
+      }
+    },
+    {
+      "step_id": "mobile_return",
+      "role": "mobile-carrier",
+      "capability": "simulate-material-return@1",
+      "depends_on": [
+        "omy_post_pick_place"
+      ],
+      "parameters": {
+        "operation": "return-with-base-plate"
+      }
+    }
+  ],
+  "dynamic_binding": {
+    "scene": {
+      "schema_version": 1,
+      "scene_id": "iitp-scenario1",
+      "version": 2,
+      "scene_artifact": {
+        "role": "unity_scene_package",
+        "object_id": "sha256:1e336f095170e049e963af0452b96f50165571fff24add7876868eae37ef61f8",
+        "media_type": "application/zip",
+        "sha256": "1e336f095170e049e963af0452b96f50165571fff24add7876868eae37ef61f8",
+        "size_bytes": 78785505,
+        "file_name": "iitp-scenario1-source-package.zip"
+      },
+      "unity_version": "6000.5.6f1",
+      "world": {
+        "frame_id": "cell_world",
+        "length_unit": "m",
+        "angle_unit": "rad",
+        "handedness": "left",
+        "up_axis": "+y",
+        "forward_axis": "+z",
+        "fixed_timestep_s": 0.02
+      },
+      "time_source": "unity_simulation_clock",
+      "required_packages": [
+        {
+          "asset_package_id": "scenario1-a1-iitp-mobile-carrier",
+          "version": 1,
+          "sha256": "fb474407ba201f0ee920541775572f96532cc5efbbb7711fc07261e5dcd6679b"
+        },
+        {
+          "asset_package_id": "scenario1-a1-omy-camera-mount-geometry",
+          "version": 1,
+          "sha256": "3ce5b476cbe4176f73ed914f3b938bcfef5124fa698539e9db6d85537d084cd5"
+        },
+        {
+          "asset_package_id": "scenario1-a1-omy-f3m",
+          "version": 1,
+          "sha256": "84e914d531a0ce7d09f8db2dc4941d51673aa1ba1bfe64d2e90522f948b9e03b"
+        },
+        {
+          "asset_package_id": "scenario1-a1-rb5-850e",
+          "version": 1,
+          "sha256": "09436a2d0679432b9b7e287e6d5a60fbcf247761f4a31bc4a6c3a346b68de284"
+        },
+        {
+          "asset_package_id": "scenario1-a1-scenario1-base-plate",
+          "version": 1,
+          "sha256": "3516217681a83108e1fc7a7cfe799224bac2c35b737117542b61beb45b5d258e"
+        },
+        {
+          "asset_package_id": "scenario1-a1-scenario1-environment",
+          "version": 1,
+          "sha256": "b275f4aaf7566050742618146c13e82e58be3df7612a15c0e9719743d4e67503"
+        },
+        {
+          "asset_package_id": "scenario1-a1-unity-render-camera",
+          "version": 1,
+          "sha256": "ca45f1f6fc741dc6b68db89c6e0f58df536fa2e85512618b8a7c702968e5a80f"
+        }
+      ],
+      "environment_artifacts": [],
+      "bindings": [
+        {
+          "identity": {
+            "asset_id": "iitp-s1-omy-sim",
+            "global_asset_id": "urn:sang:asset:simulation:iitp-s1-omy-sim",
+            "aas_id": "urn:sang:aas:simulation:iitp-s1-omy-sim",
+            "identity_revision": 1,
+            "runtime_class": "simulation"
+          },
+          "asset_type": "robot",
+          "expected_asset_profile": "omy-f3m",
+          "package_ref": {
+            "asset_package_id": "scenario1-a1-omy-f3m",
+            "version": 1,
+            "sha256": "84e914d531a0ce7d09f8db2dc4941d51673aa1ba1bfe64d2e90522f948b9e03b"
+          },
+          "unity_binding_id": "scenario1.omy.material-handler",
+          "diagnostic_hierarchy_path": null,
+          "articulation": {
+            "root_binding_id": "scenario1.omy.material-handler.articulation",
+            "ordered_joints": [
+              "link1",
+              "link2",
+              "link3",
+              "link4",
+              "link5",
+              "link6",
+              "rh_p12_rn_l1",
+              "rh_p12_rn_l2",
+              "rh_p12_rn_r1",
+              "rh_p12_rn_r2"
+            ]
+          },
+          "controller": {
+            "component_binding_id": "scenario1.omy.material-handler.controller",
+            "contract_ref": "sang-scenario1-bound-controller@1"
+          },
+          "frames": {
+            "base": "iitp-s1-omy-sim_base",
+            "flange": "iitp-s1-omy-sim_flange",
+            "tool": "iitp-s1-omy-sim_tool"
+          },
+          "collider_group": null,
+          "workspace_refs": [],
+          "reset_contract_ref": {
+            "object_id": "scenario1-a1-reset",
+            "version": 1,
+            "sha256": "2d906b1adf856f4f0faa6858e1a20b7cdaf0f6ef18c2087a4814f6052150f644"
+          },
+          "outcome_contract_ref": {
+            "object_id": "scenario1-a1-outcomes",
+            "version": 1,
+            "sha256": "503d7f497119496ba48d600b743091b440f85b6ddd922191b209f1b6dc58dd63"
+          },
+          "signals": [
+            {
+              "semantic": "ready",
+              "component_binding_id": "scenario1.omy.material-handler.controller",
+              "member": "IsReady"
+            },
+            {
+              "semantic": "success",
+              "component_binding_id": "scenario1.omy.material-handler.controller",
+              "member": "DidSucceed"
+            },
+            {
+              "semantic": "failure",
+              "component_binding_id": "scenario1.omy.material-handler.controller",
+              "member": "DidFail"
+            },
+            {
+              "semantic": "fault",
+              "component_binding_id": "scenario1.omy.material-handler.controller",
+              "member": "HasFault"
+            }
+          ],
+          "sensors": []
+        },
+        {
+          "identity": {
+            "asset_id": "iitp-s1-rb5-sim",
+            "global_asset_id": "urn:sang:asset:simulation:iitp-s1-rb5-sim",
+            "aas_id": "urn:sang:aas:simulation:iitp-s1-rb5-sim",
+            "identity_revision": 1,
+            "runtime_class": "simulation"
+          },
+          "asset_type": "robot",
+          "expected_asset_profile": "rb5-850e",
+          "package_ref": {
+            "asset_package_id": "scenario1-a1-rb5-850e",
+            "version": 1,
+            "sha256": "09436a2d0679432b9b7e287e6d5a60fbcf247761f4a31bc4a6c3a346b68de284"
+          },
+          "unity_binding_id": "scenario1.rb5.waam",
+          "diagnostic_hierarchy_path": null,
+          "articulation": {
+            "root_binding_id": "scenario1.rb5.waam.articulation",
+            "ordered_joints": [
+              "link1",
+              "link2",
+              "link3",
+              "link4",
+              "link5",
+              "link6"
+            ]
+          },
+          "controller": {
+            "component_binding_id": "scenario1.rb5.waam.controller",
+            "contract_ref": "sang-scenario1-bound-controller@1"
+          },
+          "frames": {
+            "base": "iitp-s1-rb5-sim_base",
+            "flange": "iitp-s1-rb5-sim_flange",
+            "tool": "iitp-s1-rb5-sim_tool"
+          },
+          "collider_group": null,
+          "workspace_refs": [],
+          "reset_contract_ref": {
+            "object_id": "scenario1-a1-reset",
+            "version": 1,
+            "sha256": "2d906b1adf856f4f0faa6858e1a20b7cdaf0f6ef18c2087a4814f6052150f644"
+          },
+          "outcome_contract_ref": {
+            "object_id": "scenario1-a1-outcomes",
+            "version": 1,
+            "sha256": "503d7f497119496ba48d600b743091b440f85b6ddd922191b209f1b6dc58dd63"
+          },
+          "signals": [
+            {
+              "semantic": "ready",
+              "component_binding_id": "scenario1.rb5.waam.controller",
+              "member": "IsReady"
+            },
+            {
+              "semantic": "success",
+              "component_binding_id": "scenario1.rb5.waam.controller",
+              "member": "DidSucceed"
+            },
+            {
+              "semantic": "failure",
+              "component_binding_id": "scenario1.rb5.waam.controller",
+              "member": "DidFail"
+            },
+            {
+              "semantic": "fault",
+              "component_binding_id": "scenario1.rb5.waam.controller",
+              "member": "HasFault"
+            }
+          ],
+          "sensors": []
+        },
+        {
+          "identity": {
+            "asset_id": "iitp-s1-mobile-sim",
+            "global_asset_id": "urn:sang:asset:simulation:iitp-s1-mobile-sim",
+            "aas_id": "urn:sang:aas:simulation:iitp-s1-mobile-sim",
+            "identity_revision": 1,
+            "runtime_class": "simulation"
+          },
+          "asset_type": "mobile_robot",
+          "expected_asset_profile": "iitp-mobile-carrier",
+          "package_ref": {
+            "asset_package_id": "scenario1-a1-iitp-mobile-carrier",
+            "version": 1,
+            "sha256": "fb474407ba201f0ee920541775572f96532cc5efbbb7711fc07261e5dcd6679b"
+          },
+          "unity_binding_id": "scenario1.mobile.carrier",
+          "diagnostic_hierarchy_path": null,
+          "articulation": {
+            "root_binding_id": "scenario1.mobile.carrier.articulation",
+            "ordered_joints": [
+              "carrier_translation"
+            ]
+          },
+          "controller": {
+            "component_binding_id": "scenario1.mobile.carrier.controller",
+            "contract_ref": "sang-scenario1-bound-controller@1"
+          },
+          "frames": {
+            "base": "iitp-s1-mobile-sim_base",
+            "tool": "iitp-s1-mobile-sim_tool"
+          },
+          "collider_group": null,
+          "workspace_refs": [],
+          "reset_contract_ref": {
+            "object_id": "scenario1-a1-reset",
+            "version": 1,
+            "sha256": "2d906b1adf856f4f0faa6858e1a20b7cdaf0f6ef18c2087a4814f6052150f644"
+          },
+          "outcome_contract_ref": {
+            "object_id": "scenario1-a1-outcomes",
+            "version": 1,
+            "sha256": "503d7f497119496ba48d600b743091b440f85b6ddd922191b209f1b6dc58dd63"
+          },
+          "signals": [
+            {
+              "semantic": "ready",
+              "component_binding_id": "scenario1.mobile.carrier.controller",
+              "member": "IsReady"
+            },
+            {
+              "semantic": "success",
+              "component_binding_id": "scenario1.mobile.carrier.controller",
+              "member": "DidSucceed"
+            },
+            {
+              "semantic": "failure",
+              "component_binding_id": "scenario1.mobile.carrier.controller",
+              "member": "DidFail"
+            },
+            {
+              "semantic": "fault",
+              "component_binding_id": "scenario1.mobile.carrier.controller",
+              "member": "HasFault"
+            }
+          ],
+          "sensors": []
+        },
+        {
+          "identity": {
+            "asset_id": "scenario1_overview_camera",
+            "global_asset_id": "urn:sang:asset:simulation:scenario1_overview_camera",
+            "aas_id": "urn:sang:aas:simulation:scenario1_overview_camera",
+            "identity_revision": 1,
+            "runtime_class": "simulation"
+          },
+          "asset_type": "camera",
+          "expected_asset_profile": "unity-render-camera",
+          "package_ref": {
+            "asset_package_id": "scenario1-a1-unity-render-camera",
+            "version": 1,
+            "sha256": "ca45f1f6fc741dc6b68db89c6e0f58df536fa2e85512618b8a7c702968e5a80f"
+          },
+          "unity_binding_id": "scenario1.camera.overview",
+          "diagnostic_hierarchy_path": null,
+          "articulation": null,
+          "controller": null,
+          "frames": {
+            "camera": "scenario1_overview_camera_camera"
+          },
+          "collider_group": null,
+          "workspace_refs": [],
+          "reset_contract_ref": null,
+          "outcome_contract_ref": null,
+          "signals": [],
+          "sensors": [
+            {
+              "sensor_id": "scenario1_overview_camera_rgb",
+              "kind": "camera",
+              "frame_id": "scenario1_overview_camera_camera",
+              "semantic_channels": [
+                "rgb"
+              ],
+              "render_target_binding_id": null,
+              "calibration_ref": null
+            }
+          ]
+        },
+        {
+          "identity": {
+            "asset_id": "scenario1_omy_camera_mount",
+            "global_asset_id": "urn:sang:asset:simulation:scenario1_omy_camera_mount",
+            "aas_id": "urn:sang:aas:simulation:scenario1_omy_camera_mount",
+            "identity_revision": 1,
+            "runtime_class": "simulation"
+          },
+          "asset_type": "sensor",
+          "expected_asset_profile": "omy-camera-mount-geometry",
+          "package_ref": {
+            "asset_package_id": "scenario1-a1-omy-camera-mount-geometry",
+            "version": 1,
+            "sha256": "3ce5b476cbe4176f73ed914f3b938bcfef5124fa698539e9db6d85537d084cd5"
+          },
+          "unity_binding_id": "scenario1.omy.camera-mount",
+          "diagnostic_hierarchy_path": null,
+          "articulation": null,
+          "controller": null,
+          "frames": {
+            "mount": "scenario1_omy_camera_mount_mount"
+          },
+          "collider_group": null,
+          "workspace_refs": [],
+          "reset_contract_ref": null,
+          "outcome_contract_ref": null,
+          "signals": [],
+          "sensors": []
+        },
+        {
+          "identity": {
+            "asset_id": "scenario1_omy_table",
+            "global_asset_id": "urn:sang:asset:simulation:scenario1_omy_table",
+            "aas_id": "urn:sang:aas:simulation:scenario1_omy_table",
+            "identity_revision": 1,
+            "runtime_class": "simulation"
+          },
+          "asset_type": "other",
+          "expected_asset_profile": "scenario1-environment",
+          "package_ref": {
+            "asset_package_id": "scenario1-a1-scenario1-environment",
+            "version": 1,
+            "sha256": "b275f4aaf7566050742618146c13e82e58be3df7612a15c0e9719743d4e67503"
+          },
+          "unity_binding_id": "scenario1.environment.omy-table",
+          "diagnostic_hierarchy_path": null,
+          "articulation": null,
+          "controller": null,
+          "frames": {
+            "fixture": "scenario1_omy_table_fixture"
+          },
+          "collider_group": null,
+          "workspace_refs": [],
+          "reset_contract_ref": null,
+          "outcome_contract_ref": null,
+          "signals": [],
+          "sensors": []
+        },
+        {
+          "identity": {
+            "asset_id": "scenario1_rb5_table",
+            "global_asset_id": "urn:sang:asset:simulation:scenario1_rb5_table",
+            "aas_id": "urn:sang:aas:simulation:scenario1_rb5_table",
+            "identity_revision": 1,
+            "runtime_class": "simulation"
+          },
+          "asset_type": "other",
+          "expected_asset_profile": "scenario1-environment",
+          "package_ref": {
+            "asset_package_id": "scenario1-a1-scenario1-environment",
+            "version": 1,
+            "sha256": "b275f4aaf7566050742618146c13e82e58be3df7612a15c0e9719743d4e67503"
+          },
+          "unity_binding_id": "scenario1.environment.rb5-table",
+          "diagnostic_hierarchy_path": null,
+          "articulation": null,
+          "controller": null,
+          "frames": {
+            "fixture": "scenario1_rb5_table_fixture"
+          },
+          "collider_group": null,
+          "workspace_refs": [],
+          "reset_contract_ref": null,
+          "outcome_contract_ref": null,
+          "signals": [],
+          "sensors": []
+        },
+        {
+          "identity": {
+            "asset_id": "scenario1_cell",
+            "global_asset_id": "urn:sang:asset:simulation:scenario1_cell",
+            "aas_id": "urn:sang:aas:simulation:scenario1_cell",
+            "identity_revision": 1,
+            "runtime_class": "simulation"
+          },
+          "asset_type": "other",
+          "expected_asset_profile": "scenario1-environment",
+          "package_ref": {
+            "asset_package_id": "scenario1-a1-scenario1-environment",
+            "version": 1,
+            "sha256": "b275f4aaf7566050742618146c13e82e58be3df7612a15c0e9719743d4e67503"
+          },
+          "unity_binding_id": "scenario1.environment.cell",
+          "diagnostic_hierarchy_path": null,
+          "articulation": null,
+          "controller": null,
+          "frames": {
+            "world": "scenario1_cell_world"
+          },
+          "collider_group": null,
+          "workspace_refs": [],
+          "reset_contract_ref": null,
+          "outcome_contract_ref": null,
+          "signals": [],
+          "sensors": []
+        },
+        {
+          "identity": {
+            "asset_id": "scenario1_base_plate",
+            "global_asset_id": "urn:sang:asset:simulation:scenario1_base_plate",
+            "aas_id": "urn:sang:aas:simulation:scenario1_base_plate",
+            "identity_revision": 1,
+            "runtime_class": "simulation"
+          },
+          "asset_type": "other",
+          "expected_asset_profile": "scenario1-base-plate",
+          "package_ref": {
+            "asset_package_id": "scenario1-a1-scenario1-base-plate",
+            "version": 1,
+            "sha256": "3516217681a83108e1fc7a7cfe799224bac2c35b737117542b61beb45b5d258e"
+          },
+          "unity_binding_id": "scenario1.workpiece.base-plate",
+          "diagnostic_hierarchy_path": null,
+          "articulation": null,
+          "controller": null,
+          "frames": {
+            "workpiece": "scenario1_base_plate_workpiece"
+          },
+          "collider_group": null,
+          "workspace_refs": [],
+          "reset_contract_ref": null,
+          "outcome_contract_ref": null,
+          "signals": [],
+          "sensors": []
+        }
+      ],
+      "output_isolation": {
+        "physical_output_connected": false,
+        "evidence_ref": {
+          "object_id": "scenario1-a1-output-isolation",
+          "version": 1,
+          "sha256": "b661cafd5de7f4fa8aedc72c476bb987c761caacd514b08bec7844a118ae472d"
+        }
+      },
+      "build_attestation_ref": {
+        "object_id": "scenario1-a1-source-build-recipe",
+        "version": 1,
+        "sha256": "bb713f56a0a0148dee218f46efdd8eefcaeec22e5bce06a363e10dbb08569930"
+      }
+    },
+    "catalog": {
+      "schema_version": 1,
+      "catalog_id": "iitp-scenario1-simulation-skills",
+      "version": 2,
+      "skills": [
+        {
+          "capability": "simulate-material-delivery@1",
+          "title": "Deliver material",
+          "description": "Move the simulated carrier and base plate from the start position to the Scenario 1 workcell dock.",
+          "category": "Mobile robot",
+          "execution_modes": [
+            "SIMULATION"
+          ],
+          "parameter_schema": {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "title": "Operation",
+                "description": "Adapter-owned Scenario 1 operation identity.",
+                "default": "deliver-base-plate",
+                "const": "deliver-base-plate",
+                "enum": null,
+                "minimum": null,
+                "maximum": null,
+                "multipleOf": null,
+                "unit": null,
+                "readOnly": true
+              },
+              "speed_scale": {
+                "type": "number",
+                "title": "Motion speed",
+                "description": "Simulation-only speed relative to the tested motion. Slower values increase duration.",
+                "default": 1.0,
+                "const": null,
+                "enum": null,
+                "minimum": 0.5,
+                "maximum": 1.0,
+                "multipleOf": 0.05,
+                "unit": "x",
+                "readOnly": false
+              }
+            },
+            "required": [
+              "operation"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "capability": "simulate-pick-place@1",
+          "title": "Pick and place material",
+          "description": "Run the Scenario 1 OMY material-transfer motion using the operation selected by the fixed adapter step.",
+          "category": "Manipulator",
+          "execution_modes": [
+            "SIMULATION"
+          ],
+          "parameter_schema": {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "title": "Operation",
+                "description": "Adapter-owned transfer direction for this Scenario 1 step.",
+                "default": null,
+                "const": null,
+                "enum": [
+                  "place-on-waam-table",
+                  "return-to-carrier"
+                ],
+                "minimum": null,
+                "maximum": null,
+                "multipleOf": null,
+                "unit": null,
+                "readOnly": false
+              },
+              "speed_scale": {
+                "type": "number",
+                "title": "Motion speed",
+                "description": "Simulation-only OMY motion speed relative to the tested trajectory.",
+                "default": 1.0,
+                "const": null,
+                "enum": null,
+                "minimum": 0.5,
+                "maximum": 1.0,
+                "multipleOf": 0.05,
+                "unit": "x",
+                "readOnly": false
+              }
+            },
+            "required": [
+              "operation"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "capability": "simulate-waam-path@1",
+          "title": "Follow WAAM path",
+          "description": "Run the output-disconnected RB5 WAAM path and synchronized monitoring media in Unity.",
+          "category": "Process simulation",
+          "execution_modes": [
+            "SIMULATION"
+          ],
+          "parameter_schema": {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "title": "Operation",
+                "description": "Adapter-owned Scenario 1 WAAM operation identity.",
+                "default": "follow-simulated-waam-path",
+                "const": "follow-simulated-waam-path",
+                "enum": null,
+                "minimum": null,
+                "maximum": null,
+                "multipleOf": null,
+                "unit": null,
+                "readOnly": true
+              },
+              "speed_scale": {
+                "type": "number",
+                "title": "Motion speed",
+                "description": "Simulation-only RB5 path and monitoring playback speed relative to the tested run.",
+                "default": 1.0,
+                "const": null,
+                "enum": null,
+                "minimum": 0.5,
+                "maximum": 1.0,
+                "multipleOf": 0.05,
+                "unit": "x",
+                "readOnly": false
+              }
+            },
+            "required": [
+              "operation"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "capability": "simulate-material-return@1",
+          "title": "Return material",
+          "description": "Secure the simulated base plate and return the carrier to the Scenario 1 start position.",
+          "category": "Mobile robot",
+          "execution_modes": [
+            "SIMULATION"
+          ],
+          "parameter_schema": {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "string",
+                "title": "Operation",
+                "description": "Adapter-owned Scenario 1 operation identity.",
+                "default": "return-with-base-plate",
+                "const": "return-with-base-plate",
+                "enum": null,
+                "minimum": null,
+                "maximum": null,
+                "multipleOf": null,
+                "unit": null,
+                "readOnly": true
+              },
+              "speed_scale": {
+                "type": "number",
+                "title": "Motion speed",
+                "description": "Simulation-only speed relative to the tested return motion.",
+                "default": 1.0,
+                "const": null,
+                "enum": null,
+                "minimum": 0.5,
+                "maximum": 1.0,
+                "multipleOf": 0.05,
+                "unit": "x",
+                "readOnly": false
+              }
+            },
+            "required": [
+              "operation"
+            ],
+            "additionalProperties": false
+          }
+        }
+      ],
+      "actions": [
+        {
+          "action_ref": "mobile-deliver-base-plate@1",
+          "robot_type": "iitp-mobile-carrier",
+          "robot_label": "Mobile Carrier",
+          "title": "Deliver base plate",
+          "description": "Move the simulated carrier and base plate to the Scenario 1 workcell dock.",
+          "execution_mode": "SIMULATION",
+          "capability": "simulate-material-delivery@1",
+          "role_template": "mobile-carrier",
+          "asset_type": "mobile_robot",
+          "access_mode": "exclusive",
+          "step_id_template": "mobile_delivery",
+          "fixed_parameters": {
+            "operation": "deliver-base-plate"
+          },
+          "editable_parameters": [
+            "speed_scale"
+          ],
+          "default_timeout_s": 180,
+          "script": {
+            "runtime": "UNITY_CSHARP",
+            "script_ref": "unity://Assets/Scripts/SangActions/MobileDeliverBasePlateAction.cs",
+            "entrypoint": "MobileDeliverBasePlateAction",
+            "sha256": "098d6edae933993942886610ad3bc6aef0da133a9674b685a36a2006e2ca63e7"
+          }
+        },
+        {
+          "action_ref": "omy-place-on-waam-table@1",
+          "robot_type": "omy-f3m",
+          "robot_label": "OMY F3M",
+          "title": "Place material on WAAM table",
+          "description": "Pick the base plate from the carrier and place it on the simulated WAAM table.",
+          "execution_mode": "SIMULATION",
+          "capability": "simulate-pick-place@1",
+          "role_template": "omy-material-handler",
+          "asset_type": "robot",
+          "access_mode": "exclusive",
+          "step_id_template": "omy_pre_pick_place",
+          "fixed_parameters": {
+            "operation": "place-on-waam-table"
+          },
+          "editable_parameters": [
+            "speed_scale"
+          ],
+          "default_timeout_s": 300,
+          "script": {
+            "runtime": "UNITY_CSHARP",
+            "script_ref": "unity://Assets/Scripts/SangActions/OmyPlaceOnWaamTableAction.cs",
+            "entrypoint": "OmyPlaceOnWaamTableAction",
+            "sha256": "a871d9618731a11520f371a12cf9e0a30ac9909a90f21f738f3fced16e0cc949"
+          }
+        },
+        {
+          "action_ref": "rb5-follow-waam-path@1",
+          "robot_type": "rb5-850e",
+          "robot_label": "RB5-850E",
+          "title": "Follow WAAM path",
+          "description": "Run the output-disconnected RB5 WAAM trajectory and synchronized monitoring media.",
+          "execution_mode": "SIMULATION",
+          "capability": "simulate-waam-path@1",
+          "role_template": "rb5-waam-path",
+          "asset_type": "robot",
+          "access_mode": "exclusive",
+          "step_id_template": "rb5_waam",
+          "fixed_parameters": {
+            "operation": "follow-simulated-waam-path"
+          },
+          "editable_parameters": [
+            "speed_scale"
+          ],
+          "default_timeout_s": 420,
+          "script": {
+            "runtime": "UNITY_CSHARP",
+            "script_ref": "unity://Assets/Scripts/SangActions/Rb5FollowWaamPathAction.cs",
+            "entrypoint": "Rb5FollowWaamPathAction",
+            "sha256": "9f0dc3df8c69142bfc90c2e6435262512d644c527877cbb74961725daee1ecaf"
+          }
+        },
+        {
+          "action_ref": "omy-return-to-carrier@1",
+          "robot_type": "omy-f3m",
+          "robot_label": "OMY F3M",
+          "title": "Return material to carrier",
+          "description": "Pick the completed base plate from the WAAM table and return it to the carrier.",
+          "execution_mode": "SIMULATION",
+          "capability": "simulate-pick-place@1",
+          "role_template": "omy-material-handler",
+          "asset_type": "robot",
+          "access_mode": "exclusive",
+          "step_id_template": "omy_post_pick_place",
+          "fixed_parameters": {
+            "operation": "return-to-carrier"
+          },
+          "editable_parameters": [
+            "speed_scale"
+          ],
+          "default_timeout_s": 300,
+          "script": {
+            "runtime": "UNITY_CSHARP",
+            "script_ref": "unity://Assets/Scripts/SangActions/OmyReturnToCarrierAction.cs",
+            "entrypoint": "OmyReturnToCarrierAction",
+            "sha256": "3bf2150cbe04e5234704a2e638faa25fad92b840f9c90d17413a996cf24fd6d0"
+          }
+        },
+        {
+          "action_ref": "mobile-return-with-base-plate@1",
+          "robot_type": "iitp-mobile-carrier",
+          "robot_label": "Mobile Carrier",
+          "title": "Return with base plate",
+          "description": "Secure the base plate and return the simulated carrier to its start position.",
+          "execution_mode": "SIMULATION",
+          "capability": "simulate-material-return@1",
+          "role_template": "mobile-carrier",
+          "asset_type": "mobile_robot",
+          "access_mode": "exclusive",
+          "step_id_template": "mobile_return",
+          "fixed_parameters": {
+            "operation": "return-with-base-plate"
+          },
+          "editable_parameters": [
+            "speed_scale"
+          ],
+          "default_timeout_s": 180,
+          "script": {
+            "runtime": "UNITY_CSHARP",
+            "script_ref": "unity://Assets/Scripts/SangActions/MobileReturnWithBasePlateAction.cs",
+            "entrypoint": "MobileReturnWithBasePlateAction",
+            "sha256": "01948a684a44aa7ce705833974f1ba0322f3fb0709c2bba5d8fc0d7bc0071118"
+          }
+        }
+      ]
+    },
+    "assets": [
+      {
+        "unity_binding_id": "scenario1.mobile.carrier",
+        "agent_id": "unity-mobile-agent",
+        "action_refs": [
+          "mobile-deliver-base-plate@1",
+          "mobile-return-with-base-plate@1"
+        ]
+      },
+      {
+        "unity_binding_id": "scenario1.omy.material-handler",
+        "agent_id": "unity-omy-agent",
+        "action_refs": [
+          "omy-place-on-waam-table@1",
+          "omy-return-to-carrier@1"
+        ]
+      },
+      {
+        "unity_binding_id": "scenario1.rb5.waam",
+        "agent_id": "unity-rb5-agent",
+        "action_refs": [
+          "rb5-follow-waam-path@1"
+        ]
+      }
+    ]
+  }
+}

@@ -16,7 +16,8 @@ This ROS 2 Jazzy workspace observes SO-101, OMY, RB5-850E, and simulation workce
 - `src/rb5_readonly_adapter/`: RB5 vendor data-port observation; no command-channel client.
 - `src/xr_teleop_interfaces/`, `xr_teleop_bridge/`, `xr_teleop_retarget/`, `xr_omy_retarget/`: Galaxy XR transport and target preview.
 - `manifests/`: robot/topic/rate contracts.
-- `ui-admin/`: read-only fleet console.
+- `frontend/admin/`: React, TypeScript, Ant Design, and Vite source for all browser surfaces.
+- `ui-admin/`, `ui-operator/`: generated static deployment artifacts; never edit them by hand.
 - `sim/isaac_vendor/` and `scripts/run_vendor_isaac_scene.sh`: OMY/RB5 asset validation and bounded simulation observation.
 - `docker/`: ROS 2 Jazzy development/runtime environment.
 
@@ -26,8 +27,24 @@ This ROS 2 Jazzy workspace observes SO-101, OMY, RB5-850E, and simulation workce
 - `so101_readonly_adapter` must not gain motor register writes, torque changes, action clients, or `send_action` behavior.
 - `rb5_readonly_adapter` must use only `rbpodo.CobotData` on port 5001. It must not construct
   `rbpodo.Cobot`, change operation mode or speed, expose command interfaces, or call move/task APIs.
-- Admin remains read-only and must not expose raw robot command endpoints.
+- Fleet, Robot Detail, and Catalog remain GET/WebSocket observation-only. Config may write only
+  versioned registry metadata, and Operator may start/stop only bounded capture jobs or complete an
+  eligible Task Run. No browser surface may expose robot, policy, welding, feeder, or vendor commands.
 - XR remains input/preview-only until a separately reviewed control-mode manager, command mux, TTL/deadman, and local safety gate exist.
+- Unity safety remains evidence-only Shadow Mode under `contracts/safety/`; `UNSAFE`, `UNKNOWN`, and
+  `task_pause_candidate` must not create a Task Pause, robot, vendor, welding, feeder, or E-stop command.
+- Workflow Studio may queue only a checked-in-profile Unity `SIMULATION` Run. The Admin HTTP process
+  never owns the Unity bridge or starts a process; a separate local Worker must prove a fresh heartbeat,
+  an exact profile digest, and `physical_output_connected=false`. This exception does not permit any
+  physical robot, policy, welding, feeder, vendor, XR, or arbitrary script command.
+- The isolated Isaac twin pilot is an additional checked-in `SIMULATION` profile:
+  the two bounded RB5 offset/return actions in `sim/isaac_twin/` and the checked-in
+  five-stage Scenario 1 profile in `sim/isaac_scenario1/` may execute. Scenario 1
+  uses pinned recorded trajectories and explicit virtual carrier/grasp fixtures;
+  this does not qualify physical grasp, mobile dynamics or welding.
+  Its separate Worker requires pinned scene/session identity and a renewable two-second
+  permit. ROS domain 98 is LOCALHOST-only; Unity is a separate observer-only build.
+  This does not change any hardware/read-only adapter or authorize real outputs.
 - Remote Central/Agent traffic may use only the Phase 3 mTLS ingress and secure OPC UA profiles in `contracts/opcua/PHASE3_SECURITY.md`; Admin HTTP and camera preview remain loopback-only.
 
 ## Working rules
@@ -36,6 +53,15 @@ This ROS 2 Jazzy workspace observes SO-101, OMY, RB5-850E, and simulation workce
 - Manifests are operational contracts. Update tests and documentation when topic names, types, minimum rates, grace periods, or robot IDs change.
 - Keep hardware observation and simulator observation distinguishable by manifest and `ROS_DOMAIN_ID`.
 - Preserve user validation outputs; do not rewrite or delete `output/validation/` evidence.
+
+## Frontend design contract
+
+- [`docs/UI_DESIGN_STANDARD.md`](docs/UI_DESIGN_STANDARD.md) is mandatory for current and future UI work.
+- All first-party pages use the shared React + Ant Design multi-page application in `frontend/admin/`.
+- New pages must use `UiProvider`, `AppShell`, `PageHeader`, shared API/types/components, English copy,
+  quiet in-place live updates, and the documented responsive and safety boundaries.
+- Do not introduce hand-authored deployment JavaScript/CSS, a parallel component library, or a new
+  theme. Build generated assets with `cd frontend/admin && npm run build`.
 
 ## Claude CLI model policy
 

@@ -27,7 +27,16 @@ from sang_opcua_gateway.local_health_client import (
     fetch_local_health,
     snapshot_url,
 )
-from sang_opcua_gateway.server import OpcUaServerThread
+from sang_opcua_gateway.official_nodesets import (
+    OfficialNodeSetError,
+    load_official_nodeset_bundle,
+)
+from sang_opcua_gateway.robotics_contract import (
+    RoboticsContractError,
+    load_robotics_profile_catalog,
+)
+from sang_opcua_gateway.robotics_projection import RoboticsProjectionError
+from sang_opcua_gateway.server import OpcUaServerThread, RoboticsProjectionConfig
 from sang_opcua_gateway.state import GatewayStore
 
 
@@ -63,6 +72,7 @@ class SangOpcUaGatewayNode(Node):
         local_health_verification_key: bytes | None = None,
         local_health_key_id: str | None = None,
         local_health_replay_store: LocalHealthReplayStore | None = None,
+        robotics_projection: RoboticsProjectionConfig | None = None,
     ) -> None:
         super().__init__("sang_opcua_gateway")
         self.contract = contract
@@ -95,6 +105,7 @@ class SangOpcUaGatewayNode(Node):
             self.store,
             publish_interval_s=publish_interval_s,
             security=security,
+            robotics_projection=robotics_projection,
         )
         for source in contract.sources:
             message_class = MESSAGE_CLASSES[source.message_type]
@@ -261,6 +272,20 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--local-health-key-ref")
     parser.add_argument("--local-health-key-id")
     parser.add_argument("--local-health-replay-db", type=Path)
+    parser.add_argument(
+        "--robotics-profile-id",
+        help="Enable the parallel official Robotics projection for this profile",
+    )
+    parser.add_argument(
+        "--robotics-profile-catalog",
+        type=Path,
+        default=Path("/ws/contracts/opcua/robotics-profiles.v1.yaml"),
+    )
+    parser.add_argument(
+        "--official-nodeset-lock",
+        type=Path,
+        default=Path("/ws/contracts/opcua/nodesets.lock.yaml"),
+    )
     options = parser.parse_args(args)
     if not math.isfinite(options.publish_interval_s) or options.publish_interval_s <= 0.0:
         parser.error("publish-interval-s must be positive")
@@ -347,6 +372,28 @@ def main(args: list[str] | None = None) -> None:
     except ContractError as exc:
         raise SystemExit(f"invalid OPC UA gateway contract: {exc}") from exc
 
+    robotics_projection = None
+    if options.robotics_profile_id is not None:
+        try:
+            catalog = load_robotics_profile_catalog(options.robotics_profile_catalog)
+            profile = catalog.for_profile(options.robotics_profile_id)
+            if profile.robot_id != contract.manifest.robot.robot_id:
+                raise RoboticsProjectionError(
+                    "Robotics profile robot_id does not match the gateway manifest"
+                )
+            bundle = load_official_nodeset_bundle(
+                options.official_nodeset_lock,
+                catalog_path=options.robotics_profile_catalog,
+            )
+            robotics_projection = RoboticsProjectionConfig(bundle, profile)
+        except (
+            KeyError,
+            OfficialNodeSetError,
+            RoboticsContractError,
+            RoboticsProjectionError,
+        ) as exc:
+            raise SystemExit(f"invalid Robotics projection: {exc}") from exc
+
     rclpy.init(args=raw_args)
     node = None
     try:
@@ -357,6 +404,7 @@ def main(args: list[str] | None = None) -> None:
             local_health_verification_key=local_health_verification_key,
             local_health_key_id=options.local_health_key_id,
             local_health_replay_store=local_health_replay_store,
+            robotics_projection=robotics_projection,
         )
         rclpy.spin(node)
     except (KeyboardInterrupt, ExternalShutdownException):

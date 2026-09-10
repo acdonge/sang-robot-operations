@@ -1,0 +1,245 @@
+{
+  "schema_version": 1,
+  "catalog_id": "iitp-scenario1-simulation-skills",
+  "version": 2,
+  "skills": [
+    {
+      "capability": "simulate-material-delivery@1",
+      "title": "Deliver material",
+      "description": "Move the simulated carrier and base plate from the start position to the Scenario 1 workcell dock.",
+      "category": "Mobile robot",
+      "execution_modes": ["SIMULATION"],
+      "parameter_schema": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "title": "Operation",
+            "description": "Adapter-owned Scenario 1 operation identity.",
+            "const": "deliver-base-plate",
+            "default": "deliver-base-plate",
+            "readOnly": true
+          },
+          "speed_scale": {
+            "type": "number",
+            "title": "Motion speed",
+            "description": "Simulation-only speed relative to the tested motion. Slower values increase duration.",
+            "default": 1.0,
+            "minimum": 0.5,
+            "maximum": 1.0,
+            "multipleOf": 0.05,
+            "unit": "x"
+          }
+        },
+        "required": ["operation"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "capability": "simulate-pick-place@1",
+      "title": "Pick and place material",
+      "description": "Run the Scenario 1 OMY material-transfer motion using the operation selected by the fixed adapter step.",
+      "category": "Manipulator",
+      "execution_modes": ["SIMULATION"],
+      "parameter_schema": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "title": "Operation",
+            "description": "Adapter-owned transfer direction for this Scenario 1 step.",
+            "enum": ["place-on-waam-table", "return-to-carrier"]
+          },
+          "speed_scale": {
+            "type": "number",
+            "title": "Motion speed",
+            "description": "Simulation-only OMY motion speed relative to the tested trajectory.",
+            "default": 1.0,
+            "minimum": 0.5,
+            "maximum": 1.0,
+            "multipleOf": 0.05,
+            "unit": "x"
+          }
+        },
+        "required": ["operation"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "capability": "simulate-waam-path@1",
+      "title": "Follow WAAM path",
+      "description": "Run the output-disconnected RB5 WAAM path and synchronized monitoring media in Unity.",
+      "category": "Process simulation",
+      "execution_modes": ["SIMULATION"],
+      "parameter_schema": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "title": "Operation",
+            "description": "Adapter-owned Scenario 1 WAAM operation identity.",
+            "const": "follow-simulated-waam-path",
+            "default": "follow-simulated-waam-path",
+            "readOnly": true
+          },
+          "speed_scale": {
+            "type": "number",
+            "title": "Motion speed",
+            "description": "Simulation-only RB5 path and monitoring playback speed relative to the tested run.",
+            "default": 1.0,
+            "minimum": 0.5,
+            "maximum": 1.0,
+            "multipleOf": 0.05,
+            "unit": "x"
+          }
+        },
+        "required": ["operation"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "capability": "simulate-material-return@1",
+      "title": "Return material",
+      "description": "Secure the simulated base plate and return the carrier to the Scenario 1 start position.",
+      "category": "Mobile robot",
+      "execution_modes": ["SIMULATION"],
+      "parameter_schema": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "title": "Operation",
+            "description": "Adapter-owned Scenario 1 operation identity.",
+            "const": "return-with-base-plate",
+            "default": "return-with-base-plate",
+            "readOnly": true
+          },
+          "speed_scale": {
+            "type": "number",
+            "title": "Motion speed",
+            "description": "Simulation-only speed relative to the tested return motion.",
+            "default": 1.0,
+            "minimum": 0.5,
+            "maximum": 1.0,
+            "multipleOf": 0.05,
+            "unit": "x"
+          }
+        },
+        "required": ["operation"],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "actions": [
+    {
+      "action_ref": "mobile-deliver-base-plate@1",
+      "robot_type": "iitp-mobile-carrier",
+      "robot_label": "Mobile Carrier",
+      "title": "Deliver base plate",
+      "description": "Move the simulated carrier and base plate to the Scenario 1 workcell dock.",
+      "execution_mode": "SIMULATION",
+      "capability": "simulate-material-delivery@1",
+      "role_template": "mobile-carrier",
+      "asset_type": "mobile_robot",
+      "access_mode": "exclusive",
+      "step_id_template": "mobile_delivery",
+      "fixed_parameters": {"operation": "deliver-base-plate"},
+      "editable_parameters": ["speed_scale"],
+      "default_timeout_s": 180,
+      "script": {
+        "runtime": "UNITY_CSHARP",
+        "script_ref": "unity://Assets/Scripts/SangActions/MobileDeliverBasePlateAction.cs",
+        "entrypoint": "MobileDeliverBasePlateAction",
+        "sha256": "098d6edae933993942886610ad3bc6aef0da133a9674b685a36a2006e2ca63e7"
+      }
+    },
+    {
+      "action_ref": "omy-place-on-waam-table@1",
+      "robot_type": "omy-f3m",
+      "robot_label": "OMY F3M",
+      "title": "Place material on WAAM table",
+      "description": "Pick the base plate from the carrier and place it on the simulated WAAM table.",
+      "execution_mode": "SIMULATION",
+      "capability": "simulate-pick-place@1",
+      "role_template": "omy-material-handler",
+      "asset_type": "robot",
+      "access_mode": "exclusive",
+      "step_id_template": "omy_pre_pick_place",
+      "fixed_parameters": {"operation": "place-on-waam-table"},
+      "editable_parameters": ["speed_scale"],
+      "default_timeout_s": 300,
+      "script": {
+        "runtime": "UNITY_CSHARP",
+        "script_ref": "unity://Assets/Scripts/SangActions/OmyPlaceOnWaamTableAction.cs",
+        "entrypoint": "OmyPlaceOnWaamTableAction",
+        "sha256": "a871d9618731a11520f371a12cf9e0a30ac9909a90f21f738f3fced16e0cc949"
+      }
+    },
+    {
+      "action_ref": "rb5-follow-waam-path@1",
+      "robot_type": "rb5-850e",
+      "robot_label": "RB5-850E",
+      "title": "Follow WAAM path",
+      "description": "Run the output-disconnected RB5 WAAM trajectory and synchronized monitoring media.",
+      "execution_mode": "SIMULATION",
+      "capability": "simulate-waam-path@1",
+      "role_template": "rb5-waam-path",
+      "asset_type": "robot",
+      "access_mode": "exclusive",
+      "step_id_template": "rb5_waam",
+      "fixed_parameters": {"operation": "follow-simulated-waam-path"},
+      "editable_parameters": ["speed_scale"],
+      "default_timeout_s": 420,
+      "script": {
+        "runtime": "UNITY_CSHARP",
+        "script_ref": "unity://Assets/Scripts/SangActions/Rb5FollowWaamPathAction.cs",
+        "entrypoint": "Rb5FollowWaamPathAction",
+        "sha256": "9f0dc3df8c69142bfc90c2e6435262512d644c527877cbb74961725daee1ecaf"
+      }
+    },
+    {
+      "action_ref": "omy-return-to-carrier@1",
+      "robot_type": "omy-f3m",
+      "robot_label": "OMY F3M",
+      "title": "Return material to carrier",
+      "description": "Pick the completed base plate from the WAAM table and return it to the carrier.",
+      "execution_mode": "SIMULATION",
+      "capability": "simulate-pick-place@1",
+      "role_template": "omy-material-handler",
+      "asset_type": "robot",
+      "access_mode": "exclusive",
+      "step_id_template": "omy_post_pick_place",
+      "fixed_parameters": {"operation": "return-to-carrier"},
+      "editable_parameters": ["speed_scale"],
+      "default_timeout_s": 300,
+      "script": {
+        "runtime": "UNITY_CSHARP",
+        "script_ref": "unity://Assets/Scripts/SangActions/OmyReturnToCarrierAction.cs",
+        "entrypoint": "OmyReturnToCarrierAction",
+        "sha256": "3bf2150cbe04e5234704a2e638faa25fad92b840f9c90d17413a996cf24fd6d0"
+      }
+    },
+    {
+      "action_ref": "mobile-return-with-base-plate@1",
+      "robot_type": "iitp-mobile-carrier",
+      "robot_label": "Mobile Carrier",
+      "title": "Return with base plate",
+      "description": "Secure the base plate and return the simulated carrier to its start position.",
+      "execution_mode": "SIMULATION",
+      "capability": "simulate-material-return@1",
+      "role_template": "mobile-carrier",
+      "asset_type": "mobile_robot",
+      "access_mode": "exclusive",
+      "step_id_template": "mobile_return",
+      "fixed_parameters": {"operation": "return-with-base-plate"},
+      "editable_parameters": ["speed_scale"],
+      "default_timeout_s": 180,
+      "script": {
+        "runtime": "UNITY_CSHARP",
+        "script_ref": "unity://Assets/Scripts/SangActions/MobileReturnWithBasePlateAction.cs",
+        "entrypoint": "MobileReturnWithBasePlateAction",
+        "sha256": "01948a684a44aa7ce705833974f1ba0322f3fb0709c2bba5d8fc0d7bc0071118"
+      }
+    }
+  ]
+}

@@ -25,6 +25,43 @@ services:
       - --auth-disabled
       - --clock-sync-host
       - 127.0.0.1
+      - --workflow-adapter-profile
+      - ${SANG_UNITY_ADAPTER_PROFILE:-/ws/contracts/tasks/iitp-scenario1-unity-adapter.v1.json}
+      - --workflow-adapter-profile
+      - /ws/contracts/tasks/isaac-rb5-twin-adapter.v1.json
+      - --workflow-skill-catalog
+      - /ws/contracts/tasks/iitp-scenario1-skill-catalog.v2.json
+      - --workflow-runtime-base-url
+      - http://127.0.0.1:${UNITY_RUNTIME_PORT:-18093}
+
+  unity-workflow-worker:
+    profiles: [unity-workflow]
+    image: ${SANG_IMAGE:-sang-fleet:jazzy}
+    user: "${SANG_UID:-1000}:${SANG_GID:-1000}"
+    init: true
+    restart: unless-stopped
+    working_dir: /ws
+    environment:
+      HOME: /var/lib/sang
+      PYTHONPATH: /ws/src/fleet_control_plane
+    volumes:
+      - ${SANG_WORKSPACE:?set SANG_WORKSPACE}:/ws:ro
+      - ${SANG_CENTRAL_DATA:?set SANG_CENTRAL_DATA}:/var/lib/sang
+      - ${SANG_UNITY_BRIDGE_ROOT:-/tmp/sang-unity-scenario1}:/tmp/sang-unity-scenario1
+    command:
+      - python3
+      - -m
+      - fleet_control_plane.workflow_simulation_worker
+      - --db-path
+      - /var/lib/sang/fleet.db
+      - --adapter-profile
+      - ${SANG_UNITY_ADAPTER_PROFILE:-/ws/contracts/tasks/iitp-scenario1-unity-adapter.v1.json}
+      - --skill-catalog
+      - /ws/contracts/tasks/iitp-scenario1-skill-catalog.v2.json
+      - --scenario-config
+      - /ws/config/unity_scenario1_simulation.yaml
+      - --runtime-root
+      - /var/lib/sang/workflow-simulations
 
   agent-ingress:
     image: ${SANG_IMAGE:-sang-fleet:jazzy}

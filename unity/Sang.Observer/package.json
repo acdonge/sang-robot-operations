@@ -1,0 +1,8 @@
+{
+  "name": "com.sang.observer",
+  "version": "0.2.0",
+  "displayName": "SANG Safety Observer",
+  "description": "Observation-only Unity safety and stable asset inventory contracts with no robot command transport.",
+  "unity": "6000.0",
+  "license": "Apache-2.0"
+}

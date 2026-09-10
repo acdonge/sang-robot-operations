@@ -81,11 +81,29 @@ class CentralAddressSpace:
         value: Any,
         variant_type: ua.VariantType,
     ):
-        return await parent.add_variable(
+        node = await parent.add_variable(
             self.node_id(identifier),
             ua.QualifiedName(browse_name, self.namespace_index),
             value,
             variant_type,
+        )
+        await node.set_read_only()
+        return node
+
+    @staticmethod
+    async def _write_value(
+        node,
+        value: Any,
+        variant_type: ua.VariantType,
+        status_code: ua.StatusCode,
+    ) -> None:
+        await node.write_attribute(
+            ua.AttributeIds.Value,
+            ua.DataValue(
+                Value=ua.Variant(value, variant_type),
+                StatusCode=status_code,
+                ServerTimestamp=datetime.now(timezone.utc),
+            ),
         )
 
     async def build(self) -> None:
@@ -114,7 +132,12 @@ class CentralAddressSpace:
         group: str,
         entity_id: str,
         browse_name: str,
-        fields: dict[str, tuple[str, Any, ua.VariantType]],
+        fields: dict[
+            str,
+            tuple[str, Any, ua.VariantType]
+            | tuple[str, Any, ua.VariantType, ua.StatusCode],
+        ],
+        desired_variables: set[tuple[str, str, str]],
     ) -> None:
         identity = (group, entity_id)
         encoded_id = _node_key(entity_id)
@@ -126,8 +149,15 @@ class CentralAddressSpace:
                 browse_name,
             )
             self.entities[identity] = entity
-        for field, (field_browse_name, value, variant_type) in fields.items():
+        for field, field_spec in fields.items():
+            field_browse_name, value, variant_type = field_spec[:3]
+            status_code = (
+                field_spec[3]
+                if len(field_spec) == 4
+                else ua.StatusCode(ua.StatusCodes.Good)
+            )
             variable_key = (group, entity_id, field)
+            desired_variables.add(variable_key)
             variable = self.variables.get(variable_key)
             if variable is None:
                 variable = await self._add_variable(
@@ -138,14 +168,34 @@ class CentralAddressSpace:
                     variant_type,
                 )
                 self.variables[variable_key] = variable
-            else:
-                await variable.write_value(ua.Variant(value, variant_type))
+            await self._write_value(variable, value, variant_type, status_code)
+
+    async def _reconcile(
+        self,
+        desired_entities: set[tuple[str, str]],
+        desired_variables: set[tuple[str, str, str]],
+    ) -> None:
+        removed_entities = set(self.entities) - desired_entities
+        for identity in sorted(removed_entities):
+            node = self.entities.pop(identity)
+            await node.delete(recursive=True)
+
+        for key in list(self.variables):
+            identity = (key[0], key[1])
+            if identity in removed_entities:
+                self.variables.pop(key)
+                continue
+            if key not in desired_variables:
+                node = self.variables.pop(key)
+                await node.delete()
 
     async def project(self, snapshot: dict[str, Any]) -> None:
         agents = snapshot["agents"]
         assets = snapshot["assets"]
         runs = snapshot["task_runs"]
         sessions = snapshot["recording_sessions"]
+        desired_entities: set[tuple[str, str]] = {("summary", "fleet")}
+        desired_variables: set[tuple[str, str, str]] = set()
         summary_fields = {
             "generated_at": (
                 "Generated At",
@@ -176,10 +226,17 @@ class CentralAddressSpace:
                 ua.VariantType.UInt32,
             ),
         }
-        await self._project_entity("summary", "fleet", "Fleet", summary_fields)
+        await self._project_entity(
+            "summary",
+            "fleet",
+            "Fleet",
+            summary_fields,
+            desired_variables,
+        )
 
         for agent in agents:
             robots = agent.get("robots", [])
+            desired_entities.add(("agents", agent["agent_id"]))
             await self._project_entity(
                 "agents",
                 agent["agent_id"],
@@ -214,9 +271,11 @@ class CentralAddressSpace:
                         ua.VariantType.UInt32,
                     ),
                 },
+                desired_variables,
             )
             for robot in robots:
                 robot_identity = f"{agent['agent_id']}--{robot['robot_id']}"
+                desired_entities.add(("robots", robot_identity))
                 await self._project_entity(
                     "robots",
                     robot_identity,
@@ -260,6 +319,7 @@ class CentralAddressSpace:
                             ua.VariantType.String,
                         ),
                     },
+                    desired_variables,
                 )
 
         observed_robots = {
@@ -268,6 +328,7 @@ class CentralAddressSpace:
             for robot in agent.get("robots", [])
         }
         for asset in assets:
+            desired_entities.add(("assets", asset["asset_id"]))
             binding = asset.get("binding") or {}
             observed = observed_robots.get(
                 (binding.get("agent_id"), binding.get("robot_id"))
@@ -284,6 +345,26 @@ class CentralAddressSpace:
                     ),
                     None,
                 )
+            fresh_value = (
+                source.get("fresh")
+                if source is not None
+                else robot.get("sources_fresh") if robot is not None else None
+            )
+            rate_value = (
+                source.get("rate_ok")
+                if source is not None
+                else robot.get("rates_ok") if robot is not None else None
+            )
+            if observed is None:
+                observation_quality = ua.StatusCode(
+                    ua.StatusCodes.BadNoCommunication
+                )
+            elif agent_status != "online":
+                observation_quality = ua.StatusCode(
+                    ua.StatusCodes.UncertainLastUsableValue
+                )
+            else:
+                observation_quality = ua.StatusCode(ua.StatusCodes.Good)
             await self._project_entity(
                 "assets",
                 asset["asset_id"],
@@ -337,26 +418,22 @@ class CentralAddressSpace:
                     ),
                     "fresh": (
                         "Fresh",
-                        bool(
-                            source.get("fresh")
-                            if source is not None
-                            else robot is not None and robot.get("sources_fresh")
-                        ),
+                        bool(fresh_value),
                         ua.VariantType.Boolean,
+                        observation_quality,
                     ),
                     "rate_ok": (
                         "Rate Ok",
-                        bool(
-                            source.get("rate_ok")
-                            if source is not None
-                            else robot is not None and robot.get("rates_ok")
-                        ),
+                        bool(rate_value),
                         ua.VariantType.Boolean,
+                        observation_quality,
                     ),
                 },
+                desired_variables,
             )
 
         for run in runs:
+            desired_entities.add(("task_runs", run["run_id"]))
             await self._project_entity(
                 "task_runs",
                 run["run_id"],
@@ -408,9 +485,11 @@ class CentralAddressSpace:
                         ua.VariantType.String,
                     ),
                 },
+                desired_variables,
             )
 
         for session in sessions:
+            desired_entities.add(("recordings", session["session_id"]))
             await self._project_entity(
                 "recordings",
                 session["session_id"],
@@ -463,10 +542,14 @@ class CentralAddressSpace:
                         ua.VariantType.String,
                     ),
                 },
+                desired_variables,
             )
+
+        await self._reconcile(desired_entities, desired_variables)
 
     async def audit_read_only(self) -> dict[str, Any]:
         writable = []
+        quality_counts: dict[str, int] = {}
         for key, node in self.variables.items():
             access = await node.get_access_level()
             user_access = await node.get_user_access_level()
@@ -475,6 +558,12 @@ class CentralAddressSpace:
                 or ua.AccessLevel.CurrentWrite in user_access
             ):
                 writable.append("/".join(key))
+            data_value = await node.read_attribute(
+                ua.AttributeIds.Value,
+                raise_on_bad_status=False,
+            )
+            status_name = data_value.StatusCode.name
+            quality_counts[status_name] = quality_counts.get(status_name, 0) + 1
         method_count = 0
         for node in [self.root, *self.groups.values(), *self.entities.values()]:
             method_count += len(await node.get_methods())
@@ -483,8 +572,20 @@ class CentralAddressSpace:
             "variable_count": len(self.variables),
             "method_count": method_count,
             "writable_variables": sorted(writable),
+            "quality_status_counts": dict(sorted(quality_counts.items())),
+            "audited_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "passed": method_count == 0 and not writable,
         }
+
+
+def _write_audit_report(path: Path, audit: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(
+        json.dumps(audit, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    temporary.replace(path)
 
 
 async def serve(
@@ -527,13 +628,7 @@ async def serve(
     if not audit["passed"]:
         raise RuntimeError("Central OPC UA address space is not read-only")
     if conformance_report is not None:
-        conformance_report.parent.mkdir(parents=True, exist_ok=True)
-        temporary = conformance_report.with_suffix(conformance_report.suffix + ".tmp")
-        temporary.write_text(
-            json.dumps(audit, indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
-        )
-        temporary.replace(conformance_report)
+        _write_audit_report(conformance_report, audit)
     await server.start()
     if ready is not None:
         ready.set()
@@ -548,6 +643,13 @@ async def serve(
                     ttls=ttls,
                 )
             )
+            audit = await address_space.audit_read_only()
+            if not audit["passed"]:
+                raise RuntimeError(
+                    "Central OPC UA address space lost its read-only invariant"
+                )
+            if conformance_report is not None:
+                _write_audit_report(conformance_report, audit)
             if trust_store is not None and asyncio.get_running_loop().time() >= next_trust_reload:
                 await trust_store.load()
                 next_trust_reload = asyncio.get_running_loop().time() + 5.0

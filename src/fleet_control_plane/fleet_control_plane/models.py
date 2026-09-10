@@ -22,7 +22,7 @@ MAX_TOPICS_PER_SOURCE = 64
 MAX_RECENT_RECORDINGS = 20
 SUPPORTED_HEARTBEAT_SCHEMA_VERSIONS = frozenset({1, 2, 3})
 SECURE_HEARTBEAT_SCHEMA_VERSIONS = frozenset({2, 3})
-RuntimeKind = Literal["physical", "simulation"]
+RuntimeKind = Literal["physical", "simulation", "replay"]
 SafeId = Annotated[
     str,
     StringConstraints(

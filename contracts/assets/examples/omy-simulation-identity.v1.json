@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "asset_id": "omy_sim_01",
+  "global_asset_id": "urn:sang:asset:simulation:omy:scenario1",
+  "aas_id": "urn:sang:aas:simulation:omy:scenario1",
+  "identity_revision": 1,
+  "runtime_class": "simulation",
+  "asset_type": "robot",
+  "display_name": "OMY F3M Scenario 1 Twin",
+  "lifecycle_state": "active",
+  "projection_mode": "read_only",
+  "submodel_slots": [
+    "identification_nameplate",
+    "technical_data",
+    "capabilities_skills",
+    "simulation_model",
+    "frames_kinematics",
+    "safety_workspace",
+    "calibration_maintenance",
+    "runtime_interfaces",
+    "data_model_provenance",
+    "relationships"
+  ],
+  "relationships": [
+    {
+      "relationship": "isDigitalTwinOf",
+      "target_global_asset_id": "urn:sang:asset:physical:omy:lab-serial",
+      "target_asset_id": "omy_01"
+    }
+  ]
+}

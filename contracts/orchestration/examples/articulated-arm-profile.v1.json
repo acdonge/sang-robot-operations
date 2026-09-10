@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "profile_id": "articulated-arm",
+  "version": 1,
+  "kind_tags": [
+    "actuated",
+    "motion",
+    "manipulator"
+  ],
+  "capabilities": [
+    {
+      "capability_id": "execute-registered-joint-plan",
+      "version": 1,
+      "effect": "actuation",
+      "parameter_schema_ref": "contracts://capabilities/joint-plan.v1",
+      "required_frames": ["base", "tool"],
+      "required_units": ["joint-position"],
+      "required_limits": [
+        "joint-position",
+        "joint-velocity",
+        "joint-acceleration"
+      ],
+      "control_envelope_schema_ref": "contracts://envelopes/joint-plan.v1",
+      "completion_contract_ref": "contracts://completion/joint-converged.v1",
+      "cancellation_contract_ref": "contracts://cancellation/joint-plan.v1",
+      "recovery_contract_ref": "contracts://recovery/joint-plan.v1",
+      "evidence_contract_ref": "contracts://evidence/joint-plan.v1",
+      "allowed_execution_modes": ["SIMULATION", "HIL", "PHYSICAL_AUTO"],
+      "max_clock_uncertainty_ms": 0,
+      "max_demand_age_ms": 0,
+      "on_lease_expiry": "safe_state",
+      "on_agent_restart_with_motion_in_flight": "vendor_state_reconcile"
+    },
+    {
+      "capability_id": "observe-joint-state",
+      "version": 1,
+      "effect": "observation",
+      "parameter_schema_ref": "contracts://capabilities/observe.v1",
+      "allowed_execution_modes": [
+        "SIMULATION",
+        "REPLAY",
+        "SHADOW",
+        "HIL",
+        "PHYSICAL_AUTO"
+      ]
+    }
+  ]
+}

@@ -15,7 +15,9 @@ setup(
     extras_require={"test": ["pytest"]},
     install_requires=[
         "asyncua==2.0.1",
+        "cryptography",
         "fastapi",
+        "jsonschema>=4.18,<5",
         "mcap==1.4.0",
         "PyYAML",
         "pydantic",
@@ -47,6 +49,13 @@ setup(
             "fleet_opcua_aggregate = fleet_control_plane.central_opcua:main",
             "fleet_backup = fleet_control_plane.backup:main",
             "fleet_lerobot_derive = fleet_control_plane.lerobot_derivation:main",
+            "fleet_safety_shadow = fleet_control_plane.safety_shadow:main",
+            "fleet_safety_edge = fleet_control_plane.safety_edge:main",
+            "fleet_task_bundle = fleet_control_plane.task_bundle:main",
+            "fleet_unity_safety_validate = fleet_control_plane.unity_safety_validation:main",
+            "fleet_unity_scenario1 = fleet_control_plane.unity_scenario_orchestrator:main",
+            "fleet_unity_sim_worker = fleet_control_plane.workflow_simulation_worker:main",
+            "fleet_unity_runtime = fleet_control_plane.unity_runtime_supervisor:main",
         ],
     },
 )

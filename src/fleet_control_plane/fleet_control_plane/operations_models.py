@@ -21,8 +21,28 @@ AssetType = Literal[
     "other",
 ]
 AccessMode = Literal["exclusive", "shared_read"]
-RunState = Literal["DRAFT", "READY", "ACTIVE", "COMPLETE", "FAILED"]
+RunState = Literal[
+    "DRAFT",
+    "READY",
+    "ACTIVE",
+    "HELD",
+    "ABORTING",
+    "ABORTED",
+    "RECONCILING",
+    "COMPLETE",
+    "FAILED",
+]
 InitialRunState = Literal["DRAFT", "READY"]
+ExecutionMode = Literal[
+    "OBSERVE_ONLY",
+    "SIMULATION",
+    "REPLAY",
+    "SHADOW",
+    "HIL",
+    "PHYSICAL_AUTO",
+    "PHYSICAL_TELEOP",
+    "MAINTENANCE",
+]
 LifecycleState = Literal["active", "decommissioned"]
 CertificateFingerprint = Annotated[
     str,
@@ -327,6 +347,7 @@ class TaskRunCreate(FleetModel):
     task_version: int = Field(ge=1)
     workcell_id: SafeId | None = None
     display_name: ShortText
+    execution_mode: ExecutionMode = "OBSERVE_ONLY"
     state: InitialRunState = "DRAFT"
     assignments: list[AssignmentCreate] = Field(default_factory=list, max_length=64)
 
@@ -360,7 +381,16 @@ class TaskRunReplace(FleetModel):
 
 class TaskRunTransition(FleetModel):
     expected_revision: int = Field(ge=1)
-    state: Literal["READY", "ACTIVE", "COMPLETE", "FAILED"]
+    state: Literal[
+        "READY",
+        "ACTIVE",
+        "HELD",
+        "ABORTING",
+        "ABORTED",
+        "RECONCILING",
+        "COMPLETE",
+        "FAILED",
+    ]
     reason: Annotated[
         str,
         StringConstraints(min_length=1, max_length=1024, strip_whitespace=True),
@@ -368,8 +398,15 @@ class TaskRunTransition(FleetModel):
 
     @model_validator(mode="after")
     def failed_transition_has_reason(self) -> "TaskRunTransition":
-        if self.state == "FAILED" and self.reason is None:
-            raise ValueError("FAILED transitions require a reason")
-        if self.state not in {"COMPLETE", "FAILED"} and self.reason is not None:
-            raise ValueError("reason is only accepted for terminal transitions")
+        reason_required = {
+            "HELD",
+            "ABORTING",
+            "ABORTED",
+            "RECONCILING",
+            "FAILED",
+        }
+        if self.state in reason_required and self.reason is None:
+            raise ValueError(f"{self.state} transitions require a reason")
+        if self.state not in reason_required | {"COMPLETE"} and self.reason is not None:
+            raise ValueError("reason is accepted only for non-nominal transitions")
         return self

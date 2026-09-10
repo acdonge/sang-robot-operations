@@ -28,3 +28,11 @@ services:
       - secret://https/central/preview-client-chain.pem
       - --preview-client-private-key-ref
       - secret://https/central/preview-client-key.pem
+      - --workflow-adapter-profile
+      - ${SANG_UNITY_ADAPTER_PROFILE:-/ws/contracts/tasks/iitp-scenario1-unity-adapter.v1.json}
+      - --workflow-adapter-profile
+      - /ws/contracts/tasks/isaac-rb5-twin-adapter.v1.json
+      - --workflow-skill-catalog
+      - /ws/contracts/tasks/iitp-scenario1-skill-catalog.v2.json
+      - --workflow-runtime-base-url
+      - http://127.0.0.1:${UNITY_RUNTIME_PORT:-18093}

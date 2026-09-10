@@ -1,0 +1,10 @@
+{
+  "schema_version": 2,
+  "workflow_id": "isaac-rb5-twin-pilot",
+  "version": 1,
+  "roles": [{"role": "virtual-robot", "cardinality": "1", "selector": {"requires": ["simulate-bounded-joint@1"]}, "access": "exclusive"}],
+  "steps": [
+    {"step_id": "move_offset", "kind": "action", "role": "virtual-robot", "capability": "simulate-bounded-joint@1", "parameters": {"operation": "move-offset"}, "timeout_s": 20},
+    {"step_id": "return_ready", "kind": "action", "role": "virtual-robot", "capability": "simulate-bounded-joint@1", "depends_on": ["move_offset"], "parameters": {"operation": "return-ready"}, "timeout_s": 20}
+  ]
+}

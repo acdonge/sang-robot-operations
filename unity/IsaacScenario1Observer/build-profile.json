@@ -1,0 +1,10 @@
+{
+  "build_role": "observer",
+  "profile_id": "scenario1",
+  "schema_version": 2,
+  "unity_version": "6000.5.6f1",
+  "scene_sha256": "c988f5ecdd0d331ee338619af369efcafdc098df400488a97463855b1a69821d",
+  "physical_output_connected": false,
+  "telemetry_path": "/tmp/sang-isaac-scenario1/observer/telemetry.json",
+  "note": "Main-supplied candidate manifest independently verified with all 136 source hashes. Kinematic fixture with gripper/table contacts excluded; no contact qualification. Player launch remains main-coordinated."
+}

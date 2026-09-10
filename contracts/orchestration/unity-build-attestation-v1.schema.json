@@ -1,0 +1,117 @@
+{
+  "$defs": {
+    "UnityAssemblyAttestationV1": {
+      "additionalProperties": false,
+      "properties": {
+        "assembly_name": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Assembly Name",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "assembly_name",
+        "sha256"
+      ],
+      "title": "UnityAssemblyAttestationV1",
+      "type": "object"
+    }
+  },
+  "$id": "https://sang.local/contracts/orchestration/unity-build-attestation-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Signed provenance for isolated Unity observer, simulation executor, or fixture builds.",
+  "properties": {
+    "assemblies": {
+      "items": {
+        "$ref": "#/$defs/UnityAssemblyAttestationV1"
+      },
+      "maxItems": 512,
+      "minItems": 1,
+      "title": "Assemblies",
+      "type": "array"
+    },
+    "build_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "title": "Build Id",
+      "type": "string"
+    },
+    "build_role": {
+      "enum": [
+        "observer",
+        "simulation_executor",
+        "fixture"
+      ],
+      "title": "Build Role",
+      "type": "string"
+    },
+    "built_at": {
+      "format": "date-time",
+      "title": "Built At",
+      "type": "string"
+    },
+    "scene_profile_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Scene Profile Sha256",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "signature": {
+      "maxLength": 8192,
+      "minLength": 16,
+      "title": "Signature",
+      "type": "string"
+    },
+    "signer_key_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "title": "Signer Key Id",
+      "type": "string"
+    },
+    "source_commit": {
+      "pattern": "^[0-9a-f]{7,64}$",
+      "title": "Source Commit",
+      "type": "string"
+    },
+    "source_repository": {
+      "maxLength": 2048,
+      "minLength": 3,
+      "title": "Source Repository",
+      "type": "string"
+    },
+    "unity_version": {
+      "maxLength": 64,
+      "minLength": 3,
+      "title": "Unity Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "build_id",
+    "build_role",
+    "source_repository",
+    "source_commit",
+    "unity_version",
+    "scene_profile_sha256",
+    "assemblies",
+    "built_at",
+    "signer_key_id",
+    "signature"
+  ],
+  "title": "UnityBuildAttestationV1",
+  "type": "object"
+}
