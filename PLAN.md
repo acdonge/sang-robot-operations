@@ -15,7 +15,7 @@ destination. No hardware, simulator, deployment, new runtime feature or history 
 - [x] P1: one concept overview links to the canonical roadmap and dated evidence.
 - [x] P2: staged source excludes private state, media, installers and unapproved assets.
 - [x] P3: documentation links, focused checks and independent review pass.
-- [ ] P4: the user-selected GitHub destination contains the verified commit.
+- [x] P4: the user-selected GitHub destination contains the verified commit.
 ### Risks / Notes
 The user approved the new PRIVATE repository `acdonge/sang-robot-operations`.
 The empty remote has been created and its private visibility verified.
@@ -28,8 +28,22 @@ not a blanket add of the workspace. Preserve excluded files locally.
 Publication hygiene checked 555 historical blobs and pinned external dependencies.
 Exact staged-tree checks passed. Fresh checks: 400 simulation and 754 ROS/backend
 tests, 13 frontend selection tests, 15 rebuilt-UI tests, frontend typecheck/build
-and 162 local documentation links. The approved private repository is created;
-commit/upload verification remains. Live services and device execution are unchanged.
+and 162 local documentation links. Source checkpoint `ef50bbc` was uploaded to
+`acdonge/sang-robot-operations` on `master`; remote SHA matches local and GitHub
+reports PRIVATE visibility. Live services and device execution are unchanged.
+
+### Developer
+Published the existing source/history with an accurate concept overview, canonical
+status corrections, source-only exclusions and fresh test evidence. Rebuilt the
+exported frontend without modifying live UI output. Sensitive/generated local
+files remain on disk and are not part of the new source tree.
+
+### Evaluator
+PASS for documentation and private source publication. Exact remote source SHA
+`ef50bbc29e9222bb0e3df4ff9ba08c150c6c199b` verified after push. ACT-C01, official
+projection qualification, external asset provenance and physics/physical-safety
+gates remain open. See `docs/GITHUB_CHECKPOINT_2026-09-10.md` for exclusions and
+non-critical dependency/build/formatting warnings.
 
 ---
 
