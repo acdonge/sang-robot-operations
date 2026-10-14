@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="980" viewBox="0 0 960 980" role="img" aria-labelledby="title description">
-<title id="title">SANG 시스템 구조</title>
-<desc id="description">로봇과 카메라의 관측값이 ROS 2를 통해 Edge로 전달되고, Edge의 상태와 검증된 녹화가 Central로 모인다. Central은 SQLite와 Object Store에 데이터를 보존하고 Admin, Operator, Catalog 및 읽기 전용 OPC UA 조회를 제공한다. MCAP에서 LeRobot v3 관측 데이터가 파생되며 action feature는 없다. 별도 Simulation Worker는 물리 출력과 분리된 고정 Unity 또는 Isaac 프로필만 실행한다.</desc>
+<title id="title">SANG System Architecture</title>
+<desc id="description">Robot and camera observations flow through ROS 2 to Edge services. Edge reports state and uploads verified recordings to Central. Central stores metadata in SQLite and recordings in the Object Store, and serves Admin, Operator, Data Catalog, and read-only OPC UA clients. MCAP sessions produce observation-only LeRobot v3 datasets without an action feature. A separate Simulation Worker runs fixed Unity or Isaac profiles with physical outputs disconnected.</desc>
 <defs><style>
-text { font-family:'Noto Sans CJK KR','Noto Sans KR','Malgun Gothic',sans-serif; }
+text { font-family:'Segoe UI','Noto Sans',Arial,sans-serif; }
 .title { font-size:32px;font-weight:700;fill:#172536; }
 .heading { font-size:26px;font-weight:700;fill:#172536; }
 .body { font-size:22px;fill:#33455a; }
@@ -14,14 +14,14 @@ text { font-family:'Noto Sans CJK KR','Noto Sans KR','Malgun Gothic',sans-serif;
 </style><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#527798"/></marker></defs>
 <rect width="960" height="980" rx="16" fill="#f8fafc"/>
 
-<text x="32" y="54" class="title">SANG 시스템 구조</text>
-<text x="32" y="88" class="small">실물 관측 · 작업 관리 · 데이터 보존 · 격리된 시뮬레이션</text>
+<text x="32" y="54" class="title">SANG System Architecture</text>
+<text x="32" y="88" class="small">Robot observation · Task management · Data storage · Isolated simulation</text>
 <rect x="32" y="120" width="400" height="206" rx="12" class="box"/>
 <text x="54" y="152" class="label">01 / WORKCELL</text>
-<text x="54" y="195" class="heading">로봇 · 카메라</text>
+<text x="54" y="195" class="heading">Robots &amp; Cameras</text>
 <line x1="54" y1="214" x2="410" y2="214" class="line"/>
 <text x="54" y="254" class="body">SO-101 · OMY · RB5</text>
-<text x="54" y="290" class="body">관절 상태 · 카메라 영상</text>
+<text x="54" y="290" class="body">Joint states · Camera images</text>
 <rect x="528" y="120" width="400" height="206" rx="12" class="box"/>
 <text x="550" y="152" class="label">02 / EDGE</text>
 <text x="550" y="195" class="heading">Processing PC</text>
@@ -32,37 +32,37 @@ text { font-family:'Noto Sans CJK KR','Noto Sans KR','Malgun Gothic',sans-serif;
 <text x="550" y="428" class="label">03 / CENTRAL</text>
 <text x="550" y="471" class="heading">Fleet Control Plane</text>
 <line x1="550" y1="490" x2="906" y2="490" class="line"/>
-<text x="550" y="530" class="body">자산 · Task Run · 권한 · 감사</text>
-<text x="550" y="566" class="body">SQLite: 상태 · 메타데이터</text>
-<text x="550" y="602" class="body">Object Store: 검증된 녹화 · 객체</text>
+<text x="550" y="530" class="body">Assets · Tasks · Access · Audit</text>
+<text x="550" y="566" class="body">SQLite: state &amp; metadata</text>
+<text x="550" y="602" class="body">Object Store: verified captures</text>
 <rect x="32" y="396" width="400" height="246" rx="12" class="box"/>
 <text x="54" y="428" class="label">04 / INTERFACES</text>
-<text x="54" y="471" class="heading">사용자 · 외부 연계</text>
+<text x="54" y="471" class="heading">Users &amp; Integrations</text>
 <line x1="54" y1="490" x2="410" y2="490" class="line"/>
-<text x="54" y="530" class="body">Admin / Operator: 조회 · 작업 관리</text>
-<text x="54" y="566" class="body">Data Catalog: 녹화 검색 · 재생</text>
-<text x="54" y="602" class="body">OPC UA Clients: 읽기 전용 집계</text>
+<text x="54" y="530" class="body">Admin / Operator: task operations</text>
+<text x="54" y="566" class="body">Data Catalog: search &amp; playback</text>
+<text x="54" y="602" class="body">OPC UA: read-only aggregation</text>
 <path d="M432 232 H520" class="arrow"/>
 <text x="480" y="216" class="label" text-anchor="middle">ROS 2</text>
 <path d="M728 326 V388" class="arrow"/>
-<text x="748" y="361" class="label">원격 mTLS</text>
+<text x="748" y="361" class="label">Remote mTLS</text>
 <path d="M528 512 H440" class="arrow"/>
-<text x="480" y="496" class="label" text-anchor="middle">조회</text>
-<text x="32" y="359" class="small">실물 경로: 관측 전용 · 녹화 파일은 별도 검증 업로드</text>
+<text x="480" y="496" class="label" text-anchor="middle">Read</text>
+<text x="32" y="359" class="small">Observe hardware · Verify recording uploads</text>
 <path d="M728 642 V682" class="arrow"/>
 <rect x="32" y="690" width="896" height="88" rx="12" class="box"/>
-<text x="54" y="725" class="label">관측 데이터 파생</text>
-<text x="272" y="726" class="heading">검증된 MCAP → LeRobot v3</text>
-<text x="272" y="757" class="small">관절 상태 + 카메라 / action feature 없음</text>
+<text x="54" y="725" class="label">Observation export</text>
+<text x="272" y="726" class="heading">Verified MCAP → LeRobot v3</text>
+<text x="272" y="757" class="small">Joint states + cameras / no action feature</text>
 <rect x="32" y="812" width="896" height="136" rx="12" class="box"/>
-<text x="54" y="847" class="heading">격리된 시뮬레이션</text>
-<text x="322" y="847" class="small">물리 출력과 분리된 고정 프로필</text>
+<text x="54" y="847" class="heading">Isolated Simulation</text>
+<text x="322" y="847" class="small">Fixed profiles · Physical outputs disconnected</text>
 <text x="54" y="890" class="body">Workflow Studio</text>
-<text x="54" y="922" class="small">Central 작업 큐</text>
+<text x="54" y="922" class="small">Central task queue</text>
 <path d="M244 890 H290" class="arrow"/>
 <text x="312" y="890" class="body">Simulation Worker</text>
-<text x="312" y="922" class="small">프로필 · 상태 · 권한 확인</text>
+<text x="312" y="922" class="small">Profile · State · Authorization</text>
 <path d="M530 890 H576" class="arrow"/>
-<text x="600" y="890" class="body">Unity / Isaac 프로필</text>
-<text x="600" y="922" class="small">Isaac 실행 시 Unity는 관측</text>
+<text x="600" y="890" class="body">Unity / Isaac profiles</text>
+<text x="600" y="922" class="small">Unity observes Isaac execution</text>
 </svg>
