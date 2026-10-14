@@ -57,29 +57,25 @@ administrative CLI operation after capture; the current web catalog lists and do
 
 ```mermaid
 sequenceDiagram
-    actor User
-    participant UI as Admin / Operator
+    actor User as Operator
     participant API as Central API
-    participant Edge as Recording Worker
-    participant Rec as MCAP Recorder
-    participant Store as Catalog + Object Store
-    participant Export as Dataset Converter CLI
-    User->>UI: Select an active Task Run and request capture
-    UI->>API: Authorized capture request
-    API->>API: Check assignment and create durable Capture Job
-    Edge->>API: Poll and claim fixed-profile job
-    Edge->>Rec: Start bounded capture of configured ROS 2 topics
-    Rec-->>Edge: Finalized MCAP and session manifest
-    Edge->>API: Upload manifest and artifact bytes
-    API->>Store: Verify assignment, size and SHA-256 then finalize session
-    Store-->>UI: COMPLETE session available in catalog
-    User->>API: Request quality assessment via authenticated API
-    API->>Store: Persist quality report
-    User->>Export: Supply topics, interval, task text and output rate
-    Export->>Store: Require COMPLETE source and quality PASS
-    Export->>Store: Read observations and publish derived archive
-    UI->>API: List available dataset derivatives
-    API-->>UI: Dataset metadata and verified download route
+    participant Edge as Edge Capture Worker
+    participant Store as Catalog + Files
+    participant Export as Converter CLI
+    User->>API: Request capture via web
+    API->>API: Validate assets and Task Run
+    Edge->>API: Claim fixed-profile job
+    Edge->>Edge: Record selected topics<br/>and finalize MCAP
+    Edge->>API: Upload manifest + files
+    API->>Store: Verify and finalize session
+    API-->>User: Catalog session COMPLETE
+    User->>API: Request quality analysis
+    API->>Store: Save quality report
+    User->>Export: Set topics, interval,<br/>task text and rate
+    Export->>Store: Require COMPLETE<br/>and quality PASS
+    Export->>Store: Sample and publish archive
+    User->>API: Read catalog via web
+    API-->>User: Dataset + download link
 ```
 
 The recording worker cannot declare success merely because its local recorder stopped. Central
@@ -106,26 +102,24 @@ worker performs simulation execution.
 
 ```mermaid
 sequenceDiagram
-    actor User
-    participant UI as Workflow Studio
-    participant API as Central API + SQLite queue
-    participant Worker as Local Simulation Worker
-    participant Sim as Configured Unity or Isaac runtime
-    participant View as Passive Unity observer (Isaac profile)
-    User->>UI: Publish Workflow and request simulation
-    UI->>API: Queue Run with pinned publication and profile
-    Worker->>API: Claim Run and execution lease
-    Worker->>Worker: Validate profile, bindings and runtime state
-    loop While the Run owns its lease
-        Worker->>API: Renew lease and report progress
-        Worker->>Sim: Execute configured step with bounded authority
-        Sim-->>Worker: Measured progress and completion evidence
+    actor User as Workflow Studio User
+    participant API as Central API + Queue
+    participant Worker as Local Worker
+    participant Sim as Unity / Isaac
+    participant View as Unity Observer
+    User->>API: Publish version + queue Run
+    Worker->>API: Claim Run and lease
+    Worker->>Worker: Validate profile<br/>and runtime bindings
+    loop While the lease is valid
+        Worker->>API: Renew lease + report progress
+        Worker->>Sim: Execute configured step
+        Sim-->>Worker: Measured outcome
         opt Isaac execution profile
-            Sim-->>View: Local ROS 2 feedback through validated receiver
+            Sim-->>View: Validated ROS 2 feedback
         end
     end
-    Worker->>API: Record final Run outcome
-    API-->>UI: Status, progress and result
+    Worker->>API: Store final outcome
+    API-->>User: Run status and result
 ```
 
 There are two simulation topologies. In a **Unity execution profile**, the Unity adapter executes
