@@ -71,7 +71,7 @@ sequenceDiagram
     Edge->>Rec: Start bounded capture of configured ROS 2 topics
     Rec-->>Edge: Finalized MCAP and session manifest
     Edge->>API: Upload manifest and artifact bytes
-    API->>Store: Verify assignment, size and SHA-256; finalize session
+    API->>Store: Verify assignment, size and SHA-256 then finalize session
     Store-->>UI: COMPLETE session available in catalog
     User->>API: Request quality assessment via authenticated API
     API->>Store: Persist quality report
