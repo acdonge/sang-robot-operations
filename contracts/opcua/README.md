@@ -30,14 +30,8 @@ and the latest runtime observation.
 | `rb5_850e_sim_01.mapping.v2.yaml` | Isaac Sim RB5 state and camera mapping. |
 | `bi_so101_01.mapping.yaml` | Legacy v1 rollback mapping with unchanged NodeIds. |
 | `native-opcua-endpoint.example.yaml` | Inactive, secret-free example for the 3+1 native path. |
-| `PHASE0_VALIDATION.md` | Reproducible coverage and official validator evidence. |
-| `PHASE1_VALIDATION.md` | Runtime, physical correlation, isolation and performance evidence. |
-| `PHASE2_VALIDATION.md` | Shared health authority, Central shadow and restart-recovery evidence. |
 | `PHASE3_SECURITY.md` | Distributed Edge security, deployment and attended acceptance contract. |
-| `PHASE3_VALIDATION.md` | Local distributed security/build/smoke evidence and remaining laptop gate. |
 | `PHASE4_CONTRACT.md` | Draft multi-edge contract for SO-101, OMY, RB5 and Isaac Sim. |
-| `../../docs/PHASE4_M2_MAPPING_SCHEMA_V2_2026-08-07.md` | Mapping Schema v2 implementation evidence. |
-| `../../docs/PHASE4_M4_MULTI_ROBOT_MAPPING_V2_2026-08-21.md` | OMY/RB5 physical/sim mapping evidence and provenance. |
 
 ## Model decision
 

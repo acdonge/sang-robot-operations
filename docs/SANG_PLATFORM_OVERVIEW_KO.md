@@ -1,7 +1,7 @@
 # SANG: OPC UA 기반 로봇 운영·데이터·디지털 트윈 플랫폼
 
 기준일: 2026-09-10. 목적: 지금까지 합의한 제품 개념과 구현 결과를 한 번에 이해하기 위한 설명서.
-현재 우선순위와 완료 기준은 [마스터 구현계획](../SANG_MASTER_IMPLEMENTATION_PLAN.md)이 결정합니다.
+필수 기능과 권한·안전 경계는 [요구사항](requirements.md)을 따릅니다.
 이 문서는 별도의 로드맵이나 실물 운전 승인이 아닙니다.
 
 ## 1. 우리가 만드는 것
@@ -216,7 +216,7 @@ HELD 상태, 명시적 재개 승인과 물리 안전망은 각각 구분됩니�
 
 ## 9. 구현 현황과 검증 범위
 
-아래는 날짜가 고정된 요약입니다. “검증”은 링크된 빌드·장비·시간 구간에만 해당하며,
+아래는 날짜가 고정된 요약입니다. “검증”은 당시 빌드·장비·시간 구간에만 해당하며,
 현재 연결된 모든 실물이 정상이라는 보증이 아닙니다.
 
 | 부분 | 현재 가능한 것 | 아직 아닌 것 |
@@ -239,20 +239,6 @@ HELD 상태, 명시적 재개 승인과 물리 안전망은 각각 구분됩니�
 축 단위/범위의 완전한 채움과 독립적인 두 Client 교차 검증도 남아 있습니다.
 NodeSet을 import하거나 타입 이름을 맞췄다는 것만으로 인증을 주장하지 않습니다.
 
-### 가장 최근 시나리오 검증
-
-- 고정 5단계가 같은 Isaac 세션에서 2회 완료됐고, 웹 Reset과 gate v3가 모두 PASS였습니다.
-- 실행 시간은 202.463초와 224.164초였습니다. 두 번째에는 웹 Hold/Resume 시험이 포함됐습니다.
-- RB5 작업점 25개씩 통과했습니다. Unity 표시와 원본 관절값 비교도 통과했습니다.
-- 해당 실행 시점의 Python 검사 667개와 Unity Linux 빌드가 통과했습니다. 이는 2026-09-09의
-  실행 기록이며 GitHub 업로드 작업에서 모든 실험을 다시 했다는 뜻은 아닙니다.
-- 집기/운반은 가상 fixture입니다. OMY 베이스 시각 표시 문제가 남고, 물체 복귀 오차는
-  두 번에 걸쳐 약 0.09 mm에서 0.18 mm로 증가해 장기 반복 검증이 필요합니다.
-
-[전체 실행·한계 기록](ISAAC_SCENARIO1_EXECUTION_2026-09-09.md),
-[Unity 자산 연결 기록](UNITY_DYNAMIC_BINDING_A1_A2_2026-09-09.md),
-[문서/이전 현장 검증 목록](DOCUMENT_AUTHORITY_INDEX.md).
-
 ## 10. 소스 구조와 GitHub의 역할
 
 현재 코드 경계를 유지한 한 저장소에서 정리합니다. 앱을 더 쪼개거나 별도 DB를 추가하는 것
@@ -270,9 +256,9 @@ NodeSet을 import하거나 타입 이름을 맞췄다는 것만으로 인증을 
 | `contracts/`, `manifests/`, `config/` | 버전 있는 정보·동작·보안·장비 계약 |
 | `frontend/admin/` | 공통 Ant Design Admin/Operator UI 원본 |
 | `sim/`, `unity/` | 시뮬레이션 연결 코드, 분리된 observer와 빌드 도구 |
-| `docs/` | 설계, 운영 방법, 날짜별 검증과 한계 |
+| `docs/` | 공개 제품 안내, 운영 방법과 인터페이스 계약 |
 
-GitHub는 소스·계약·검증 요약을 보관합니다. 개인키, DB, 실제 녹화 영상, 런타임 토큰,
+공개 저장소는 소스·계약·사용 안내를 보관합니다. 내부 계획과 검토 기록은 비공개 저장소에서 관리합니다. 개인키, DB, 실제 녹화 영상, 런타임 토큰,
 설치 프로그램, 대용량 생성물과 재배포 권한이 확인되지 않은 외부 에셋은 올리지 않습니다.
 따라서 Git clone만으로 현재 랩의 DB·자산·인증서·Unity Player가 모두 복원되지는 않습니다.
 별도 의존성과 재현 범위는 [소스 게시 정책](GITHUB_SOURCE_POLICY.md)을 따릅니다.
@@ -283,7 +269,7 @@ GitHub는 소스·계약·검증 요약을 보관합니다. 개인키, DB, 실�
 - [고정 릴리스 NodeSet](https://github.com/OPCFoundation/UA-Nodeset/tree/Robotics-1.02-2025-09-08): 이 저장소 lock의 upstream 기준.
 - [IDTA AAS 명세](https://industrialdigitaltwin.io/aas-specifications/index/home/index.html): AAS 의미·직렬화의 표준 자료. 실제 적용 버전은 [로컬 lock](../contracts/aas/metamodel.lock.yaml)을 확인합니다.
 - [SANG 요구사항](requirements.md): 이 프로젝트의 필수 기능·권한·안전 경계.
-- [오케스트레이터 설계](MULTI_ROBOT_ORCHESTRATOR_IMPLEMENTATION_DESIGN.md): 실물 확장 전에 충족해야 할 계약.
+- [오케스트레이션 계약](../contracts/orchestration/README.md): 버전 있는 인터페이스와 실행 권한의 경계.
 
 **요약: OPC UA는 SANG의 표준 정보 연계 계층이고, SANG 전체는 그보다 넓은 작업 운영 플랫폼입니다.
 현재 검증된 가상 실행과 관측/기록 제품을 기반으로 확장하되, 표준 적합성·안전·실물 실행·학습은

@@ -10,28 +10,13 @@ AAS 문서 연결, 버전 고정 Action/Workflow와 격리된 시뮬레이션 �
 
 ## 처음 읽는 분께
 
-- 전체 목표, 확장된 OPC UA의 의미, PC별 역할과 데이터 흐름:
-  [`docs/SANG_PLATFORM_OVERVIEW_KO.md`](docs/SANG_PLATFORM_OVERVIEW_KO.md)
-- 현재 상태와 다음 우선순위: [`SANG_MASTER_IMPLEMENTATION_PLAN.md`](SANG_MASTER_IMPLEMENTATION_PLAN.md)
-- GitHub에 포함되는 소스와 별도로 준비할 데이터/에셋:
-  [`docs/GITHUB_SOURCE_POLICY.md`](docs/GITHUB_SOURCE_POLICY.md)
+- 플랫폼 개요와 데이터 흐름: [플랫폼 안내](docs/SANG_PLATFORM_OVERVIEW_KO.md)
+- 설치·운영·백업·업그레이드: [운영 안내](docs/ROBOT_CAMERA_OPERATIONS_V1.md)
+- 필수 기능과 보안·안전 경계: [요구사항](docs/requirements.md)
+- 포함된 소스와 별도로 준비할 의존성: [소스 게시 정책](docs/GITHUB_SOURCE_POLICY.md)
 
-2026-09-10 체크포인트: 고정된 Scenario 1의 5단계를 웹에서 Isaac으로 실행하고,
-별도 Unity 관측 화면이 측정값을 따라 표시하는 경로를 검증했습니다. 같은 Isaac 세션에서
-2회 완료·Reset·PASS를 확인했습니다. 운반체와 집기는 단순화한 가상 모델이며
-OMY 베이스 시각 표시와 장기 반복 오차는 보완 대상입니다.
-[`실행·검증 기록`](docs/ISAAC_SCENARIO1_EXECUTION_2026-09-09.md)을 참조하세요.
-
-## 기준 문서
-
-- 전체 구현 상태와 다음 순서는 [`SANG_MASTER_IMPLEMENTATION_PLAN.md`](SANG_MASTER_IMPLEMENTATION_PLAN.md)가
-  단독 기준입니다.
-- 필수 기능·보안·안전 경계는 [`docs/requirements.md`](docs/requirements.md)를 따릅니다.
-- 설계·운영·날짜별 검증 문서의 역할과 우선순위는
-  [`docs/DOCUMENT_AUTHORITY_INDEX.md`](docs/DOCUMENT_AUTHORITY_INDEX.md)에서 확인합니다.
-
-루트의 다른 `PLAN_*.md`는 해당 구현 당시의 실행 기록입니다. 날짜가 붙은 결과 문서는 당시 빌드와
-토폴로지에 대한 증거이며, 현재 로드맵이나 다른 하드웨어의 승인으로 확대 해석하지 않습니다.
+이 저장소는 공개용 소스와 사용 문서를 제공합니다. 내부 계획서, 작업 지침,
+설계 검토와 날짜별 실험 기록은 별도 비공개 저장소에서 관리합니다.
 
 ## 현재 구성
 
@@ -71,7 +56,7 @@ Galaxy XR ──> xr_teleop_bridge ──> xr_teleop_retarget (개발 중, 입�
 정책 실행은 아직 이 저장소에 포함되어 있지 않습니다.
 
 범용 다중 로봇 제어는 기존 읽기 전용 경로에 임의로 명령을 추가하지 않고
-[`docs/MULTI_ROBOT_ORCHESTRATOR_IMPLEMENTATION_DESIGN.md`](docs/MULTI_ROBOT_ORCHESTRATOR_IMPLEMENTATION_DESIGN.md)의
+[`contracts/orchestration/README.md`](contracts/orchestration/README.md)의
 계약을 따릅니다. G1-G6a와 출력 권한이 없는 G6b 증빙 제출·검토 소프트웨어는 구현됐지만, 이는
 실물 제어 승인이 아닙니다. Central은 의도·감사·delegation grant, Processing PC는 Cell
 Orchestrator와 순서·복구, Device Agent는 로컬 제조사 실행을 담당합니다. Scenario 1/2는 제품
@@ -80,23 +65,17 @@ Orchestrator와 순서·복구, Device Agent는 로컬 제조사 실행을 담�
 제출하며, Manager와 Safety Officer의 검토가 끝나도 G7 권한은 생기지 않습니다. 현재 G0 JSON
 Schema, 정적 검증 규칙, 3대/12대 카메라 예제는
 [`contracts/orchestration/README.md`](contracts/orchestration/README.md)에서 확인할 수 있습니다.
-구현 상태와 남은 G6b/G7 조건은
-[`docs/G1_G6_IMPLEMENTATION_STATUS_2026-08-28.md`](docs/G1_G6_IMPLEMENTATION_STATUS_2026-08-28.md)에
-기록돼 있습니다.
 
 Robot/Camera Operations v1의 저장소 구분, 최초 설치, Edge 업로드, 원격 TLS/OPC UA,
 backup·upgrade·rollback 절차는 [`docs/ROBOT_CAMERA_OPERATIONS_V1.md`](docs/ROBOT_CAMERA_OPERATIONS_V1.md)를
-기준으로 합니다. 최신 소프트웨어 게이트 결과는
-[`docs/ROBOT_CAMERA_OPERATIONS_V1_VALIDATION_2026-08-21.md`](docs/ROBOT_CAMERA_OPERATIONS_V1_VALIDATION_2026-08-21.md)에
-기록했습니다. AAS와 벡터 DB는 이 계약을 대체하지 않는 후속 계층입니다. Central은 IDTA 3.1.2
+기준으로 합니다. AAS와 벡터 DB는 이 계약을 대체하지 않는 후속 계층입니다. Central은 IDTA 3.1.2
 JSON 및 JSON-bearing AASX를 검증해 기존 Asset에 읽기 전용으로 연결하고, 원본·정규화본을 Object
 Store와 검증 백업에 보존합니다. Unity 쪽에는 안정적인 Asset/Frame/Sensor inventory 패키지가
 추가됐습니다. 실제 Scenario 1 Player에 9개 자산의 연결·컴파일을 적용했고, 게시된 Task의 역할과
 동작을 정확한 자산/장면/소스 버전에 연결하는 동적 adapter를 구현했습니다. 현재는 미리 빌드한 한
 장면과 순차 동작만 지원하며, Reset 후 OMY 반복 동작 검증·서명된 배포·두 번째 장면 재사용·ROS 2
-녹화 연동은 남아 있습니다. 실행 증거와 제한은
-[`docs/UNITY_DYNAMIC_BINDING_A1_A2_2026-09-09.md`](docs/UNITY_DYNAMIC_BINDING_A1_A2_2026-09-09.md),
-전체 설계는 [`docs/AAS_ASSET_PACKAGE_DYNAMIC_UNITY_ADAPTER_DESIGN.md`](docs/AAS_ASSET_PACKAGE_DYNAMIC_UNITY_ADAPTER_DESIGN.md)에 있습니다.
+녹화 연동은 남아 있습니다. 공개 Asset Package 계약은
+[`contracts/assets/README.md`](contracts/assets/README.md)를 참조합니다.
 
 ### 로컬 MCAP 녹화 Inventory
 
@@ -119,13 +98,7 @@ Admin Catalog는 녹화 명령을 만들지 않고 완료된 MCAP, 객체별 SHA
 받지 않고 선택한 프레임만 요청하며 Central은 원본 JPEG를 재인코딩하지 않습니다.
 분산 배포에서는 additive 필드를 인식하는 Central을 먼저 갱신한 뒤 Edge Agent를 갱신합니다.
 
-Task Run UI 녹화의 구현·운용 계약과 Lab1 실측 결과는
-[`PLAN_TASK_RUN_CAPTURE_JOBS.md`](PLAN_TASK_RUN_CAPTURE_JOBS.md)와
-[`docs/TASK_RUN_UI_CAPTURE_ACCEPTANCE_2026-08-24.md`](docs/TASK_RUN_UI_CAPTURE_ACCEPTANCE_2026-08-24.md)를
-참조합니다.
-웹 재생기의 범위와 실측 결과는 [`PLAN_MCAP_WEB_PLAYBACK.md`](PLAN_MCAP_WEB_PLAYBACK.md)와
-[`docs/MCAP_WEB_PLAYBACK_ACCEPTANCE_2026-08-24.md`](docs/MCAP_WEB_PLAYBACK_ACCEPTANCE_2026-08-24.md)를
-참조합니다.
+Task Run 녹화와 저장소 운영은 [운영 안내](docs/ROBOT_CAMERA_OPERATIONS_V1.md)를 참조합니다.
 
 ### LeRobot observation-only 파생
 
@@ -158,10 +131,8 @@ python -m fleet_control_plane.lerobot_derivation \
 ```
 
 같은 요청은 동일한 파생 ID를 반환해 중복 데이터셋을 만들지 않습니다. 결과는 Admin
-`/catalog.html`의 `LeRobot 데이터셋` 영역에서 조회하고 tar로 받을 수 있습니다. 정확한 계약과
-첫 실측 결과는 [`docs/LEROBOT_DERIVATION_CONTRACT.md`](docs/LEROBOT_DERIVATION_CONTRACT.md)와
-[`docs/LEROBOT_DERIVATION_ACCEPTANCE_2026-08-26.md`](docs/LEROBOT_DERIVATION_ACCEPTANCE_2026-08-26.md)를
-참조합니다.
+`/catalog.html`의 `LeRobot 데이터셋` 영역에서 조회하고 tar로 받을 수 있습니다.
+데이터 계약은 [LeRobot 파생 계약](docs/LEROBOT_DERIVATION_CONTRACT.md)을 참조합니다.
 
 ## Docker 환경
 
@@ -262,7 +233,8 @@ ros2 run fleet_control_plane fleet_unity_sim_worker \
 
 Worker가 fresh/ready가 아니거나 profile digest가 다르거나 물리 출력 연결이 감지되면 Simulation Run은
 생성되지 않습니다. lease가 만료된 실행은 자동 재시도하지 않고 `INTERRUPTED`로 남겨 입회 확인하게 합니다.
-상세 계약과 검증 항목은 [`docs/WORKFLOW_STUDIO_V1_DESIGN.md`](docs/WORKFLOW_STUDIO_V1_DESIGN.md)에 있습니다.
+공개 실행 경계는 [요구사항](docs/requirements.md)과
+[오케스트레이션 계약](contracts/orchestration/README.md)을 따릅니다.
 
 Docker 기반 Lab 배포에서는 같은 Worker를 선택적 profile로 시작할 수 있습니다. Unity가 사용하는 host
 bridge 디렉터리는 기본 `/tmp/sang-unity-scenario1`이며, 다른 고정 위치를 쓸 때만
@@ -457,8 +429,8 @@ ros2 run fleet_control_plane fleet_opcua_shadow \
 
 Gateway 재시작 검증 시 shadow는 반드시 별도 컨테이너나 Monitoring PC에서 실행합니다. 강화된
 70초 실기와 full 40초 reconnect grace 검증은 모든 connection epoch에서 strict 비교를 완료했고
-divergence, timing miss와 alignment timeout 0으로 통과했습니다. 상세 상태는
-`contracts/opcua/PHASE2_VALIDATION.md`에 있습니다.
+divergence, timing miss와 alignment timeout 0으로 통과했습니다.
+이 결과는 당시 시험 조건에 한정되며 배포 환경별 검증이 필요합니다.
 
 Phase 4 M2부터 SO-101의 기본 계약은
 `contracts/opcua/bi_so101_01.mapping.v2.yaml`입니다. 각 state/action feature가 selector,
@@ -526,8 +498,8 @@ PYTHONPATH="$PWD/src/sang_security:$PWD/src/fleet_control_plane:$PWD/src/robot_a
 colcon build --symlink-install
 ```
 
-보안·분산 Phase 3 집중 테스트의 최신 명령과 결과는
-`contracts/opcua/PHASE3_VALIDATION.md`를 단일 근거로 사용합니다. Isaac vendor profile 테스트는
+보안·분산 배포는 [Phase 3 보안 계약](contracts/opcua/PHASE3_SECURITY.md)을 따릅니다.
+Isaac vendor profile 테스트는
 컨테이너에 `/issacsim_setting_usd`를 mount한 환경에서 실행해야 합니다. 30초 실기 strict soak는
 31개 sample, unhealthy 0,
 fetch error 0으로 통과했고, 합성 `right_wrist` 4초 중단은 stale/recovery 이벤트와 최종 복구를
@@ -567,8 +539,7 @@ docker compose \
 ```
 
 이 Compose는 heartbeat schema v3를 명시적으로 사용하며 로봇 명령 publisher를 만들지 않습니다.
-현재 검증 결과와 롤백 경계는
-`docs/PHASE4_CENTRAL_FIRST_CANARY_2026-08-06.md`를 기준으로 합니다.
+배포와 롤백 절차는 [Phase 4 배포 안내](deploy/phase4/README.md)를 따릅니다.
 
 ### Phase 4 Agent/Gateway 런타임 생성
 
@@ -601,7 +572,6 @@ XR는 LeRobot 기능이 아니라 현재 개발 중인 별도 ROS 2 입력 adapt
 
 - 입력 bridge: [src/xr_teleop_bridge/README.md](src/xr_teleop_bridge/README.md)
 - SO-ARM preview: [src/xr_teleop_retarget/README.md](src/xr_teleop_retarget/README.md)
-- 계획: [PLAN_XR_TELEOP.md](PLAN_XR_TELEOP.md), [PLAN_XR_RETARGET.md](PLAN_XR_RETARGET.md)
 
 XR가 실제 로봇 명령으로 연결될 때는 반드시 Control Mode Manager, command mux, TTL/deadman과
 local safety gate를 통과해야 합니다.
@@ -654,8 +624,7 @@ Unity `6000.5.6f1` 프로젝트의 자동 Reporter는 로컬 Edge에 Snapshot만
 
 ## Isaac execution + Unity observer pilot
 
-The separate, output-disconnected RB5 pilot is documented in
-[`docs/ISAAC_UNITY_TWIN_PILOT_2026-09-09.md`](docs/ISAAC_UNITY_TWIN_PILOT_2026-09-09.md).
+The separate RB5 pilot runs with physical outputs disconnected.
 Workflow Studio runs the published **Isaac RB5 + Unity digital twin** Task with
 **Validate in Isaac**. Isaac owns the physics and two bounded joint actions;
 Unity only mirrors measured ROS 2 feedback. This does not enable physical motion,
@@ -668,8 +637,7 @@ The Scenario 1 extension adds carrier delivery, OMY table transfer, the 25-point
 RB5 path, OMY return and carrier return. Use **Isaac Scenario 1 + Unity observer**
 and explicitly select its Isaac adapter in Workflow Studio. It remains a virtual
 fixture: carrier dynamics and grasp/table contacts are not physically qualified.
-Implementation, acceptance evidence and limits are in
-[`docs/ISAAC_SCENARIO1_EXECUTION_2026-09-09.md`](docs/ISAAC_SCENARIO1_EXECUTION_2026-09-09.md).
+The public operating boundaries are defined in [requirements](docs/requirements.md).
 
 ## OMY/RB5 Isaac Sim (existing observation profiles)
 

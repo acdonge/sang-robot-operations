@@ -3,10 +3,9 @@
 Status: implementation complete with an observation-only LeRobot derivation extension; physical
 deployment acceptance remains site-specific.
 
-Roadmap authority: [`../SANG_MASTER_IMPLEMENTATION_PLAN.md`](../SANG_MASTER_IMPLEMENTATION_PLAN.md).
-The frozen RB5/D405/D455/OTOS site topology later passed M1-M7 acceptance in
-[`ROBOT_CAMERA_V1_SITE_ACCEPTANCE_2026-08-26.md`](ROBOT_CAMERA_V1_SITE_ACCEPTANCE_2026-08-26.md);
-that dated result does not automatically accept a different current topology.
+Public product and safety boundaries are defined in [requirements](requirements.md).
+Acceptance of one site topology does not automatically accept another deployment;
+repeat the applicable checks for the installed devices and configuration.
 
 ## Release boundary
 

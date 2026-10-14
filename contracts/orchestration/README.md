@@ -54,5 +54,6 @@ python3 -m fleet_control_plane.orchestration_contracts \
 ```
 
 Database/API registry integration is G1. A simulation-only Orchestrator and dev lease verifier are
-G3. Physical motion remains prohibited until the attended G7 commissioning gate described in
-`../../docs/MULTI_ROBOT_ORCHESTRATOR_IMPLEMENTATION_DESIGN.md`.
+G3. Physical motion remains prohibited until the attended G7 commissioning gate.
+The public authority boundaries are defined in [requirements](../../docs/requirements.md);
+a simulation result does not grant physical-output authority.

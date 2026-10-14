@@ -121,3 +121,15 @@ dist/
 /unity/*/Assets/Observer/Visuals.meta
 /unity/*/Assets/Observer/Scenes/
 /unity/*/Assets/Observer/Scenes.meta
+
+# Internal planning/review documents belong in the private development repository.
+/AGENTS.md
+/ADMIN_MVP.md
+/PLAN*.md
+/SANG_MASTER_IMPLEMENTATION_PLAN.*
+/docs/*_DESIGN.md
+/docs/*_EVIDENCE*.md
+/docs/*_20??-??-??.md
+/docs/DOCUMENT_AUTHORITY_INDEX.md
+/docs/RB5_LAB1_ATTENDED_SYNC_TEST.md
+/contracts/opcua/PHASE*_VALIDATION.md

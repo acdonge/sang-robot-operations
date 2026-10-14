@@ -1,9 +1,8 @@
 # SANG Fleet Workspace Requirements
 
-Document authority: this file defines mandatory product and safety requirements. Current implementation
-status and ordering are maintained only in
-[`../SANG_MASTER_IMPLEMENTATION_PLAN.md`](../SANG_MASTER_IMPLEMENTATION_PLAN.md); document precedence is
-defined in [`DOCUMENT_AUTHORITY_INDEX.md`](DOCUMENT_AUTHORITY_INDEX.md).
+Document authority: this file defines mandatory product and safety requirements.
+Machine-readable interfaces are versioned under `contracts/`. Internal implementation
+plans and review records are maintained separately from this public source tree.
 
 ## Purpose
 
@@ -73,7 +72,8 @@ observation profiles.
     supplied Unity UDP Sim-to-Real launchers remains outside this integration. The Unity Reporter must
     refuse to run whenever either supplied Sim-to-Real environment arm flag is active.
 22. Heterogeneous robot control development and every later physical release must follow
-    `docs/MULTI_ROBOT_ORCHESTRATOR_IMPLEMENTATION_DESIGN.md`: Central owns intent, audit,
+    the authority boundaries below and the versioned contracts under `contracts/orchestration/`:
+    Central owns intent, audit,
     reservations, authorization and bounded delegation grants; a Processing-PC Cell Orchestrator owns
     capability-based DAG sequencing and recovery; only a local Device Agent may hold a vendor command
     handle. G1-G6a software/disconnected-HIL implementation does not authorize physical motion.
