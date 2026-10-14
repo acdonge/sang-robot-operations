@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="880" viewBox="0 0 1280 880" role="img" aria-labelledby="title description">
+<title id="title">SANG 시스템 구조</title>
+<desc id="description">로봇과 카메라의 관측값은 ROS 2와 Edge를 통해 Central에 모인다. Robot Agent는 상태를 전달하고, MCAP Recorder는 선택 구간을 기록하며, OPC UA Gateway는 읽기 전용 정보를 제공한다. Central은 메타데이터를 SQLite, 검증된 녹화를 Object Store에 보존한다. Admin과 Operator는 조회 및 허용된 작업 관리를 수행한다. 별도 Worker는 고정된 시뮬레이션 프로필만 실행한다. LeRobot 파생 데이터는 관측 전용이며 action feature를 포함하지 않는다.</desc>
+<defs>
+<style>
+text { font-family: 'Noto Sans CJK KR', 'Noto Sans KR', 'Malgun Gothic', sans-serif; }
+.title { font-size: 34px; font-weight: 700; fill: #172536; }
+.subtitle { font-size: 19px; fill: #536176; }
+.eyebrow { font-size: 17px; font-weight: 700; fill: #416180; }
+.heading { font-size: 23px; font-weight: 700; fill: #172536; }
+.body { font-size: 19px; fill: #33455a; }
+.small { font-size: 17px; fill: #536176; }
+.label { font-size: 15px; font-weight: 600; fill: #416180; }
+.box { fill: #fff; stroke: #cbd5e1; stroke-width: 1.5; }
+.separator { stroke: #e2e8f0; stroke-width: 1.5; }
+.arrow { fill: none; stroke: #527798; stroke-width: 2.5; marker-end: url(#arrow); }
+</style>
+<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#527798"/></marker>
+</defs>
+<rect width="1280" height="880" rx="16" fill="#f8fafc"/>
+
+<text x="32" y="55" class="title">SANG 시스템 구조</text>
+<text x="32" y="88" class="subtitle">실물 관측 → 작업 관리 → 데이터 보존 · 별도의 시뮬레이션 실행 경로</text>
+<rect x="32" y="125" width="268" height="380" rx="12" class="box"/>
+<text x="54" y="158" class="eyebrow">01 / WORKCELL</text>
+<text x="54" y="195" class="heading">로봇 · 카메라</text>
+<line x1="54" y1="217" x2="278" y2="217" class="separator"/>
+<text x="54" y="253" class="heading">SO-101 · OMY · RB5</text>
+<text x="54" y="282" class="body">관절 상태 · 장치 상태</text>
+<text x="54" y="329" class="heading">RGB · Depth 센서</text>
+<text x="54" y="358" class="body">프로필에 지정된 영상</text>
+<text x="54" y="405" class="heading">실물 경로: 관측 전용</text>
+<text x="54" y="477" class="small">장치 구성은 manifest로 정의</text>
+<rect x="348" y="125" width="268" height="380" rx="12" class="box"/>
+<text x="370" y="158" class="eyebrow">02 / EDGE</text>
+<text x="370" y="195" class="heading">Processing PC</text>
+<line x1="370" y1="217" x2="594" y2="217" class="separator"/>
+<text x="370" y="253" class="heading">Robot Agent</text>
+<text x="370" y="282" class="body">토픽 상태 · heartbeat</text>
+<text x="370" y="329" class="heading">MCAP Recorder</text>
+<text x="370" y="358" class="body">선택 구간 녹화 · 업로드</text>
+<text x="370" y="405" class="heading">OPC UA Gateway</text>
+<text x="370" y="434" class="body">읽기 전용 정보 투영</text>
+<text x="370" y="477" class="small">ROS 2 어댑터 · 고정 프로필</text>
+<rect x="664" y="125" width="268" height="380" rx="12" fill="#eef5fb" stroke="#91aec9" stroke-width="1.5"/>
+<text x="686" y="158" class="eyebrow">03 / CENTRAL</text>
+<text x="686" y="195" class="heading">Fleet Control Plane</text>
+<line x1="686" y1="217" x2="910" y2="217" class="separator"/>
+<text x="686" y="253" class="heading">Registry · Task Run</text>
+<text x="686" y="282" class="body">자산 배정 · 권한 · 감사</text>
+<text x="686" y="329" class="heading">SQLite</text>
+<text x="686" y="358" class="body">상태 · 메타데이터 · 인덱스</text>
+<text x="686" y="405" class="heading">Object Store</text>
+<text x="686" y="434" class="body">무결성 검증된 녹화 · 객체</text>
+<text x="686" y="477" class="small">선택 카메라 relay · 데이터 API</text>
+<rect x="980" y="125" width="268" height="380" rx="12" class="box"/>
+<text x="1002" y="158" class="eyebrow">04 / INTERFACES</text>
+<text x="1002" y="195" class="heading">사용자 · 외부 연계</text>
+<line x1="1002" y1="217" x2="1226" y2="217" class="separator"/>
+<text x="1002" y="253" class="heading">Admin / Operator</text>
+<text x="1002" y="282" class="body">상태 조회 · 작업별 녹화</text>
+<text x="1002" y="329" class="heading">Data Catalog</text>
+<text x="1002" y="358" class="body">녹화 검색 · 다중 뷰 재생</text>
+<text x="1002" y="405" class="heading">OPC UA Clients</text>
+<text x="1002" y="434" class="body">읽기 전용 중앙 집계</text>
+<text x="1002" y="477" class="small">AAS 문서 연결 · 자산 정보</text>
+<path d="M300 309 H340" class="arrow"/>
+<text x="324" y="295" class="label" text-anchor="middle">ROS 2</text>
+<path d="M616 309 H656" class="arrow"/>
+<text x="640" y="295" class="label" text-anchor="middle">mTLS</text>
+<path d="M932 309 H972" class="arrow"/>
+<text x="956" y="295" class="label" text-anchor="middle">조회</text>
+<path d="M798 505 V535" class="arrow"/>
+<rect x="348" y="543" width="584" height="100" rx="12" class="box"/>
+<text x="370" y="579" class="heading">검증된 MCAP → LeRobot v3</text>
+<text x="370" y="614" class="body">관측 데이터 파생: 관절 상태 + 카메라 / action feature 없음</text>
+<text x="32" y="568" class="small">heartbeat에는 메타데이터만 전달.</text>
+<text x="32" y="598" class="small">녹화 파일은 별도 검증 후 업로드.</text>
+<text x="980" y="568" class="small">주요 정보 흐름을 요약한 구조도.</text>
+<text x="980" y="598" class="small">실물 구동 명령은 포함하지 않음.</text>
+<rect x="32" y="681" width="1216" height="169" rx="12" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"/>
+<text x="54" y="716" class="heading">격리된 시뮬레이션</text>
+<text x="326" y="716" class="small">출력 연결이 없는 고정 프로필 · 실물 관측 경로와 별도 운영</text>
+<rect x="54" y="738" width="245" height="83" rx="8" class="box"/>
+<text x="72" y="772" class="heading">Workflow Studio</text>
+<text x="72" y="802" class="body">검증된 작업 → Central 큐</text>
+<rect x="345" y="738" width="267" height="83" rx="8" class="box"/>
+<text x="363" y="772" class="heading">Simulation Worker</text>
+<text x="363" y="802" class="body">프로필 · 권한 · 상태 확인</text>
+<rect x="658" y="738" width="568" height="83" rx="8" class="box"/>
+<text x="676" y="772" class="heading">Unity 실행 / Isaac 실행 + Unity 관측</text>
+<text x="676" y="802" class="body">선택한 adapter에 따라 분리 실행 · 측정 결과 수집</text>
+<path d="M299 780 H337" class="arrow"/>
+<path d="M612 780 H650" class="arrow"/>
+</svg>
