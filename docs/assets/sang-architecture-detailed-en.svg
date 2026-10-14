@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="1480" viewBox="0 0 960 1480" role="img" aria-labelledby="title description">
+<title id="title">SANG Architecture: Components and Data Flow</title>
+<desc id="description">Read-only workcell adapters publish ROS 2 observations to Edge services. Robot Agent reports health; a recording worker captures selected intervals in MCAP; Edge OPC UA exposes local values to its clients. Central manages tasks and access, stores metadata in SQLite and verified artifacts in a filesystem Object Store. Web views and a separate Central OPC UA projection expose operational information. Quality-passed recordings produce observation-only LeRobot v3 datasets. A separate local simulation worker executes pinned Unity or Isaac profiles; Unity observes feedback in the Isaac profile.</desc>
+<defs>
+<style>
+text{font-family:'Segoe UI','Noto Sans',Arial,sans-serif}
+.title{font-size:32px;font-weight:700;fill:#172536}
+.heading{font-size:27px;font-weight:700;fill:#172536}
+.body{font-size:22px;fill:#33455a}
+.small{font-size:20px;fill:#536176}
+.label{font-size:18px;font-weight:700;fill:#416180}
+.box{fill:#fff;stroke:#cbd5e1;stroke-width:1.5}
+.line{stroke:#e2e8f0;stroke-width:1.5}
+.arrow{fill:none;stroke:#527798;stroke-width:2.5;marker-end:url(#arrow)}
+</style>
+<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#527798"/></marker>
+</defs>
+<rect width="960" height="1480" rx="16" fill="#f8fafc"/>
+<text x="32" y="54" class="title">SANG Architecture</text>
+<text x="32" y="88" class="small">Live observations → Operational state, recordings and reusable data</text>
+
+<rect x="32" y="120" width="400" height="318" rx="12" class="box"/>
+<text x="54" y="154" class="label">01 / WORKCELL</text>
+<text x="54" y="195" class="heading">Robots &amp; Cameras</text>
+<text x="54" y="234" class="body">SO-101 · OMY · RB5</text>
+<line x1="54" y1="252" x2="410" y2="252" class="line"/>
+<text x="54" y="286" class="body">Read-only device adapters</text>
+<text x="54" y="316" class="small">Joint states · Compressed images</text>
+<text x="54" y="346" class="small">Named topics · Units · Timestamps</text>
+<text x="54" y="386" class="body">ROS 2 observation streams</text>
+<text x="54" y="416" class="small">Manifests declare types and rates</text>
+
+<rect x="528" y="120" width="400" height="318" rx="12" class="box"/>
+<text x="550" y="154" class="label">02 / EDGE</text>
+<text x="550" y="195" class="heading">Processing PC</text>
+<text x="550" y="240" class="body">Robot Agent</text>
+<text x="550" y="270" class="small">Topic health → Bounded heartbeats</text>
+<text x="550" y="310" class="body">Capture Worker + Recorder</text>
+<text x="550" y="340" class="small">Selected intervals → MCAP files</text>
+<text x="550" y="380" class="body">Edge OPC UA Gateway</text>
+<text x="550" y="410" class="small">Local values → Industrial clients</text>
+<path d="M432 224 H520" class="arrow"/>
+<text x="480" y="208" class="label" text-anchor="middle">ROS 2</text>
+<path d="M728 438 V500" class="arrow"/>
+<text x="32" y="478" class="small">To Central: health metadata + finalized recording uploads</text>
+
+<rect x="32" y="508" width="896" height="328" rx="12" fill="#eef5fb" stroke="#91aec9" stroke-width="1.5"/>
+<text x="54" y="542" class="label">03 / CENTRAL</text>
+<text x="54" y="580" class="heading">Fleet Control Plane</text>
+<text x="54" y="618" class="body">Authenticated API · Assets &amp; Tasks · Access rules · Upload verification</text>
+<rect x="54" y="644" width="412" height="144" rx="9" class="box"/>
+<text x="74" y="678" class="body" font-weight="700">SQLite / metadata</text>
+<text x="74" y="714" class="small">Assets, Tasks, Runs, versions</text>
+<text x="74" y="746" class="small">Users, audit, catalogs and queues</text>
+<rect x="486" y="644" width="420" height="144" rx="9" class="box"/>
+<text x="506" y="678" class="body" font-weight="700">Filesystem Object Store</text>
+<text x="506" y="714" class="small">MCAP, AAS artifacts and datasets</text>
+<text x="506" y="746" class="small">Immutable files + size / SHA-256</text>
+<text x="54" y="816" class="small">Stable asset identities connect operational records, documents and data.</text>
+
+<path d="M232 836 V902" class="arrow"/>
+<text x="54" y="877" class="label">API / OPC UA</text>
+<path d="M728 836 V902" class="arrow"/>
+<text x="550" y="877" class="label">Verified MCAP</text>
+<rect x="32" y="910" width="400" height="224" rx="12" class="box"/>
+<text x="54" y="944" class="label">04 / INTERFACES</text>
+<text x="54" y="982" class="heading">Read &amp; Operate</text>
+<text x="54" y="1018" class="body">Admin / Operator web views</text>
+<text x="54" y="1049" class="small">Task operations · Camera preview</text>
+<text x="54" y="1080" class="small">Catalog playback · AAS documents</text>
+<text x="54" y="1111" class="small">OPC UA: Central state projection</text>
+<rect x="528" y="910" width="400" height="224" rx="12" class="box"/>
+<text x="550" y="944" class="label">05 / DATA EXPORT · CLI</text>
+<text x="550" y="982" class="heading">Dataset Derivation</text>
+<text x="550" y="1018" class="body">Quality PASS + selected interval</text>
+<text x="550" y="1049" class="small">Align joint and camera timestamps</text>
+<text x="550" y="1080" class="small">LeRobot v3: state + RGB videos</text>
+<text x="550" y="1111" class="small">No action feature in current export</text>
+
+<rect x="32" y="1192" width="896" height="262" rx="12" class="box"/>
+<text x="54" y="1226" class="label">06 / SEPARATE EXECUTION PATH</text>
+<text x="54" y="1267" class="heading">Isolated Simulation</text>
+<text x="54" y="1324" class="body">Workflow Studio</text>
+<text x="54" y="1356" class="small">Published Task</text>
+<path d="M238 1318 H296" class="arrow"/>
+<text x="316" y="1324" class="body">Queue + Worker</text>
+<text x="316" y="1356" class="small">Pinned profile</text>
+<path d="M511 1318 H584" class="arrow"/>
+<text x="606" y="1324" class="body">Unity / Isaac</text>
+<text x="606" y="1356" class="small">Measured result</text>
+<line x1="54" y1="1378" x2="906" y2="1378" class="line"/>
+<text x="54" y="1408" class="small">Isaac profile: Isaac executes; Unity displays feedback.</text>
+<text x="54" y="1438" class="small">Dedicated local Worker · Physical outputs disconnected</text>
+</svg>

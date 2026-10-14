@@ -6,22 +6,41 @@ Manage SO-101, OMY, RB5, and cameras as workcells. Collect ROS 2 observations, p
 recording intervals in MCAP, and inspect device status, recordings, and simulation results through
 one web interface. OPC UA provides read-only information exchange; AAS connects asset documents.
 
-[Platform overview (Korean)](docs/SANG_PLATFORM_OVERVIEW_KO.md) ·
+[Architecture guide](docs/ARCHITECTURE.md) ·
 [Installation & operations](docs/ROBOT_CAMERA_OPERATIONS_V1.md) ·
 [Detailed usage (Korean)](docs/USAGE.md) ·
 [Requirements](docs/requirements.md)
 
 ## System Architecture
 
-![SANG architecture: robots and cameras feed Edge and Central services, with user interfaces, observation data export, and a separate simulation execution path](docs/assets/sang-system-overview-en.svg)
+![Detailed SANG architecture: Workcell observation, Edge services, Central metadata and artifact storage, user interfaces, dataset derivation, and isolated simulation](docs/assets/sang-architecture-detailed-en.svg)
 
-1. **Workcell** — Observe robot joint states and camera images through ROS 2 adapters.
-2. **Edge** — Robot Agent reports health; MCAP Recorder captures selected recording intervals.
-3. **Central** — Store assets, tasks, permissions, and metadata in SQLite; preserve verified recordings and derived objects in the Object Store.
-4. **Interfaces** — Use Admin and Operator for observation and authorized task operations, and OPC UA clients for information exchange.
+The system has three distinct flows: **live observation**, **recording and data export**, and
+**isolated simulation execution**. The diagram shows logical responsibilities; boxes do not require
+one dedicated computer each. [Open the full-size diagram](docs/assets/sang-architecture-detailed-en.svg).
 
-A separate worker runs validated, fixed simulation profiles. Unity execution and
-Isaac execution with Unity observation operate independently of the physical observation path.
+| Layer | What it does | What it produces |
+|---|---|---|
+| **1. Workcell** | Robot and camera adapters expose named ROS 2 observation topics. Manifests declare types, units and expected rates. | Joint states and camera messages with timestamps. |
+| **2. Edge / Processing PC** | Robot Agent checks stream health. A recording worker runs a fixed MCAP capture profile. The Edge OPC UA gateway exposes current values. | Bounded heartbeats, selected recordings and read-only industrial state. |
+| **3. Central** | The API manages assets, Task Runs, permissions, audit and job queues. It verifies uploaded recording artifacts. | Queryable SQLite metadata and immutable files in the filesystem Object Store. |
+| **4. Interfaces** | Admin and Operator views expose authorized operations, selected-camera preview and catalog playback. Central OPC UA projects catalog summaries. | A shared operational view for people and industrial clients. |
+| **5. Dataset derivation** | A quality-passed recording interval is sampled on a common source-time grid. | A LeRobot v3 episode with measured joint state and camera videos. |
+| **6. Simulation** | A dedicated local worker claims a queued Run and executes its pinned Unity or Isaac profile. | Step progress, measured outcomes and a durable Run result. |
+
+**Example: inspect and record a workcell.** Register its assets, assign them to a Task Run, inspect
+Agent health, and request a bounded capture. The Edge worker records the configured topics and uploads
+the finalized files. Central checks the manifest, assignment, byte sizes and SHA-256 hashes before
+making the session available in the catalog. A separate quality check determines whether it can be
+exported as a LeRobot dataset.
+
+Live health reports, camera preview and retained recordings use separate paths. Heartbeats carry
+bounded metadata rather than video; MCAP retains the selected observations. In the Isaac simulation
+profile, Isaac executes motion while Unity displays measured feedback. The Unity execution profile
+uses Unity as its simulator instead.
+
+See the [architecture guide](docs/ARCHITECTURE.md) for component responsibilities, recording and
+simulation sequence diagrams, storage choices, key terms and links to the implementation.
 
 ## Features
 
@@ -98,6 +117,7 @@ docs/                      # Public guides and architecture diagrams
 
 | Purpose | Guide |
 |---|---|
+| Follow component responsibilities and end-to-end sequences | [Architecture guide](docs/ARCHITECTURE.md) |
 | Understand the platform and data flow | [Platform overview (Korean)](docs/SANG_PLATFORM_OVERVIEW_KO.md) |
 | Install, deploy remotely, back up, and upgrade | [Operations guide](docs/ROBOT_CAMERA_OPERATIONS_V1.md) |
 | Find device observation, recording, and simulation commands | [Detailed usage (Korean)](docs/USAGE.md) |
