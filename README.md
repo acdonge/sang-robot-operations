@@ -13,7 +13,7 @@ OPC UA는 읽기 전용 정보 연계를, AAS는 자산 문서 연결을 담당�
 
 ## 시스템 구조
 
-![SANG 구조도: 로봇·카메라에서 Edge와 Central을 거쳐 사용자 화면으로 이어지는 관측·데이터 경로와 별도의 시뮬레이션 경로](docs/assets/sang-system-overview.svg)
+![SANG 구조도: 로봇·카메라에서 Edge와 Central을 거쳐 사용자 화면으로 이어지는 관측·데이터 경로와 별도의 시뮬레이션 경로](docs/assets/sang-system-overview.svg?v=2)
 
 1. **Workcell** — 로봇 관절과 카메라 영상을 ROS 2 어댑터로 관측합니다.
 2. **Edge** — Robot Agent가 상태를 보고하고, MCAP Recorder가 지정 구간을 녹화합니다.
