@@ -34,6 +34,19 @@ reviews and dated experiment records are maintained in a separate private reposi
 No blanket `*.json`, `*.yaml`, `*.xml`, `*.lock`, `*.asset`, or `*.meta` rule is used.
 Eligibility is not a provenance, safety, or license approval.
 
+### Approved Demo Media Exception
+
+On October 16, 2026, the owner explicitly approved public upload of the edited
+Scenario 1 demonstration and its poster after confirming the repository's public
+visibility. The MP4 is a GitHub-hosted attachment linked from the root README;
+`docs/media/sang-isaac-scenario1-poster.png` is the only new tracked binary exception.
+See [demo notes and exact hashes](media/README.md) for provenance and limitations.
+The capture contains only the SANG and Isaac Sim application views, without
+microphone audio or real camera footage. This exception does not publish raw
+recordings, MCAP datasets, runtime state, credentials, or external model files,
+and does not grant redistribution rights to the underlying third-party assets.
+Repository visibility and pending implementation changes are outside this update.
+
 ## Kept Local
 
 | Path or rule | Reason / reproduction boundary |

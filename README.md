@@ -6,11 +6,31 @@ Manage SO-101, OMY, RB5, and cameras as workcells. Collect ROS 2 observations, p
 recording intervals in MCAP, and inspect device status, recordings, and simulation results through
 one web interface. OPC UA provides read-only information exchange; AAS connects asset documents.
 
+[Watch the demo](#demo) ·
 [System architecture](#system-architecture) ·
 [Quick start](#quick-start) ·
 [Installation & operations](docs/ROBOT_CAMERA_OPERATIONS_V1.md) ·
 [Detailed usage (Korean)](docs/USAGE.md) ·
 [Requirements](docs/requirements.md)
+
+## Demo
+
+**From a published Workflow to an observable virtual workcell.**
+
+<video src="https://github.com/user-attachments/assets/32079579-3c66-48bb-a755-0d96c4eae799" controls="controls"></video>
+
+**2:06 · 1080p · actual application footage.** SANG queues Scenario 1, coordinates the
+carrier, OMY and RB5 in NVIDIA Isaac Sim, completes all five stages, acknowledges Reset,
+and replays the linked recording in Data Catalog. White: RB5. Black: OMY. Blue: carrier.
+Accelerated sections are labeled 4x; the original capture includes navigation and idle time.
+
+**Simulation only:** physical outputs are disconnected. This demonstrates configured
+trajectories and virtual transfer fixtures, not welding physics, physical grasp qualification
+or certified safety. The footage is from the local development runtime; this media update
+does not publish its pending source changes.
+
+[Open video](https://github.com/user-attachments/assets/32079579-3c66-48bb-a755-0d96c4eae799) ·
+[Demo notes, poster and integrity](docs/media/README.md)
 
 ## System Architecture
 

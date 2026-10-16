@@ -106,6 +106,9 @@ dist/
 *.mp3
 *.pdf
 
+# Narrow documentation-media exception; raw recordings remain local.
+!/docs/media/sang-isaac-scenario1-poster.png
+
 # Unity sources, .meta files, Packages and ProjectSettings remain eligible.
 /unity/*/[Ll]ibrary/
 /unity/*/[Tt]emp/
